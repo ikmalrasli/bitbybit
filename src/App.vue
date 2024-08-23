@@ -9,7 +9,7 @@
         <!-- Title Bar -->
         <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" @show-page="showRB = !showRB"/>
         
-        <router-view class="w-full h-full overflow-auto scrollbar-hide mb-8" />
+        <router-view class="h-full overflow-auto scrollbar-hide mb-8" />
       </div>
       
       <div v-if="checkDesktop()" class="w-1/2 flex">
