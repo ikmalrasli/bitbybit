@@ -11,7 +11,7 @@
           <!-- Name -->
           <div>
             <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
-            <input v-model="formData.name" type="text" id="name" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Solat Dhuha" />
+            <input v-model="formData.name" type="text" id="name" class=" mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Solat Dhuha" />
           </div>
   
           <!-- Daily Goal -->

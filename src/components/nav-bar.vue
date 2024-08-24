@@ -21,10 +21,11 @@
           v-for="link in links" 
           :key="link.name" 
           :to="link.path"
-          class="p-2 text-black hover:bg-gray-300 hover:text-black"
-          active-class="text-white bg-violet-400"
+          class="flex items-center p-2 pl-8 hover:bg-gray-300"
+          active-class="text-white font-semibold bg-violet-400"
         >
-          {{ link.name }}
+          <span class="material-icons mr-2">{{ link.icon }}</span> 
+          <span>{{ link.name }}</span>
         </router-link>
       </nav>
     </div>
@@ -37,11 +38,11 @@ export default {
     return {
       showSidebar: false, // Controls the sidebar visibility on mobile
       links: [
-        { name: "Home", path: "/" },
-        { name: "Calendar", path: "/calendar" },
-        { name: "Sunnahs", path: "/sunnahs" },
-        { name: "Stats", path: "/stats" },
-        { name: "Test", path: "/test" }
+        { name: "Home", icon:"home", path: "/" },
+        { name: "Calendar", icon:"calendar_today", path: "/calendar" },
+        { name: "Sunnahs", icon:"explore", path: "/sunnahs" },
+        { name: "Stats", icon:"bar_chart", path: "/stats" },
+        { name: "Test", icon:"science", path: "/test" }
       ],
     };
   },

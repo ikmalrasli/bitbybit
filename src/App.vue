@@ -1,15 +1,15 @@
 <template>
-  <div class="flex justify-center min-h-screen">
-    <div class="flex w-full min-h-screen relative">
+  <div class="flex justify-center h-full">
+    <div class="flex w-full h-full relative">
       <!-- Sidebar -->
       <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" />
 
       <!-- Main Content Area -->
-      <div :class="contentClass" class="w-1/2">
+      <div :class="contentClass" class="w-1/2 h-full">
         <!-- Title Bar -->
         <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" @show-page="showRB = !showRB"/>
         
-        <router-view class="h-full overflow-auto scrollbar-hide mb-8" />
+        <router-view class="w-full h-auto overflow-auto scrollbar-hide mb-8" />
       </div>
       
       <div v-if="checkDesktop()" class="w-1/2 flex">
@@ -100,20 +100,6 @@ export default {
 </script>
 
 <style>
-html, body, #app {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: white;
-  overflow: hidden;
-  justify-content: center;
-}
-
-#app {
-  display: flex;
-  flex-direction: column;
-}
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
