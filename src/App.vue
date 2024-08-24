@@ -4,21 +4,22 @@
       <!-- Sidebar -->
       <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" />
 
-      <!-- Main Content Area -->
-      <div :class="contentClass" class="w-1/2 h-full">
-        <!-- Title Bar -->
-        <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" @show-page="showRB = !showRB"/>
+      <div class="w-full flex flex-row">
+        <!-- Main Content Area -->
+        <div :class="contentClass">
+          <!-- Title Bar -->
+          <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" @show-page="showRB = !showRB"/>
+          
+          <router-view class="h-auto overflow-auto scrollbar-hide mb-8" />
+        </div>
         
-        <router-view class="w-full h-auto overflow-auto scrollbar-hide mb-8" />
+        <div v-if="checkDesktop()" class="flex-auto w-1/2">
+          <addHabit/>
+        </div>
+        <div v-else class="w-1/2 flex">
+          <Blank class="flex-grow"/>
+        </div>
       </div>
-      
-      <div v-if="checkDesktop()" class="w-1/2 flex">
-        <addHabit class="flex-grow"/>
-      </div>
-      <div v-else class="w-1/2 flex">
-        <Blank class="flex-grow"/>
-      </div>
-
     </div>
   </div>  
 </template>
@@ -51,7 +52,7 @@ export default {
   },
   computed: {
     contentClass() {
-      return this.isMobile ? "w-full flex-grow px-4 pt-2 pb-4" : "w-full flex-grow p-4 ml-64"; // On desktop, add margin for the sidebar
+      return this.isMobile ? "flex-grow px-4 pt-2 pb-4" : "flex-auto w-1/2 p-4 ml-64"; // On desktop, add margin for the sidebar
     },
   },
   methods: {
@@ -68,7 +69,7 @@ export default {
       return true;
     },
     checkDesktop(){
-      if (window.innerWidth >= 768 && this.$route.path === "/") {
+      if (window.innerWidth >= 768 && (this.$route.path === "/home" || this.$route.path === "/")) {
         return true;
       } else {
         return false;

@@ -8,7 +8,7 @@
     <div class="w-full text-center text-black font-bold text-xl">
       {{ title }}
     </div>
-    <span @click="openAddPage" class="material-icons absolute right-2 hover:bg-slate-100">
+    <span v-if="isHome()" @click="openAddPage" class="material-icons absolute right-2 hover:bg-slate-100">
       add
     </span>
   </div>
@@ -25,6 +25,11 @@ export default {
   methods: {
     toggleSidebar() {
       this.$emit("toggle-sidebar");
+    },
+    isHome() {
+      if (this.$route.path === "/" || this.$route.path === "/home") {
+        return true;
+      }
     },
     openAddPage() {
       this.$emit("show-page");
