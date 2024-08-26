@@ -11,6 +11,7 @@
     <span v-if="isHome()" @click="openAddPage" class="material-icons hover:bg-slate-100">
       add
     </span>
+    <span v-else class="material-icons invisible">add</span>
   </div>
 </template>
 

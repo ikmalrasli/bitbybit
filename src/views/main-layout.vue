@@ -4,13 +4,13 @@
     <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
 
     <!-- Main Content Area -->
-    <div :class="contentClass" class="flex-1">
+    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1">
       <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" />
       <router-view class="h-auto overflow-auto scrollbar-hide mb-8" />
     </div>
     
     <!-- Right Detail View -->
-    <div class="lg:flex-1 bg-gray-100 border-l border-gray-200">
+    <div  v-if="!isMobile || isDetailView" class="flex-1 bg-gray-100 border-l border-gray-200">
       <router-view name="right" />
     </div>
   </div>  
@@ -42,8 +42,12 @@
       };
     },
     computed: {
+      isDetailView() {
+      // Return true if the current path is a detail view (like /home/add-habit)
+        return this.$route.path === '/home/add-habit';
+      },
       contentClass() {
-        return this.isMobile ? "px-4 pt-2 pb-4" : "ml-64"; // On desktop, add margin for the sidebar
+        return this.isMobile ? "px-4 pt-2 pb-4" : "ml-60"; // On desktop, add margin for the sidebar
       },
     },
     methods: {

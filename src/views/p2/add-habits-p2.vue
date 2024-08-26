@@ -1,8 +1,8 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-full h-full flex flex-col bg-white border">
+    <div class="w-full h-full flex flex-col bg-white">
       <!-- Header -->
-      <header class="bg-white shadow p-4 flex flex-row relative">
+      <header class="bg-white p-4 flex flex-row relative">
         <router-link :to="'/'" class="material-icons">chevron_left</router-link>
         <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">Solat Dhuha</h1>
       </header>
@@ -19,7 +19,7 @@
           <!-- Daily Goal -->
           <div>
             <label for="dailyGoal" class="text-left block text-sm font-medium text-gray-700">Daily Goal</label>
-            <div class=" mt-1 flex items-center space-x-2">
+            <div class=" mt-1 flex justify-center items-center space-x-2">
               <button type="button" @click="decreaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">-</button>
               <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="bg-white text-black w-16 p-2 border border-gray-300 rounded-md text-center" />
               <button type="button" @click="increaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">+</button>
@@ -123,7 +123,14 @@
   };
   </script>
   
-  <style scoped>
-  /* You can add some additional styling here if needed */
-  </style>
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  }
+
+  .scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  }
+</style>
   

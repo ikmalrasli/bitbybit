@@ -12,7 +12,7 @@
       :class="[
         'absolute top-0 left-0 h-full z-40 transition-transform duration-300 bg-white',
         showSidebar ? 'translate-x-0 w-3/4' : '-translate-x-full',
-        'md:translate-x-0 md:w-56'
+        'md:translate-x-0 md:w-60'
       ]"
     >
       <div class="p-4 font-bold text-xl text-violet-400">BitByBit</div>
