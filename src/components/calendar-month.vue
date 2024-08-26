@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full bg-white rounded-lg shadow-lg p-4">
+  <div class="flex flex-col bg-white rounded-lg shadow-lg p-4">
     <!-- Calendar Header -->
     <div class="flex justify-between items-center mb-4">
       <button class="text-gray-500 hover:text-gray-700" @click="previousMonth">&lt;</button>
@@ -8,12 +8,12 @@
     </div>
 
     <!-- Days of the Week -->
-    <div class="grid grid-cols-7 text-center text-gray-600 mb-2">
-      <div v-for="day in daysOfWeek" :key="day">{{ day }}</div>
+    <div class="w-full grid grid-cols-7 text-gray-600 mb-2 gap-x-1">
+      <div v-for="day in daysOfWeek" :key="day" class="flex-1">{{ day }}</div>
     </div>
 
     <!-- Calendar Days -->
-    <div class="grid grid-cols-7 text-center">
+    <div class="grid grid-cols-7 text-center gap-x-1">
       <!-- Render all days (previous, current, and next) -->
       <div
         v-for="(day, index) in calendarDays"

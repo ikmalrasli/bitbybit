@@ -13,7 +13,7 @@
         ]"
       >
         <div class="flex flex-col items-center">
-          <span class="min-w-8 text-xs sm:text-sm">{{ day.name }}</span>
+          <span class="min-w-8 text-center text-xs sm:text-sm">{{ day.name }}</span>
           <RadialProgressbar
             :show="day.dateobj <= new Date()"
             :progress="day.progress"

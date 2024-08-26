@@ -1,5 +1,7 @@
 <template>
-  <p class="p-4 text-black">this is test</p>
+  <div class="p-4 border">
+    <p class="p-4 text-black flex-nowrap">this is a test page</p>
+  </div>
 </template>
 
 <script>

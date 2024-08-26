@@ -1,26 +1,6 @@
 <template>
   <div class="flex justify-center h-full">
-    <div class="flex w-full h-full relative">
-      <!-- Sidebar -->
-      <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" />
-
-      <div class="w-full flex flex-row">
-        <!-- Main Content Area -->
-        <div :class="contentClass">
-          <!-- Title Bar -->
-          <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" @show-page="showRB = !showRB"/>
-          
-          <router-view class="h-auto overflow-auto scrollbar-hide mb-8" />
-        </div>
-        
-        <div v-if="checkDesktop()" class="flex-auto w-1/2">
-          <addHabit/>
-        </div>
-        <div v-else class="w-1/2 flex">
-          <Blank class="flex-grow"/>
-        </div>
-      </div>
-    </div>
+    <router-view/>
   </div>  
 </template>
 
@@ -42,7 +22,6 @@ export default {
       showSidebar: false, // Controls sidebar visibility on mobile
       currentTitle: "", // Title to be updated based on route
       isMobile: false,
-      showRB: false
     };
   },
   provide() {
@@ -52,7 +31,7 @@ export default {
   },
   computed: {
     contentClass() {
-      return this.isMobile ? "flex-grow px-4 pt-2 pb-4" : "flex-auto w-1/2 p-4 ml-64"; // On desktop, add margin for the sidebar
+      return this.isMobile ? "flex-grow px-4 pt-2 pb-4" : "flex-auto ml-64"; // On desktop, add margin for the sidebar
     },
   },
   methods: {
@@ -65,11 +44,8 @@ export default {
     updateTitle(newTitle) {
       this.currentTitle = newTitle;
     },
-    addPage(){
-      return true;
-    },
     checkDesktop(){
-      if (window.innerWidth >= 768 && (this.$route.path === "/home" || this.$route.path === "/")) {
+      if (window.innerWidth >= 768) {
         return true;
       } else {
         return false;

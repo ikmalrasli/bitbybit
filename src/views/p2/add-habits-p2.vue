@@ -1,10 +1,12 @@
 <template>
-    <div class="min-h-screen flex flex-col bg-white border">
+  <div class="w-full h-full flex flex-row">
+    <div class="w-full h-full flex flex-col bg-white border">
       <!-- Header -->
-      <header class="bg-white shadow p-4">
-        <h1 class="text-lg text-black font-semibold text-center">Solat Dhuha</h1>
+      <header class="bg-white shadow p-4 flex flex-row relative">
+        <router-link :to="'/'" class="material-icons">chevron_left</router-link>
+        <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">Solat Dhuha</h1>
       </header>
-  
+
       <!-- Form Content -->
       <div class="flex-1 overflow-y-auto p-4">
         <form @submit.prevent="createEntry" class="space-y-4">
@@ -13,7 +15,7 @@
             <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
             <input v-model="formData.name" type="text" id="name" class=" mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Solat Dhuha" />
           </div>
-  
+
           <!-- Daily Goal -->
           <div>
             <label for="dailyGoal" class="text-left block text-sm font-medium text-gray-700">Daily Goal</label>
@@ -24,30 +26,30 @@
               <span>Times</span>
             </div>
           </div>
-  
+
           <!-- Repeat -->
           <div>
             <label class="text-left block text-sm font-medium text-gray-700">Repeat</label>
             <div class="mt-2 flex space-x-2">
               <label v-for="(day, index) in days" :key="index" class="flex items-center space-x-1">
-                <input type="checkbox" v-model="formData.repeatDays" :value="day" class="form-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                <input type="checkbox" v-model="formData.repeatDays" :value="day" class="form-checkbox h-4 text-indigo-600 border-gray-300 rounded" />
                 <span class="text-sm">{{ day }}</span>
               </label>
             </div>
           </div>
-  
+
           <!-- Reminder -->
           <div>
             <label class="text-left block text-sm font-medium text-gray-700">Reminder</label>
             <button type="button" @click="setReminder" class="mt-1 bg-gray-300 text-gray-700 p-2 rounded-md w-full">Add a reminder</button>
           </div>
-  
+
           <!-- Notes -->
           <div>
             <label for="notes" class="text-left block text-sm font-medium text-gray-700">Notes</label>
             <textarea v-model="formData.notes" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Optional"></textarea>
           </div>
-  
+
           <!-- Term -->
           <div class="flex space-x-2">
             <div class="w-1/2">
@@ -61,18 +63,23 @@
           </div>
         </form>
       </div>
-  
+
       <!-- Floating Create Button -->
       <div class="sticky bottom-0 bg-white p-4 shadow">
         <button @click="createEntry" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
           Create 
         </button>
       </div>
+
     </div>
-  </template>
+  </div>  
+</template>
   
   <script>
   export default {
+    beforeMount() {
+      console.log('AddHabitComponent is about to be mounted!');
+    },
     data() {
       return {
         formData: {
@@ -106,6 +113,13 @@
         alert("Entry created!");
       },
     },
+    mounted(){
+      this.$router.beforeEach((to, from, next) => {
+        console.log('Navigating to:', to.fullPath);
+        console.log('From:', from.fullPath);
+        next();
+      });
+    }
   };
   </script>
   

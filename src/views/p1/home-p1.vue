@@ -1,5 +1,6 @@
 <template>
-  <div class="p-4 w-full">
+<div class="w-full flex flex-row p-4">
+  <div class="flex-auto">
     
     <!-- Day Selector (Responsive) -->
     <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
@@ -53,6 +54,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script>
@@ -88,7 +90,7 @@ export default {
       this.showCompleted = !this.showCompleted;
     },
     handleDateSelected(date) {
-      if (this.$route.path === "/") {
+      if (this.$route.path === "/" || this.$route.path === "/home") {
         this.updateTitle(date); // Call the injected updateTitle method
       }
     },

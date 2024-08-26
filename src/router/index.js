@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import MainLayout from '../views/main-layout.vue'
 import Home from '../views/p1/home-p1.vue'
 import Calendar from '../views/p1/calendar-p1.vue'
 import Sunnahs from '../views/p1/sunnah-p1.vue'
@@ -6,22 +7,89 @@ import Stats from '../views/p1/stats-p1.vue'
 import Test from '../views/p1/test-p1.vue'
 import AddHabit from '../views/p2/add-habits-p2.vue'
 
+const routes = [
+  {
+    path: '/',
+    component: MainLayout,
+    children: [
+      {
+        path: 'home',
+        alias: '',
+        name: 'home',
+        component: Home
+      },
+      {
+        path: 'home/add-habit',
+        name: 'add-habit',
+        components: {
+          default: Home,
+          right: AddHabit
+        }
+      },
+      {
+        path: '/calendar',
+        component: Calendar,
+        meta: { title: 'Calendar' },
+      },
+      {
+        path: '/sunnahs',
+        component: Sunnahs,
+        meta: { title: 'Sunnahs' },
+      },
+      {
+        path: '/stats',
+        component: Stats,
+        meta: { title: 'Stats' },
+      },
+      {
+        path: '/test',
+        component: Test,
+        meta: { title: 'Test' },
+      }
+    ]
+  }
+
+  /*{
+    path: '/',
+    alias: '/home',
+    meta: { title: 'Today' },
+    components: {
+      default: Home, // Main content area
+    },
+    children: [
+      {
+        path: 'add-habit', // Nested child route for adding habit
+        components: {
+          default: AddHabit,
+        }
+      },
+    ],
+  },
+  {
+    path: '/calendar',
+    component: Calendar,
+    meta: { title: 'Calendar' },
+  },
+  {
+    path: '/sunnahs',
+    component: Sunnahs,
+    meta: { title: 'Sunnahs' },
+  },
+  {
+    path: '/stats',
+    component: Stats,
+    meta: { title: 'Stats' },
+  },
+  {
+    path: '/test',
+    component: Test,
+    meta: { title: 'Test' },
+  },*/
+];
 
 const router = createRouter({
-    history: createWebHistory(),
-    routes: [
-        { path:'/', 
-        components: { 
-            default: Home,
-            right: AddHabit
-        }, 
-        alias:'/home'},
-        { path:'/calendar', component: Calendar, meta: {title: 'Calendar'}},
-        { path:'/sunnahs', component: Sunnahs, meta: {title: 'Sunnahs'}},
-        { path:'/stats', component: Stats, meta: {title: 'Stats'}},
-        { path:'/test', component: Test, meta: {title: 'Test'}},
-    ]
+  history: createWebHistory(),
+  routes,
+});
 
-})
-
-export default router
+export default router;

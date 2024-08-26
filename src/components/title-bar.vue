@@ -1,14 +1,14 @@
 <template>
-  <div class="w-full relative flex items-center bg-white px-4 py-2">
+  <div class="w-full flex justify-between items-center bg-white px-4 py-2 h-14">
     <!-- Sidebar Toggle Button for Mobile -->
-    <span @click="toggleSidebar" class="material-icons md:hidden absolute left-2">
+    <span @click="toggleSidebar" class="material-icons md:invisible ">
       menu
     </span>
     <!-- Title (Centered) -->
-    <div class="w-full text-center text-black font-bold text-xl">
+    <div class="text-center font-bold text-xl">
       {{ title }}
     </div>
-    <span v-if="isHome()" @click="openAddPage" class="material-icons absolute right-2 hover:bg-slate-100">
+    <span v-if="isHome()" @click="openAddPage" class="material-icons hover:bg-slate-100">
       add
     </span>
   </div>
@@ -32,7 +32,7 @@ export default {
       }
     },
     openAddPage() {
-      this.$emit("show-page");
+      this.$router.push('/home/add-habit');
     }
   }
 };

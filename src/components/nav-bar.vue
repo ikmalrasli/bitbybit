@@ -10,9 +10,9 @@
     <!-- Sidebar -->
     <div
       :class="[
-        'absolute top-0 left-0 h-full z-40 transition-transform duration-300 bg-white text-black',
+        'absolute top-0 left-0 h-full z-40 transition-transform duration-300 bg-white',
         showSidebar ? 'translate-x-0 w-3/4' : '-translate-x-full',
-        'md:translate-x-0 md:w-64'
+        'md:translate-x-0 md:w-56'
       ]"
     >
       <div class="p-4 font-bold text-xl text-violet-400">BitByBit</div>
@@ -21,7 +21,7 @@
           v-for="link in links" 
           :key="link.name" 
           :to="link.path"
-          class="flex items-center p-2 pl-8 hover:bg-gray-300"
+          class="flex items-center p-2 pl-8 hover:bg-violet-200"
           active-class="text-white font-semibold bg-violet-400"
         >
           <span class="material-icons mr-2">{{ link.icon }}</span> 
