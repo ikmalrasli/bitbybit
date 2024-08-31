@@ -4,7 +4,7 @@
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">
         <router-link :to="'/'" class="material-icons">chevron_left</router-link>
-        <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">Solat Dhuha</h1>
+        <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{ formData.name }}</h1>
       </header>
 
       <!-- Form Content -->
@@ -13,7 +13,7 @@
           <!-- Name -->
           <div>
             <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
-            <input v-model="formData.name" type="text" id="name" class=" mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Solat Dhuha" />
+            <input v-model="formData.name" type="text" id="name" class=" mt-1 block w-full p-2 border border-gray-300 rounded-md" />
           </div>
 
           <!-- Daily Goal -->
@@ -21,7 +21,7 @@
             <label for="dailyGoal" class="text-left block text-sm font-medium text-gray-700">Daily Goal</label>
             <div class=" mt-1 flex justify-center items-center space-x-2">
               <button type="button" @click="decreaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">-</button>
-              <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="bg-white text-black w-16 p-2 border border-gray-300 rounded-md text-center" />
+              <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="bg-white text-black w-16 p-2 border border-gray-300 rounded-md text-center"/>
               <button type="button" @click="increaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">+</button>
               <span>Times</span>
             </div>
@@ -53,11 +53,11 @@
           <!-- Term -->
           <div class="flex space-x-2">
             <div class="w-1/2">
-              <label for="term-start" class="text-left block text-sm font-medium text-gray-700">Start</label>
+              <label for="term-start" class="text-center block text-sm font-medium text-gray-700">Start</label>
               <input v-model="formData.termStart" type="date" id="term-start" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" />
             </div>
             <div class="w-1/2">
-              <label for="term-end" class="text-left block text-sm font-medium text-gray-700">End</label>
+              <label for="term-end" class="text-center block text-sm font-medium text-gray-700">End</label>
               <input v-model="formData.termEnd" type="date" id="term-end" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" />
             </div>
           </div>
@@ -83,7 +83,7 @@
     data() {
       return {
         formData: {
-          name: "Solat Dhuha",
+          name: "Solat Subuh",
           dailyGoal: 1,
           repeatDays: [],
           reminder: null,

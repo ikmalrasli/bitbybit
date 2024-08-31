@@ -23,10 +23,12 @@
         <div v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
           <div v-for="(task, index) in uncompletedTasks" :key="index" class="mb-2">
             <HomeProgress 
-              :progress="task.percentComplete"
+              :percent="task.progress * 100 / task.target"
               :text="task.name"
-              :timesdone="task.progress"
+              :timesdone="task.progress.toString() + '/'+ task.target.toString() "
               color="bg-violet-400"
+              class="cursor-pointer"
+              @click="openDetail(task)"
             />
           </div>
         </div>
@@ -45,11 +47,11 @@
       <div v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
         <div v-for="(task, index) in completedTasks" :key="index" class="mb-2">
           <HomeProgress 
-            :progress="task.percentComplete"
-            :text="task.name"
-            :timesdone="task.progress"
-            color="bg-violet-400"
-          />
+              :percent="task.progress * 100 / task.target"
+              :text="task.name"
+              :timesdone="task.progress.toString() + '/'+ task.target.toString() "
+              color="bg-violet-400"
+            />
         </div>
       </div>
     </div>
@@ -72,13 +74,13 @@ export default {
       showUncompleted: true,
       showCompleted: true,
       uncompletedTasks: [
-        { name: "Solat Dhuha", progress: "0/1", percentComplete: 0 },
-        { name: "Sayyidul Istighfar", progress: "1/2", percentComplete: 50 },
-        { name: "Read Quran", progress: "2/5", percentComplete: 40 },
+        { id: 'nfjakdnfk', name: "Solat Dhuha", progress: 0, target: 1 },
+        { id: 'jfnkjasfk', name: "Sayyidul Istighfar", progress: 1, target: 2 },
+        { id: 'fkdnsjnvj', name: "Read Quran", progress: 3, target: 5 },
       ],
       completedTasks: [
-        { name: "Solat Sunat Subuh", progress: "1/1", percentComplete: 100 },
-        { name: "Kemas katil", progress: "1/1", percentComplete: 100 }
+        { name: "Solat Sunat Subuh", progress: 1, target: 1 },
+        { name: "Kemas katil", progress:1, target: 1 }
       ],
     };
   },
@@ -94,6 +96,12 @@ export default {
         this.updateTitle(date); // Call the injected updateTitle method
       }
     },
+    openDetail(x){
+      this.$router.push({
+        name: 'detail-habits',
+        params: { habitId: x.id }
+      })
+    }
   },
 };
 </script>

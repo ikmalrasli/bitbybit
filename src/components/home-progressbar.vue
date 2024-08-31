@@ -11,7 +11,7 @@ const props = defineProps({
         type: String,
         default: ""
     },
-    progress: {
+    percent: {
         type: Number,
         default: 0
     },
@@ -34,7 +34,7 @@ const updateTextColor = () => {
     const containerWidth = textRef.value.parentElement.offsetWidth; // Get total container width
     const textWidth = textRef.value.offsetWidth; // Get the width of the task text
     const timesdoneWidth = timesdoneRef.value.offsetWidth; // Get the width of the timesdone text
-    const progressBarWidth = (props.progress / 100) * containerWidth; // Get progress bar width
+    const progressBarWidth = (props.percent / 100) * containerWidth; // Get progress bar width
 
     // If the progress bar width is larger than the text width, change task text color to white
     textColor.value = progressBarWidth > textWidth ? 'text-white' : 'text-black';
@@ -45,7 +45,7 @@ const updateTextColor = () => {
 };
 
 // Watch progress and call update function whenever it changes
-watch(() => props.progress, updateTextColor);
+watch(() => props.percent, updateTextColor);
 
 // Call the function on mount to handle the initial state
 onMounted(updateTextColor);
@@ -54,7 +54,7 @@ onMounted(updateTextColor);
 <template>
     <div class="progress bg-gray-200">
         <!-- Progress bar fill -->
-        <div :class="[color, 'progress__fill']" :style="{ width: `${props.progress}%` }"></div>
+        <div :class="[color, 'progress__fill']" :style="{ width: `${props.percent}%` }"></div>
 
         <!-- Task Text with dynamically bound class for color -->
         <span :class="['p-2', textColor]" class="progress__task" ref="textRef">{{ props.text }}</span>
@@ -63,7 +63,7 @@ onMounted(updateTextColor);
         <span :class="['p-2', timesdoneColor]" class="progress__timesdone" ref="timesdoneRef">
             <!-- Show check mark if progress is 100%, else show timesdone 
             {{ props.progress === 100 ? 'check' : props.timesdone }}-->
-             <div v-if="props.progress === 100"><span class="material-icons text-white">check</span></div>
+             <div v-if="props.percent === 100"><span class="material-icons text-white">check</span></div>
              <div v-else>{{ props.timesdone }}</div>
         </span>
     </div>

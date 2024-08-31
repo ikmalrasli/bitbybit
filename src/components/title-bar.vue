@@ -28,12 +28,12 @@ export default {
       this.$emit("toggle-sidebar");
     },
     isHome() {
-      if (this.$route.path === "/" || this.$route.path === "/home") {
+      if (this.$route.path === "/" || this.$route.path === '/detail/:habitId') {
         return true;
       }
     },
     openAddPage() {
-      this.$router.push('/home/add-habit');
+      this.$router.push('/add-habit');
     }
   }
 };

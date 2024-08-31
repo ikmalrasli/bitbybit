@@ -1,13 +1,5 @@
 <template>
-  <p class="p-4 text-black">this is test</p>
+  <div class="w-full h-full flex flex-row bg-gray-200">
+    <p>this is a test page (2)</p>
+  </div>
 </template>
-
-<script>
-export default {
-
-}
-</script>
-
-<style>
-
-</style>
