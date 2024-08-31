@@ -5,7 +5,9 @@
         <div class="w-full flex flex-row gap-1">
             <div v-for="day in days" :key="day" class="w-full">
                 <div class="w-full grid justify-items-center">
-                    <div class="bg-violet-400 h-2 rounded-full" :style="{ height: '100px', width: '20px' }"></div>
+                    <VerticalProgressbar
+                    :percent="day.progress"
+                    color="bg-violet-400" />
                     <span class="mt-2">{{day.name}}</span>
                 </div>
             </div>
@@ -18,14 +20,17 @@
 
 <script>
 import CalendarMonth from "../../components/calendar-month.vue"
+import VerticalProgressbar from "../../components/VerticalProgressbar.vue"
+
 export default {
     components: {
-        CalendarMonth
+        CalendarMonth,
+        VerticalProgressbar
     },
     data() {
         return {
             days: [
-                { name: 'Sun', date: 4, isActive: false, progress: 5},
+                { name: 'Sun', date: 4, isActive: false, progress: 10},
                 { name: 'Mon', date: 5, isActive: false, progress: 25},
                 { name: 'Tue', date: 6, isActive: false, progress: 100},
                 { name: 'Wed', date: 7, isActive: false, progress: 50},
