@@ -96,7 +96,6 @@
     },
     methods: {
       goBack() {
-        // Go back to the previous page
         this.$router.go(-1);
       },
       increaseGoal() {
