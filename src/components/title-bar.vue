@@ -6,9 +6,9 @@
     </span>
     <!-- Title (Centered) -->
     <div class="text-center font-bold text-xl">
-      {{ title }}
+      {{ displayTitle }}
     </div>
-    <span v-if="isHome()" @click="openAddPage" class="material-icons hover:bg-slate-100">
+    <span v-if="isHome()" @click="openAddPage" class="cursor-pointer material-icons hover:bg-slate-100">
       add
     </span>
     <span v-else class="material-icons invisible">add</span>
@@ -23,14 +23,21 @@ export default {
       default: "Hello"
     }
   },
+  inject: ["selectedDate"], // Inject the global selected date
+  computed: {
+    displayTitle() {
+      if (this.$route.path === "/" || this.$route.path === "/home") {
+      return this.selectedDate(); // Use the globally selected date
+      }
+      return this.title; // Otherwise, use the passed-in title
+    }
+  },
   methods: {
     toggleSidebar() {
       this.$emit("toggle-sidebar");
     },
     isHome() {
-      if (this.$route.path === "/" || this.$route.path === '/detail/:habitId') {
-        return true;
-      }
+      return this.$route.path === "/" || this.$route.path === "/home";
     },
     openAddPage() {
       this.$router.push('/add-habit');
@@ -40,7 +47,7 @@ export default {
 </script>
 
 <style scoped>
-.material-icons {
-  cursor: pointer;
+.hover\:bg-slate-100:hover {
+  background-color: #f3f4f6;
 }
 </style>

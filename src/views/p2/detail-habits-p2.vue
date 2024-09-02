@@ -2,7 +2,7 @@
       <div class="w-full h-full flex flex-col bg-white">
         <!-- Header -->
         <header class="bg-white p-4 flex flex-row relative justify-between">
-          <router-link :to="'/'" class="material-icons">chevron_left</router-link>
+          <button @click="goBack" class="material-icons">chevron_left</button>
           <h1 class="text-lg text-black font-semibold">{{ habitData?.name || 'Habit Details' }}</h1>
           <span class="material-icons cursor-pointer">more_horiz</span>
         </header>
@@ -66,7 +66,11 @@
         if (!this.habitData) {
           console.error(`Habit with ID ${this.habitId} not found.`);
         }
-      }
+      },
+      goBack() {
+        // Go back to the previous page
+        this.$router.go(-1);
+      },
     }
   }
   </script>

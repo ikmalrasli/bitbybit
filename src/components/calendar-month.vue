@@ -1,10 +1,10 @@
 <template>
-  <div class="flex flex-col bg-white rounded-lg shadow-lg p-4">
+  <div class="flex flex-col bg-white rounded-lg shadow-lg p-4 text-center">
     <!-- Calendar Header -->
     <div class="flex justify-between items-center mb-4">
-      <button class="text-gray-500 hover:text-gray-700" @click="previousMonth">&lt;</button>
+      <button class="text-gray-500 hover:text-gray-700 material-icons" @click="previousMonth">chevron_left</button>
       <span class="font-semibold text-lg">{{ currentMonthName }} {{ currentYear }}</span>
-      <button class="text-gray-500 hover:text-gray-700" @click="nextMonth">&gt;</button>
+      <button class="text-gray-500 hover:text-gray-700 material-icons" @click="nextMonth">chevron_right</button>
     </div>
 
     <!-- Days of the Week -->
@@ -20,7 +20,9 @@
         :key="index"
         :class="[
           day.isCurrentMonth ? 'text-black' : 'text-gray-400',
-          'relative', 'p-4'
+          day.isToday ? 'bg-violet-100 text-violet-500' : '',
+          'relative', 'p-4', 'rounded-full',
+          'transition-colors duration-300'
         ]"
       >
         {{ day.day }}
@@ -38,6 +40,9 @@ export default {
       selectedDay: 10, // Example for selected day
       highlightedDays: [9, 10], // Example for highlighted days
       daysOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      today: new Date().getDate(), // Today's date
+      todayMonth: new Date().getMonth(), // Today's month
+      todayYear: new Date().getFullYear(), // Today's year
     };
   },
   computed: {
@@ -62,6 +67,7 @@ export default {
         days.push({
           day: prevMonthDays - i,
           isCurrentMonth: false,
+          isToday: false
         });
       }
 
@@ -72,6 +78,7 @@ export default {
           isCurrentMonth: true,
           isSelected: i === this.selectedDay,
           isHighlighted: this.highlightedDays.includes(i),
+          isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear
         });
       }
 
@@ -81,6 +88,7 @@ export default {
         days.push({
           day: i,
           isCurrentMonth: false,
+          isToday: false
         });
       }
 

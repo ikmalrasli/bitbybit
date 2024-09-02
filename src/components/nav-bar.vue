@@ -22,7 +22,9 @@
           :key="link.name" 
           :to="link.path"
           class="flex items-center p-2 pl-8 hover:bg-violet-200"
-          active-class="text-white font-semibold bg-violet-400"
+          :class="{ 
+            'text-white font-semibold bg-violet-400': isLinkActive(link.path) 
+          }"
         >
           <span class="material-icons mr-2">{{ link.icon }}</span> 
           <span>{{ link.name }}</span>
@@ -38,11 +40,11 @@ export default {
     return {
       showSidebar: false, // Controls the sidebar visibility on mobile
       links: [
-        { name: "Home", icon:"home", path: "/" },
-        { name: "Calendar", icon:"calendar_today", path: "/calendar" },
-        { name: "Sunnahs", icon:"explore", path: "/sunnahs" },
-        { name: "Stats", icon:"bar_chart", path: "/stats" },
-        { name: "Test", icon:"science", path: "/test" }
+        { name: "Home", icon: "home", path: "/" },
+        { name: "Calendar", icon: "calendar_today", path: "/calendar" },
+        { name: "Sunnahs", icon: "explore", path: "/sunnahs" },
+        { name: "Stats", icon: "bar_chart", path: "/stats" },
+        { name: "Test", icon: "science", path: "/test" }
       ],
     };
   },
@@ -52,6 +54,11 @@ export default {
   methods: {
     toggleSidebar() {
       this.$emit("toggle-sidebar");
+    },
+    isLinkActive(linkPath) {
+      // Check if the current path matches the link or is a child route of it
+      const currentPath = this.$route.path;
+      return currentPath === linkPath || currentPath.startsWith(linkPath + "/");
     },
   },
 };
