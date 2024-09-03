@@ -101,10 +101,10 @@ export default {
     handleDateSelected(date) {
       this.setSelectedDate(date); // Update the global selected date
     },
-    openDetail(x) {
+    openDetail(habit) {
       this.$router.push({
-        name: 'detail-habits',
-        params: { habitId: x.id }
+        name: 'detail-habit',
+        params: { habitId: habit.id }
       });
     }
   },

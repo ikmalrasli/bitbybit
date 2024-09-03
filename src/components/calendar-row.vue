@@ -31,6 +31,7 @@
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
+import { mapActions } from 'vuex';
 
 export default {
   components: {
@@ -50,6 +51,7 @@ export default {
     }
   },
   methods: {
+    ...mapActions(['updateSelectedDay']), // Map the Vuex action
     generateWeekDays() {
       const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const today = new Date();
@@ -90,14 +92,17 @@ export default {
       selectedDate.setHours(0, 0, 0, 0);
       today.setHours(0, 0, 0, 0);
       yesterday.setHours(0, 0, 0, 0);
-
+      
+      let formattedDate;
       if (selectedDate.getTime() === today.getTime()) {
-        this.$emit("date-selected", "Today");
+        formattedDate = "Today";
       } else if (selectedDate.getTime() === yesterday.getTime()) {
-        this.$emit("date-selected", "Yesterday");
+        formattedDate = "Yesterday";
       } else {
-        this.$emit("date-selected", `${day.date} ${day.month}`);
+        formattedDate = `${day.date} ${day.month}`;
       }
+
+      this.updateSelectedDay(formattedDate); // Update the Vuex store
     },
     isSelected(day) {
       // Check if the day is the selected day

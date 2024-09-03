@@ -31,7 +31,7 @@ const routes = [
       },
       {
         path: 'detail/:habitId',
-        name: 'detail-habits',
+        name: 'detail-habit',
         components: {
           default: Home,
           right: DetailHabit

@@ -16,6 +16,8 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   props: {
     title: {
@@ -23,11 +25,13 @@ export default {
       default: "Hello"
     }
   },
-  inject: ["selectedDate"], // Inject the global selected date
   computed: {
+    ...mapGetters(['getSelectedDay']), // Map the Vuex getter
     displayTitle() {
-      if (this.$route.path === "/" || this.$route.path === "/home") {
-      return this.selectedDate(); // Use the globally selected date
+      if (this.$route.name === "home" ||  
+      this.$route.name === "add-habit" ||
+      this.$route.name === "detail-habit") {
+      return this.getSelectedDay; // Use the globally selected date
       }
       return this.title; // Otherwise, use the passed-in title
     }
@@ -37,7 +41,7 @@ export default {
       this.$emit("toggle-sidebar");
     },
     isHome() {
-      return this.$route.path === "/" || this.$route.path === "/home";
+      return this.$route.name === "home" || this.$route.name === "detail-habit";
     },
     openAddPage() {
       this.$router.push('/add-habit');
