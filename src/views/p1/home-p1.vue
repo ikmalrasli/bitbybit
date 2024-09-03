@@ -9,47 +9,47 @@
 
       <!-- Collapsible Section -->
       <div class="mb-4">
-        <!-- Uncompleted Tasks -->
+        <!-- Uncompleted habits -->
         <div class="mb-4">
-          <div class="flex justify-between items-center cursor-pointer" @click="toggleUncompleted">
+          <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Uncompleted')">
             <span class="font-bold text-black">Uncompleted
-              <span class="pl-2 font-medium text-gray-500">{{ uncompletedTasks.length }}</span>
+              <span class="pl-2 font-medium text-gray-500">{{ uncompletedHabits.length }}</span>
             </span>
             <span v-if="showUncompleted" class="material-icons">keyboard_arrow_up</span>
             <span v-else class="material-icons">keyboard_arrow_down</span>
           </div>
 
-          <!-- Uncompleted Tasks List -->
+          <!-- Uncompleted habits List -->
           <div v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
-            <div v-for="(task, index) in uncompletedTasks" :key="index" class="mb-2">
+            <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
               <HomeProgress 
-                :percent="task.progress * 100 / task.target"
-                :text="task.name"
-                :timesdone="task.progress.toString() + '/'+ task.target.toString() "
+                :percent="habit.progress * 100 / habit.target"
+                :text="habit.name"
+                :timesdone="habit.progress.toString() + '/'+ habit.target.toString() "
                 color="bg-violet-400"
                 class="cursor-pointer"
-                @click="openDetail(task)"
+                @click="openDetail(habit)"
               />
             </div>
           </div>
         </div>
 
-        <!-- Completed Tasks -->
-        <div class="flex justify-between items-center cursor-pointer" @click="toggleCompleted">
+        <!-- Completed habits -->
+        <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Completed')">
           <span class="font-bold text-black">Completed
-            <span class="pl-2 font-medium text-gray-500">{{ completedTasks.length }}</span>
+            <span class="pl-2 font-medium text-gray-500">{{ completedHabits.length }}</span>
           </span>
           <span v-if="showCompleted" class="material-icons">keyboard_arrow_up</span>
           <span v-else class="material-icons">keyboard_arrow_down</span>
         </div>
 
-        <!-- Completed Tasks List -->
+        <!-- Completed habits List -->
         <div v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
-          <div v-for="(task, index) in completedTasks" :key="index" class="mb-2">
+          <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
             <HomeProgress 
-                :percent="task.progress * 100 / task.target"
-                :text="task.name"
-                :timesdone="task.progress.toString() + '/'+ task.target.toString() "
+                :percent="habit.progress * 100 / habit.target"
+                :text="habit.name"
+                :timesdone="habit.progress.toString() + '/'+ habit.target.toString() "
                 color="bg-violet-400"
               />
           </div>
@@ -73,23 +73,30 @@ export default {
     return {
       showUncompleted: true,
       showCompleted: true,
-      uncompletedTasks: [
+    allHabits:[
         { id: 'nfjakdnfk', name: "Solat Dhuha", progress: 0, target: 1 },
         { id: 'jfnkjasfk', name: "Sayyidul Istighfar", progress: 1, target: 2 },
-        { id: 'fkdnsjnvj', name: "Read Quran", progress: 3, target: 5 },
-      ],
-      completedTasks: [
-        { name: "Solat Sunat Subuh", progress: 1, target: 1 },
-        { name: "Kemas katil", progress: 1, target: 1 }
-      ],
+        { id: 'fkdnsjnvj', name: "Read Quran", progress: 5, target: 5 },
+        { id: 'dsfvsddcc', name: "Solat Sunat Subuh", progress: 1, target: 1 },
+        { id: 'sdsfacnvs', name: "Kemas katil", progress: 1, target: 1 }
+    ]
     };
   },
-  methods: {
-    toggleUncompleted() {
-      this.showUncompleted = !this.showUncompleted;
+  computed: {
+    completedHabits() {
+      return this.allHabits.filter((habit) => habit.progress === habit.target);
     },
-    toggleCompleted() {
-      this.showCompleted = !this.showCompleted;
+    uncompletedHabits() {
+      return this.allHabits.filter((habit) => habit.progress < habit.target);
+    }
+  },
+  methods: {
+    toggleSection(section) {
+      if (section === 'Uncompleted') {
+        this.showUncompleted = !this.showUncompleted;
+      } else if (section === 'Completed') {
+        this.showCompleted = !this.showCompleted;
+      }
     },
     handleDateSelected(date) {
       this.setSelectedDate(date); // Update the global selected date
