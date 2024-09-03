@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full flex flex-row p-4">
+  <div class="w-full flex flex-row p-2 sm:p-4">
     <div class="flex-auto">
       
       <!-- Day Selector (Responsive) -->

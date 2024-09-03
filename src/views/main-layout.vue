@@ -4,9 +4,16 @@
     <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
 
     <!-- Main Content Area -->
-    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1 border">
-      <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" />
-      <router-view class="h-auto overflow-auto scrollbar-hide mb-8" />
+    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1 border relative">
+      <!-- Title Bar stays on top within the container only if sidebar is closed -->
+      <div :class="['z-50 bg-white', { 'sticky top-0': !showSidebar }]">
+        <TitleBar :title="currentTitle" @toggle-sidebar="toggleSidebar" />
+      </div>
+      
+      <!-- Content below the title bar -->
+      <div class="h-auto overflow-auto scrollbar-hide mb-8">
+        <router-view />
+      </div>
     </div>
     
     <!-- Right Detail View -->
@@ -44,7 +51,8 @@ export default {
     isDetailView() {
       return (
         this.$route.name === 'add-habit' ||
-        this.$route.name === 'detail-habits'
+        this.$route.name === 'detail-habit' ||
+        this.$route.name === 'detail-sunnah'
       );
     },
     contentClass() {

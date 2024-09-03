@@ -41,12 +41,14 @@ const routes = [
         }
       },
       {
-        path: '/calendar',
+        path: 'calendar',
+        name: 'calendar',
         component: Calendar,
         meta: { title: 'Calendar' },
       },
       {
-        path: '/sunnahs',
+        path: 'sunnahs',
+        name: 'sunnahs',
         component: Sunnahs,
         meta: { title: 'Sunnahs' },
       },
@@ -62,7 +64,8 @@ const routes = [
         }
       },
       {
-        path: '/stats',
+        path: 'stats',
+        name: 'stats',
         component: Stats,
         meta: { title: 'Stats' },
       },

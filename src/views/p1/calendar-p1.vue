@@ -1,5 +1,5 @@
 <template>
-<div class="p-4 w-full flex flex-col flex-grow">
+<div class="w-full flex flex-col flex-grow p-2 sm:p-4">
     <div class="w-full flex flex-col p-4 mb-8 text-gray-700 bg-white shadow-md bg-clip-border rounded-xl">
         <span class="font-semibold text-lg p-2 text-center mb-2">This week</span>
         <div class="w-full flex flex-row gap-1">

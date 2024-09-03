@@ -6,7 +6,16 @@
           <button @click="goBack" class="material-icons">chevron_left</button>
           <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{sunnahData?.name}}</h1>
         </header>
+
+        <!-- Floating Create Button -->
+      <div class="sticky bottom-0 p-4">
+        <button @click="createEntry" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
+          Add to habits 
+        </button>
       </div>
+      </div>
+
+      
     </div>
 </template>
 

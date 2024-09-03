@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 w-full">
+  <div class="w-full p-2 sm:p-4">
     <!-- Daily Sunnah (Collapsible Section) -->
     <div class="mb-4">
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Daily')">

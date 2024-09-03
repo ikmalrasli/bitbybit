@@ -30,7 +30,7 @@
           <!-- Repeat -->
           <div>
             <label class="text-left block text-sm font-medium text-gray-700">Repeat</label>
-            <div class="mt-2 flex space-x-2">
+            <div class="mt-2 flex space-x-2 justify-between">
               <label v-for="(day, index) in days" :key="index" class="flex items-center space-x-1">
                 <input type="checkbox" v-model="formData.repeatDays" :value="day" class="form-checkbox h-4 text-indigo-600 border-gray-300 rounded" />
                 <span class="text-sm">{{ day }}</span>
@@ -65,7 +65,7 @@
       </div>
 
       <!-- Floating Create Button -->
-      <div class="sticky bottom-0 bg-white p-4 shadow">
+      <div class="sticky bottom-0 p-4">
         <button @click="createEntry" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
           Create 
         </button>
