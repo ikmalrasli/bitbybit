@@ -52,6 +52,9 @@ export default {
       }
     },
   },
+  created() {
+    this.$store.dispatch('fetchUser');
+  },
   mounted() {
     this.checkMobile();
     window.addEventListener("resize", this.checkMobile);

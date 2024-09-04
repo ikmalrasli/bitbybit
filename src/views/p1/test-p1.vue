@@ -5,6 +5,9 @@
     <VerticalProgressbar
     :percent="78"
     color="bg-violet-400" />
+
+    <button @click="checkUser">check user</button>
+    <p>{{ $store.state.user.email || 'no user' }}</p>
   </div>
 </template>
 
@@ -13,6 +16,11 @@ import VerticalProgressbar from '../../components/VerticalProgressbar.vue';
 export default {
   components: {
     VerticalProgressbar
+  },
+  methods: {
+    checkUser() {
+      console.log(this.$store.state.user)
+    }
   }
 }
 </script>

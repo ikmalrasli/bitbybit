@@ -29,12 +29,21 @@
           <span class="material-icons mr-2">{{ link.icon }}</span> 
           <span>{{ link.name }}</span>
         </router-link>
+        <button
+          @click="logout"
+          class="flex items-center p-2 pl-8 hover:bg-violet-200"
+        >
+          <span class="material-icons mr-2">logout</span> 
+          <span>Logout</span>
+        </button>
       </nav>
     </div>
   </div>
 </template>
 
 <script>
+import { getAuth, signOut } from "firebase/auth";
+
 export default {
   data() {
     return {
@@ -57,9 +66,26 @@ export default {
     },
     isLinkActive(linkPath) {
       // Check if the current path matches the link or is a child route of it
+      if (linkPath === '/' && this.$route.name === 'add-habit') {
+        return true
+      } else if (linkPath === '/' && this.$route.name === 'detail-habit') {
+        return true
+      }
+
       const currentPath = this.$route.path;
       return currentPath === linkPath || currentPath.startsWith(linkPath + "/");
+
     },
+    ...mapActions(['logout']), // Map Vuex action
+    async logout() {
+      try {
+        await this.logout(); // Dispatch the logout action
+        this.$router.push("/login"); // Redirect after logout
+      } catch (error) {
+        console.error("Logout error:", error);
+        alert(error.message); // Display error message to the user
+      }
+    }
   },
 };
 </script>
