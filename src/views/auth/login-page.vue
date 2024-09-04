@@ -51,7 +51,8 @@
 
 <script>
 import { mapActions } from 'vuex';
-import { auth, provider, signInWithPopup } from "../../firebase";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 
 export default {
   data() {
@@ -71,21 +72,41 @@ export default {
         alert(error.message); // Display error message to the user
       }
     },
-    signInWithGoogle() {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          const user = result.user;
-          this.$store.commit('SET_USER', user); // Commit user to Vuex store
-          this.$router.push("/home"); // Redirect after successful login
-        })
-        .catch((error) => {
-          console.error("Google login error:", error);
-          alert(error.message); // Display error message to the user
+    async signInWithGoogle() {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      const db = getFirestore();
+
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Get additional user info
+        const displayName = user.displayName; // Get display name from Google account
+        const email = user.email;
+        const uid = user.uid;
+
+        // Save the user data to Firestore
+        await setDoc(doc(db, "users", uid), {
+          email: email,
+          nickname: displayName, // Use the Google display name as the nickname
+          uid: uid
         });
+
+        // Commit the user to Vuex store
+        this.$store.commit('SET_USER', user);
+
+        // Redirect after successful login
+        this.$router.push("/home");
+      } catch (error) {
+        console.error("Google login error:", error);
+        alert(error.message); // Display error message to the user
+      }
     }
   }
 };
 </script>
+
 
 <style scoped>
 </style>
