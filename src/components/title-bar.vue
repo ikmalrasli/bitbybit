@@ -8,10 +8,10 @@
     <div class="text-center font-bold text-xl">
       {{ displayTitle }}
     </div>
-    <span v-if="isHome()" @click="openAddPage" class="cursor-pointer material-icons hover:bg-slate-100">
+    <button v-if="isHome()" @click="openAddPage" class="cursor-pointer material-icons">
       add
-    </span>
-    <span v-else class="material-icons invisible">add</span>
+    </button>
+    <button v-else class="material-icons invisible">add</button>
   </div>
 </template>
 

@@ -1,20 +1,21 @@
 <template>
-      <div class="w-full h-full flex flex-col bg-white">
+      <div class="w-full h-full flex flex-col bg-white border-r">
         <!-- Header -->
         <header class="bg-white p-4 flex flex-row relative justify-between">
           <button @click="goBack" class="material-icons">chevron_left</button>
           <h1 class="text-lg text-black font-semibold">{{ habitData?.name || 'Habit Details' }}</h1>
-          <span class="material-icons cursor-pointer">more_horiz</span>
+          <button class="material-icons">check</button>
         </header>
   
         <div class="flex-1 overflow-y-auto px-4">
           <div class="w-full p-4 mb-8 text-gray-700 bg-white shadow-md rounded-xl text-center">
               <h2 class="flex-auto text-xl block mb-2">Progress</h2>
-              <input v-model="habitData.progress" type="number" class="w-10 text-5xl"/>
+              <h1 class="flex-auto text-5xl">{{ habitData?.progress }}</h1>
+              
               <h2 class="flex-auto text-xl mb-2">/ {{ habitData?.target }}</h2>
-
-              <!--add slider here
-              <div class="p-4 bg-red-300 text-lg text-center h-16">Add slider here</div>-->
+              <input v-if="habitData" type="range" :min="0" :max="habitData.target" v-model="habitData.progress"
+              class="range accent-violet-400 w-2/5" >
+              
           </div>
   
           <div class="w-full p-4 mb-8 text-gray-700 bg-white shadow-lg rounded-xl">
@@ -69,9 +70,9 @@
       },
       goBack() {
         // Go back to the previous page
-        this.$router.go(-1);
+        this.$router.push('/');
       },
     }
   }
-  </script>
+</script>
   

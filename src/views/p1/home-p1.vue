@@ -1,7 +1,7 @@
 <template>
   <div class="w-full flex flex-row p-2 sm:p-4">
     <div class="flex-auto">
-      
+      <button @click="showHabits">hello</button>
       <!-- Day Selector (Responsive) -->
       <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
         <calendarRow @date-selected="handleDateSelected" />
@@ -60,6 +60,8 @@
 </template>
 
 <script>
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../../firebase";
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/home-progressbar.vue";
 
@@ -73,13 +75,14 @@ export default {
     return {
       showUncompleted: true,
       showCompleted: true,
-    allHabits:[
-        { id: 'nfjakdnfk', name: "Solat Dhuha", progress: 0, target: 1 },
-        { id: 'jfnkjasfk', name: "Sayyidul Istighfar", progress: 1, target: 2 },
-        { id: 'fkdnsjnvj', name: "Read Quran", progress: 5, target: 5 },
-        { id: 'dsfvsddcc', name: "Solat Sunat Subuh", progress: 1, target: 1 },
-        { id: 'sdsfacnvs', name: "Kemas katil", progress: 1, target: 1 }
-    ]
+      allHabits:[
+          { id: 'nfjakdnfk', name: "Solat Dhuha", progress: 0, target: 1 },
+          { id: 'jfnkjasfk', name: "Sayyidul Istighfar", progress: 1, target: 2 },
+          { id: 'fkdnsjnvj', name: "Read Quran", progress: 5, target: 5 },
+          { id: 'dsfvsddcc', name: "Solat Sunat Subuh", progress: 1, target: 1 },
+          { id: 'sdsfacnvs', name: "Kemas katil", progress: 1, target: 1 }
+      ],
+      allHabits2: []
     };
   },
   computed: {
@@ -106,7 +109,47 @@ export default {
         name: 'detail-habit',
         params: { habitId: habit.id }
       });
+    },
+    showHabits(){
+      console.log(this.allHabits2)
+    },
+    async fetchHabitsWithValidTerm() {
+      try {
+        // Get today's date
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set time to midnight for accurate comparison
+
+        // Query the habits collection for habits that have a valid term
+        const habitsRef = collection(db, "habits");
+        const querySnapshot = await getDocs(habitsRef);
+
+        const validHabits = [];
+        querySnapshot.forEach((doc) => {
+          const habit = doc.data();
+          const termStart = habit.termStart ? habit.termStart.toDate() : null;
+          const termEnd = habit.termEnd ? habit.termEnd.toDate() : null;
+
+          // Check if today's date is within the termStart and termEnd
+          const isValid = (!termEnd || termEnd >= today) && termStart <= today;
+
+          if (isValid) {
+            validHabits.push({
+              id: doc.id,
+              ...habit,
+            });
+          }
+        });
+
+        // Set the allHabits array to the valid habits
+        this.allHabits2 = validHabits;
+
+      } catch (e) {
+        console.error("Error fetching habits: ", e);
+      }
     }
   },
+  mounted() {
+    this.fetchHabitsWithValidTerm(); // Fetch habits when the component mounts
+  }
 };
 </script>
