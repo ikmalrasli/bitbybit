@@ -8,7 +8,7 @@
     <div class="text-center font-bold text-xl">
       {{ displayTitle }}
     </div>
-    <button v-if="isHome()" @click="openAddPage" class="cursor-pointer material-icons">
+    <button v-if="showAdd()" @click="openAddPage" class="cursor-pointer material-icons">
       add
     </button>
     <button v-else class="material-icons invisible">add</button>
@@ -19,29 +19,47 @@
 import { mapGetters } from 'vuex';
 
 export default {
-  props: {
-    title: {
-      type: String,
-      default: "Hello"
-    }
-  },
   computed: {
     ...mapGetters(['getSelectedDay']), // Map the Vuex getter
     displayTitle() {
       if (this.$route.name === "home" ||  
       this.$route.name === "add-habit" ||
       this.$route.name === "detail-habit") {
-      return this.getSelectedDay; // Use the globally selected date
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+
+        const selectedDate = new Date(this.getSelectedDay);
+        selectedDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        yesterday.setHours(0, 0, 0, 0);
+        
+        let formattedDate;
+        if (selectedDate.getTime() === today.getTime()) {
+          formattedDate = "Today";
+        } else if (selectedDate.getTime() === yesterday.getTime()) {
+          formattedDate = "Yesterday";
+        } else {
+          // i want month in short form like Jan
+          formattedDate = `${selectedDate.getDate()} ${selectedDate.toLocaleString("en-US", { month: "short" })}`;
+        }
+
+        return formattedDate; // Use the globally selected date
       }
-      return this.title; // Otherwise, use the passed-in title
+      if (this.$route.name === "sunnahs" ||  
+      this.$route.name === "detail-sunnah" ) {
+        return "Sunnahs";
+      }
+      return this.$route.meta.title; // Otherwise, use the meta title
     }
   },
   methods: {
     toggleSidebar() {
       this.$emit("toggle-sidebar");
     },
-    isHome() {
-      return this.$route.name === "home" || this.$route.name === "detail-habit";
+    showAdd() {
+      return this.$route.name === "home" || 
+      this.$route.name === "detail-habit";
     },
     openAddPage() {
       this.$router.push('/add-habit');

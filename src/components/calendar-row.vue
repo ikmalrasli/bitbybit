@@ -4,19 +4,19 @@
       v-for="day in days"
       :key="day.date"
       :class="['flex-auto', 'cursor-pointer']"
-      @click="day.dateobj <= new Date() ? selectDay(day) : null"
+      @click="day.dateobj <= new Date().setHours(23, 59, 59, 999) ? selectDay(day) : null"
     >
       <div 
         :class="[
-          'rounded-lg border bg-white', 
-          isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-400',
+          'rounded-lg border-2 bg-white', 
+          isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-400 border-opacity-10',
         ]"
       >
         <div class="flex flex-col items-center">
           <span class="min-w-8 text-center text-xs sm:text-sm">{{ day.name }}</span>
           <RadialProgressbar
-            :show="day.dateobj <= new Date()"
-            :progress="day.progress"
+            :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
+            :progress="habitsProgress(day)"
             :size="24"
             :radius="40"
             :datenumber="day.date"
@@ -31,7 +31,7 @@
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
-import { mapActions } from 'vuex';
+import { mapActions, mapState } from 'vuex';
 
 export default {
   components: {
@@ -50,8 +50,42 @@ export default {
       this.selectDay(today);
     }
   },
+  computed: {
+    ...mapState(['habits', 'weekHabits']), // Map habits from the Vuex store
+    habitsProgress() { // Rename for clarity
+      return function(day) {
+        if (!this.habits || !this.habits.length) {
+          console.log('No habits found');
+          return 0;
+        }
+        let progress = 0;
+        let totalDailyGoal = 0;
+        this.habits.forEach(habit => {
+          totalDailyGoal += habit.dailyGoal
+        })
+        //console.log("total daily goal is", totalDailyGoal)
+
+        const startDay = day.dateobj.setHours(0, 0, 0, 0)
+        const endDay =day.dateobj.setHours(23, 59, 59, 999)
+
+        //console.log('weekHabits', this.weekHabits)
+        this.weekHabits.forEach(habit => {
+          const habitDate = habit.timestamp.toDate()
+
+          if (habitDate <= endDay && habitDate >= startDay) {
+            progress += habit.progress
+            //console.log("progress on",day.dateobj.toDateString(),"for", habit.habitId,"is", habit.progress)
+          }
+        })
+
+        const totalProgress = (progress / totalDailyGoal) * 100
+        return totalProgress;
+      }
+    
+    },
+  },
   methods: {
-    ...mapActions(['updateSelectedDay']), // Map the Vuex action
+    ...mapActions(['updateSelectedDay']), // Map Vuex actions
     generateWeekDays() {
       const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const today = new Date();
@@ -69,40 +103,15 @@ export default {
           name: daysOfWeek[day.getDay()],
           date: day.getDate(),
           isToday: day.toDateString() === today.toDateString(),
-          progress: this.calculateProgress(day, today),
-          // Get month in words (like "Jan")
-          month: new Intl.DateTimeFormat("en-US", { month: "short" }).format(day),
+          month: new Intl.DateTimeFormat("en-US", { month: "short" }).format(day), // Get month in words (like "Jan")
           dateobj: new Date(day),  // Store the Date object for comparison
         };
       });
     },
-    calculateProgress(day, today) {
-      if (day > today) return 0;
-      return Math.floor(Math.random() * 101);
-    },
     selectDay(day) {
       this.selectedDay = day;
-
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-
-      // Remove time from comparison by setting hours to 00:00:00
       const selectedDate = new Date(day.dateobj);
-      selectedDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      yesterday.setHours(0, 0, 0, 0);
-      
-      let formattedDate;
-      if (selectedDate.getTime() === today.getTime()) {
-        formattedDate = "Today";
-      } else if (selectedDate.getTime() === yesterday.getTime()) {
-        formattedDate = "Yesterday";
-      } else {
-        formattedDate = `${day.date} ${day.month}`;
-      }
-
-      this.updateSelectedDay(formattedDate); // Update the Vuex store
+      this.updateSelectedDay(selectedDate); // Update the selected day in Vuex store
     },
     isSelected(day) {
       // Check if the day is the selected day

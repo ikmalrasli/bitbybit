@@ -1,7 +1,6 @@
 <template>
   <div class="w-full flex flex-row p-2 sm:p-4">
     <div class="flex-auto">
-      <button @click="showHabits">hello</button>
       <!-- Day Selector (Responsive) -->
       <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
         <calendarRow @date-selected="handleDateSelected" />
@@ -23,9 +22,9 @@
           <div v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
             <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
               <HomeProgress 
-                :percent="habit.progress * 100 / habit.target"
+                :percent="habit.progress * 100 / habit.dailyGoal"
                 :text="habit.name"
-                :timesdone="habit.progress.toString() + '/'+ habit.target.toString() "
+                :timesdone="habit.progress.toString() + '/' + habit.dailyGoal.toString()"
                 color="bg-violet-400"
                 class="cursor-pointer"
                 @click="openDetail(habit)"
@@ -47,53 +46,49 @@
         <div v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
           <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
             <HomeProgress 
-                :percent="habit.progress * 100 / habit.target"
+                :percent="habit.progress * 100 / habit.dailyGoal"
                 :text="habit.name"
-                :timesdone="habit.progress.toString() + '/'+ habit.target.toString() "
+                :timesdone="habit.progress.toString() + '/' + habit.dailyGoal.toString()"
                 color="bg-violet-400"
               />
           </div>
         </div>
+
+        <button class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg"
+        @click="moe">Click 1</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../../firebase";
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/home-progressbar.vue";
+import { mapGetters, mapActions } from 'vuex';
 
 export default {
   components: {
     calendarRow,
     HomeProgress,
   },
-  inject: ["setSelectedDate"], // Inject global method
   data() {
     return {
       showUncompleted: true,
       showCompleted: true,
-      allHabits:[
-          { id: 'nfjakdnfk', name: "Solat Dhuha", progress: 0, target: 1 },
-          { id: 'jfnkjasfk', name: "Sayyidul Istighfar", progress: 1, target: 2 },
-          { id: 'fkdnsjnvj', name: "Read Quran", progress: 5, target: 5 },
-          { id: 'dsfvsddcc', name: "Solat Sunat Subuh", progress: 1, target: 1 },
-          { id: 'sdsfacnvs', name: "Kemas katil", progress: 1, target: 1 }
-      ],
-      allHabits2: []
+      selectedDayProg: [],
     };
   },
   computed: {
+    ...mapGetters(['user', 'habits', 'weekHabits', 'getSelectedDay']),
+    
     completedHabits() {
-      return this.allHabits.filter((habit) => habit.progress === habit.target);
+      return this.habits.filter((habit) => habit.progress >= habit.dailyGoal);
     },
     uncompletedHabits() {
-      return this.allHabits.filter((habit) => habit.progress < habit.target);
+      return this.habits.filter((habit) => habit.progress < habit.dailyGoal);
     }
   },
-  methods: {
+  methods: {    
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
@@ -101,55 +96,31 @@ export default {
         this.showCompleted = !this.showCompleted;
       }
     },
-    handleDateSelected(date) {
-      this.setSelectedDate(date); // Update the global selected date
-    },
     openDetail(habit) {
       this.$router.push({
         name: 'detail-habit',
-        params: { habitId: habit.id }
+        params: { habitId: habit.id , timestamp: habit.timestamp}
       });
     },
-    showHabits(){
-      console.log(this.allHabits2)
-    },
-    async fetchHabitsWithValidTerm() {
-      try {
-        // Get today's date
-        const today = new Date();
-        today.setHours(23, 59, 59, 999); // Set time to midnight for accurate comparison
-
-        // Query the habits collection for habits that have a valid term
-        const habitsRef = collection(db, "habits");
-        const querySnapshot = await getDocs(habitsRef);
-
-        const validHabits = [];
-        querySnapshot.forEach((doc) => {
-          const habit = doc.data();
-          const termStart = habit.termStart ? habit.termStart.toDate() : null;
-          const termEnd = habit.termEnd ? habit.termEnd.toDate() : null;
-
-          // Check if today's date is within the termStart and termEnd
-          const isValid = (!termEnd || termEnd >= today) && termStart <= today;
-
-          if (isValid) {
-            validHabits.push({
-              id: doc.id,
-              ...habit,
-            });
+    getDayHabits() {
+      //console.log(this.weekHabits)
+      this.weekHabits.forEach(habit => {
+        //console.log(habit.timestamp.toDate())
+        //console.log('selected day:', this.getSelectedDay)
+        const dayHabits = []
+        const selectStart = new Date(this.getSelectedDay)
+        const selectEnd = new Date(this.getSelectedDay)
+        selectStart.setHours(0, 0, 0, 0)
+        selectEnd.setHours(23, 59, 59, 999)
+        if (habit.timestamp.toDate() >= selectStart) {
+          if (habit.timestamp.toDate() <= selectEnd) {
+            dayHabits.push(habit)
           }
-        });
-
-        // Set the allHabits array to the valid habits
-        this.allHabits2 = validHabits;
-
-      } catch (e) {
-        console.error("Error fetching habits: ", e);
-      }
-    }
+        }
+      })
+      console.log(dayHabits)
+      return dayHabits
+    },
   },
-  mounted() {
-    this.fetchHabitsWithValidTerm(); // Fetch habits when the component mounts
-  }
 };
 </script>

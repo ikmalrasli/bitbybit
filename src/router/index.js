@@ -33,7 +33,7 @@ const routes = [
         }
       },
       {
-        path: 'detail/:habitId',
+        path: 'detail/:habitId-:timestamp',
         name: 'detail-habit',
         components: {
           default: Home,
