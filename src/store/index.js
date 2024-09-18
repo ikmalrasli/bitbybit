@@ -11,6 +11,7 @@ export default createStore({
     habits: [],
     weekHabits: [],
     dayHabits: [],
+    selectedHabit: [],
   },
   mutations: {
     setSelectedDay(state, day) {
@@ -32,11 +33,17 @@ export default createStore({
     },
     SET_DAY_HABITS(state, dayHabits) {
       state.dayHabits = dayHabits;
+    },
+    setSelectedHabit(state, habit) {
+      state.selectedHabit = habit
     }
   },
   actions: {
     updateSelectedDay({ commit }, day) {
       commit('setSelectedDay', day);
+    },
+    updateSelectedHabit({ commit }, habit) {
+      commit('setSelectedHabit', habit)
     },
     async login({ commit }, { email, password }) {
       const auth = getAuth();
@@ -151,7 +158,7 @@ export default createStore({
                 return acc;
               }, []);
               
-              console.log(outputArray);   
+              //console.log(outputArray);   
               
               commit('SET_WEEK_HABITS', outputArray);
               this.dispatch('getDayHabits')
@@ -178,7 +185,7 @@ export default createStore({
           }
         }
       })
-      console.log(dayHabits)
+      //console.log(dayHabits)
       commit('SET_DAY_HABITS', dayHabits)
     },
   },

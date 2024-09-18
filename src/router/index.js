@@ -40,7 +40,9 @@ const routes = [
           right: DetailHabit
         },
         props: {
-          right: (route) => ({ habitId: route.params.habitId, timestamp: route.params.timestamp })  // Pass habitData to the right view
+          right: (route) => ({ 
+            habitId: route.params.habitId, 
+            timestamp: route.params.timestamp})  // Pass habitData to the right view
         }
       },
       {

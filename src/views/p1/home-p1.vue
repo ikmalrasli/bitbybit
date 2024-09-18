@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/home-progressbar.vue";
 
@@ -77,7 +77,6 @@ export default {
   },
   computed: {
     ...mapState(['habits', 'dayHabits']), // Map Vuex state to component
-
     // Combine habits data with progress for the selected day
     combinedHabits() {
       return this.habits.map(habit => {
@@ -125,6 +124,7 @@ export default {
           timestamp: this.formatDate(new Date())
         }
       });
+      this.$store.dispatch('updateSelectedHabit', habit)
     }
   }
 };
