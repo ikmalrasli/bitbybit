@@ -33,14 +33,14 @@ const routes = [
         }
       },
       {
-        path: 'detail/:habitId-:timestamp',
+        path: 'detail/:habitId:timestamp',
         name: 'detail-habit',
         components: {
           default: Home,
           right: DetailHabit
         },
         props: {
-          right: (route) => ({ habitId: route.params.habitId })  // Pass habitData to the right view
+          right: (route) => ({ habitId: route.params.habitId, timestamp: route.params.timestamp })  // Pass habitData to the right view
         }
       },
       {

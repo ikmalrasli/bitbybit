@@ -117,9 +117,9 @@ export default {
       return `${year}${month}${day}`;
     },
     openDetail(habit) {
-      console.log(habit)
+      //console.log(habit)
       this.$router.push({
-        name: 'detail-habits',
+        name: 'detail-habit',
         params: { 
           habitId: habit.habitId,
           timestamp: this.formatDate(new Date())
