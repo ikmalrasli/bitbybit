@@ -1,9 +1,15 @@
 import { createStore } from 'vuex';
+import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '../firebase'; // Import your Firestore instance
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 
 export default createStore({
+  /*plugins: [
+    createPersistedState({
+      paths: ['selectedDay','selectedHabit']  // Only persist specific state properties
+    })
+  ],*/
   state: {
     selectedDay: null,
     user: null,

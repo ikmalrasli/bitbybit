@@ -19,8 +19,8 @@ const routes = [
     component: MainLayout,
     children: [
       {
-        path: 'home',
-        alias: '',
+        path: '',
+        alias: 'home',
         name: 'home',
         component: Home
       },
@@ -104,6 +104,19 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+router.beforeEach((to, from, next) => {
+  // Check if the current route is 'detail-habit'
+  if (to.name === 'detail-habit') {
+    // If the user refreshed the page (no 'from' route), redirect to the parent '/home' route
+    if (!from.name) {
+      next({ name: 'home' });
+    } else {
+      next(); // Proceed normally if navigating from within the app
+    }
+  } else {
+    next(); // Proceed normally for all other routes
+  }
 });
 
 export default router;
