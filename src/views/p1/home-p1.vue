@@ -1,6 +1,7 @@
 <template>
-  <div class="w-full flex flex-row p-2 sm:p-4">
+  <div class="w-full flex flex-row p-4">
     <div class="flex-auto">
+
       <!-- Day Selector (Responsive) -->
       <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
         <calendarRow @date-selected="handleDateSelected" />
@@ -10,7 +11,7 @@
       <div class="mb-4">
         <!-- Uncompleted habits -->
         <div class="mb-4">
-          <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Uncompleted')">
+          <div v-if="uncompletedHabits.length!==0" class="flex justify-between items-center cursor-pointer" @click="toggleSection('Uncompleted')">
             <span class="font-bold text-black">Uncompleted
               <span class="pl-2 font-medium text-gray-500">{{ uncompletedHabits.length }}</span>
             </span>
@@ -19,12 +20,12 @@
           </div>
 
           <!-- Uncompleted habits List -->
-          <div v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
+          <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
             <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
               <HomeProgress 
                 :percent="habit.progress * 100 / habit.dailyGoal"
                 :text="habit.name"
-                :timesdone="habit.progress.toString() + '/' + habit.dailyGoal.toString()"
+                :timesdone="habit.progress + '/' + habit.dailyGoal"
                 color="bg-violet-400"
                 class="cursor-pointer"
                 @click="openDetail(habit)"
@@ -34,7 +35,7 @@
         </div>
 
         <!-- Completed habits -->
-        <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Completed')">
+        <div v-if="completedHabits.length!==0" class="flex justify-between items-center cursor-pointer" @click="toggleSection('Completed')">
           <span class="font-bold text-black">Completed
             <span class="pl-2 font-medium text-gray-500">{{ completedHabits.length }}</span>
           </span>
@@ -43,28 +44,25 @@
         </div>
 
         <!-- Completed habits List -->
-        <div v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
+        <div v-if="completedHabits.length!==0" v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
           <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
             <HomeProgress 
-                :percent="habit.progress * 100 / habit.dailyGoal"
-                :text="habit.name"
-                :timesdone="habit.progress.toString() + '/' + habit.dailyGoal.toString()"
-                color="bg-violet-400"
-              />
+              :percent="habit.progress * 100 / habit.dailyGoal"
+              :text="habit.name"
+              :timesdone="habit.progress + '/' + habit.dailyGoal"
+              color="bg-violet-400"
+            />
           </div>
         </div>
-
-        <button class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg"
-        @click="moe">Click 1</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/home-progressbar.vue";
-import { mapGetters, mapActions } from 'vuex';
 
 export default {
   components: {
@@ -75,20 +73,32 @@ export default {
     return {
       showUncompleted: true,
       showCompleted: true,
-      selectedDayProg: [],
     };
   },
   computed: {
-    ...mapGetters(['user', 'habits', 'weekHabits', 'getSelectedDay']),
-    
-    completedHabits() {
-      return this.habits.filter((habit) => habit.progress >= habit.dailyGoal);
+    ...mapState(['habits', 'dayHabits']), // Map Vuex state to component
+
+    // Combine habits data with progress for the selected day
+    combinedHabits() {
+      return this.habits.map(habit => {
+        const progressEntry = this.dayHabits.find(dayHabit => dayHabit.habitId === habit.habitId);
+        return {
+          ...habit,
+          progress: progressEntry ? progressEntry.progress : 0, // Use progress from dayHabits or 0 if none
+          progressId: progressEntry ? progressEntry.progressId : '',
+        };
+      });
     },
+
+    completedHabits() {
+      return this.combinedHabits.filter(habit => habit.progress >= habit.dailyGoal);
+    },
+
     uncompletedHabits() {
-      return this.habits.filter((habit) => habit.progress < habit.dailyGoal);
+      return this.combinedHabits.filter(habit => habit.progress < habit.dailyGoal);
     }
   },
-  methods: {    
+  methods: {
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
@@ -96,31 +106,26 @@ export default {
         this.showCompleted = !this.showCompleted;
       }
     },
+    handleDateSelected(date) {
+      this.$store.dispatch('updateSelectedDay', date); // Update the selected day in Vuex
+      this.$store.dispatch('getDayHabits'); // Fetch day-specific progress for the selected date
+    },
+    formatDate(date){
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based, so we add 1
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}${month}${day}`;
+    },
     openDetail(habit) {
+      console.log(habit)
       this.$router.push({
-        name: 'detail-habit',
-        params: { habitId: habit.id , timestamp: habit.timestamp}
-      });
-    },
-    getDayHabits() {
-      //console.log(this.weekHabits)
-      this.weekHabits.forEach(habit => {
-        //console.log(habit.timestamp.toDate())
-        //console.log('selected day:', this.getSelectedDay)
-        const dayHabits = []
-        const selectStart = new Date(this.getSelectedDay)
-        const selectEnd = new Date(this.getSelectedDay)
-        selectStart.setHours(0, 0, 0, 0)
-        selectEnd.setHours(23, 59, 59, 999)
-        if (habit.timestamp.toDate() >= selectStart) {
-          if (habit.timestamp.toDate() <= selectEnd) {
-            dayHabits.push(habit)
-          }
+        name: 'detail-habits',
+        params: { 
+          habitId: habit.habitId,
+          timestamp: this.formatDate(new Date())
         }
-      })
-      console.log(dayHabits)
-      return dayHabits
-    },
-  },
+      });
+    }
+  }
 };
 </script>

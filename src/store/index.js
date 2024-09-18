@@ -10,6 +10,7 @@ export default createStore({
     isAuthenticated: false,
     habits: [],
     weekHabits: [],
+    dayHabits: [],
   },
   mutations: {
     setSelectedDay(state, day) {
@@ -29,6 +30,9 @@ export default createStore({
     SET_WEEK_HABITS(state, weekHabits) {
       state.weekHabits = weekHabits;
     },
+    SET_DAY_HABITS(state, dayHabits) {
+      state.dayHabits = dayHabits;
+    }
   },
   actions: {
     updateSelectedDay({ commit }, day) {
@@ -80,9 +84,9 @@ export default createStore({
           // Set up a real-time listener
           onSnapshot(q, (querySnapshot) => {
             querySnapshot.forEach((doc) => {
-              habits.push({ id: doc.id, ...doc.data() });
+              habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
-              this.dispatch('fetchProgress')
+              this.dispatch('fetchWeekProgress')
             });
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
@@ -92,7 +96,7 @@ export default createStore({
         console.error('try failed at fetchHabits:', error);
       }
     },
-    async fetchProgress({ commit, state }) {
+    async fetchWeekProgress({ commit, state }) {
       //get progress for up until sunday
       const progressArray = [];
       const today = new Date();
@@ -104,11 +108,10 @@ export default createStore({
       startOfWeek.setHours(0, 0, 0, 0);
       
       state.habits.forEach(habit => {
-        console.log(habit.id)
         try {
           const q = query(
             collection(db, 'progress'),
-            where('habitId', '==', habit.id),
+            where('habitId', '==', habit.habitId),
             where('timestamp', '>=', startOfWeek),
             orderBy('timestamp', 'desc'),
           );
@@ -118,7 +121,7 @@ export default createStore({
 
             querySnapshot.forEach((doc) => {
               const data = doc.data();
-              progressArray.push({ ...data, id: doc.id });
+              progressArray.push({ ...data, progressId: doc.id });
               
               const outputArray = progressArray.reduce((acc, curr) => {
                 // Convert Firestore timestamp to JavaScript Date object
@@ -148,17 +151,35 @@ export default createStore({
                 return acc;
               }, []);
               
-              console.log(outputArray);
-                           
+              console.log(outputArray);   
               
               commit('SET_WEEK_HABITS', outputArray);
+              this.dispatch('getDayHabits')
             });
           });          
         } catch (error) {
           console.error("Error fetching latest progress:", error);
         }
       });
-
+    },
+    async getDayHabits({ commit, state }) {
+      //console.log(this.weekHabits)
+      const dayHabits = []
+      state.weekHabits.forEach(habit => {
+        //console.log(habit.timestamp.toDate())
+        //console.log('selected day:', this.getSelectedDay)
+        const selectStart = new Date(state.selectedDay)
+        const selectEnd = new Date(state.selectedDay)
+        selectStart.setHours(0, 0, 0, 0)
+        selectEnd.setHours(23, 59, 59, 999)
+        if (habit.timestamp.toDate() >= selectStart) {
+          if (habit.timestamp.toDate() <= selectEnd) {
+            dayHabits.push(habit)
+          }
+        }
+      })
+      console.log(dayHabits)
+      commit('SET_DAY_HABITS', dayHabits)
     },
   },
   getters: {

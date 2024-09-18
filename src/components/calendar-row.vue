@@ -55,7 +55,6 @@ export default {
     habitsProgress() { // Rename for clarity
       return function(day) {
         if (!this.habits || !this.habits.length) {
-          console.log('No habits found');
           return 0;
         }
         let progress = 0;
@@ -112,6 +111,7 @@ export default {
       this.selectedDay = day;
       const selectedDate = new Date(day.dateobj);
       this.updateSelectedDay(selectedDate); // Update the selected day in Vuex store
+      this.$store.dispatch('getDayHabits');
     },
     isSelected(day) {
       // Check if the day is the selected day
