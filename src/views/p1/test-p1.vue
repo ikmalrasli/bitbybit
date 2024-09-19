@@ -17,11 +17,13 @@
 <script>
 import VerticalProgressbar from '../../components/VerticalProgressbar.vue';
 import HomeProgress from '../../components/home-progressbar.vue';
+import RadialProgressBar from '../../components/RadialProgressbar.vue';
 
 export default {
   components: {
     VerticalProgressbar,
-    HomeProgress
+    HomeProgress,
+    RadialProgressBar
   },
   methods: {
     checkUser() {

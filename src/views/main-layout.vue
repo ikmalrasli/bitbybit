@@ -4,7 +4,7 @@
     <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
 
     <!-- Main Content Area -->
-    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1 border relative">
+    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1 border-l border-r relative">
       <!-- Title Bar stays on top within the container only if sidebar is closed -->
       <div :class="['z-50 bg-white', { 'sticky top-0': !showSidebar }]">
         <TitleBar @toggle-sidebar="toggleSidebar" />

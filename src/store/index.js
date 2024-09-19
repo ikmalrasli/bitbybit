@@ -18,8 +18,12 @@ export default createStore({
     weekHabits: [],
     dayHabits: [],
     selectedHabit: [],
+    loading: true
   },
   mutations: {
+    setLoading(state, loading) {
+      state.loading = loading;
+    },
     setSelectedDay(state, day) {
       state.selectedDay = day;
     },
@@ -193,6 +197,7 @@ export default createStore({
       })
       //console.log(dayHabits)
       commit('SET_DAY_HABITS', dayHabits)
+      commit('setLoading', false)
     },
   },
   getters: {
