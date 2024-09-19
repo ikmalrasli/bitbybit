@@ -20,7 +20,7 @@ onMounted(() => {
   const interval = setInterval(() => {
     count = (count + 1) % 4;
     dots.value = '.'.repeat(count); // Changes dots to '.', '..', '...', and resets
-  }, 500); // Change the interval as needed
+  }, 200); // Change the interval as needed
 
   // Cleanup the interval when component is unmounted
   onBeforeUnmount(() => {
