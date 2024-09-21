@@ -59,24 +59,23 @@ export default {
         }
         let progress = 0;
         let totalDailyGoal = 0;
-        this.habits.forEach(habit => {
+        
+        const validHabits = this.habits
+        .filter(habit => habit.termStart.toDate()<=day.dateobj)
+
+        validHabits.forEach(habit => {
           totalDailyGoal += habit.dailyGoal
         })
-        //console.log("total daily goal is", totalDailyGoal)
-
         const startDay = day.dateobj.setHours(0, 0, 0, 0)
         const endDay =day.dateobj.setHours(23, 59, 59, 999)
 
-        //console.log('weekHabits', this.weekHabits)
         this.weekHabits.forEach(habit => {
           const habitDate = habit.timestamp.toDate()
 
           if (habitDate <= endDay && habitDate >= startDay) {
             progress += habit.progress
-            //console.log("progress on",day.dateobj.toDateString(),"for", habit.habitId,"is", habit.progress)
           }
         })
-
         const totalProgress = (progress / totalDailyGoal) * 100
         return totalProgress;
       }
