@@ -89,17 +89,25 @@ export default {
     },
 
     completedHabits() {
-      return this.combinedHabits.filter(habit => 
+      const StartHabits = this.combinedHabits.filter(habit => 
         habit.progress >= habit.dailyGoal 
-        && habit.termStart.toDate()<=this.$store.state.selectedDay
+        && habit.termStart.toDate()<=this.$store.state.selectedDay)
+      const EndHabits = StartHabits.filter(habit =>
+        habit.termEnd === null
+        || habit.termEnd.toDate()>=this.$store.state.selectedDay
       ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
+      return EndHabits
     },
 
     uncompletedHabits() {
-      return this.combinedHabits.filter(habit => 
+      const StartHabits = this.combinedHabits.filter(habit => 
         habit.progress < habit.dailyGoal
-        && habit.termStart.toDate()<=this.$store.state.selectedDay
+        && habit.termStart.toDate()<=this.$store.state.selectedDay)
+      const EndHabits = StartHabits.filter(habit =>
+        habit.termEnd === null
+        || habit.termEnd.toDate()>=this.$store.state.selectedDay
       ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
+      return EndHabits
     }
   },
   methods: {
