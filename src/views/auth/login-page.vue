@@ -97,7 +97,16 @@ export default {
         this.$store.commit('SET_USER', user);
 
         // Redirect after successful login
-        this.$router.push("/home");
+        this.$router.push("/")
+
+        this.$store.dispatch('fetchUser').then((user) => {
+          this.$store.dispatch('updateLoading', true);
+          if (user) {
+            this.$store.dispatch('fetchHabits');
+          } else {
+            this.$store.dispatch('updateLoading', false);
+          }
+        });
       } catch (error) {
         console.error("Google login error:", error);
         alert(error.message); // Display error message to the user

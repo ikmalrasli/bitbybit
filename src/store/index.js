@@ -5,11 +5,11 @@ import { db } from '../firebase'; // Import your Firestore instance
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 
 export default createStore({
-  /*plugins: [
+  plugins: [
     createPersistedState({
-      paths: ['selectedDay','selectedHabit']  // Only persist specific state properties
-    })
-  ],*/
+    paths: ['user', 'isAuthenticated']  // Include user and isAuthenticated
+  })
+  ],
   state: {
     selectedDay: null,
     user: null,
@@ -49,6 +49,9 @@ export default createStore({
     }
   },
   actions: {
+    updateLoading({ commit }, loading) {
+      commit('setLoading', loading);
+    },
     updateSelectedDay({ commit }, day) {
       commit('setSelectedDay', day);
     },
@@ -88,8 +91,10 @@ export default createStore({
       });
     },
     async fetchHabits({ commit, state }) {
+      
       try {
         if (state.user) { // Ensure the user is authenticated
+          //commit('setLoading', true);
           const userId = state.user.uid; // Get the authenticated user's ID
           
           // Query Firestore for habits belonging to the authenticated user

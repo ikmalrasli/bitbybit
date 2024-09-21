@@ -11,8 +11,12 @@ import loading from './views/loading.vue';
 export default {
   components: { loading },
   created() {
-    this.$store.dispatch('fetchUser').then(() => {
-      this.$store.dispatch('fetchHabits')
+    this.$store.dispatch('fetchUser').then((user) => {
+      if (user) {
+        this.$store.dispatch('fetchHabits');
+      } else {
+        this.$store.dispatch('updateLoading',false);
+      }
     })
   },
 };

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import store from '../store';  // Import the Vuex store
 import MainLayout from '../views/main-layout.vue'
 import Home from '../views/p1/home-p1.vue'
 import Calendar from '../views/p1/calendar-p1.vue'
@@ -22,7 +23,8 @@ const routes = [
         path: '',
         alias: 'home',
         name: 'home',
-        component: Home
+        component: Home,
+        meta: { requiresAuth: true }
       },
       {
         path: 'add-habit',
@@ -30,7 +32,8 @@ const routes = [
         components: {
           default: Home,
           right: AddHabit
-        }
+        },
+        meta: { requiresAuth: true }
       },
       {
         path: 'detail/:habitId:timestamp',
@@ -43,19 +46,20 @@ const routes = [
           right: (route) => ({ 
             habitId: route.params.habitId, 
             timestamp: route.params.timestamp})  // Pass habitData to the right view
-        }
+        },
+        meta: { requiresAuth: true }
       },
       {
         path: 'calendar',
         name: 'calendar',
         component: Calendar,
-        meta: { title: 'Calendar' },
+        meta: { title: 'Calendar', requiresAuth: true },
       },
       {
         path: 'sunnahs',
         name: 'sunnahs',
         component: Sunnahs,
-        meta: { title: 'Sunnahs' },
+        meta: { title: 'Sunnahs', requiresAuth: true },
       },
       {
         path: 'sunnahs/:sunnahId',
@@ -66,18 +70,19 @@ const routes = [
         },
         props: {
           right: (route) => ({ sunnahId: route.params.sunnahId })  // Pass habitData to the right view
-        }
+        },
+        meta: { requiresAuth: true }
       },
       {
         path: 'stats',
         name: 'stats',
         component: Stats,
-        meta: { title: 'Stats' },
+        meta: { title: 'Stats', requiresAuth: true },
       },
       {
         path: '/test',
         component: Test,
-        meta: { title: 'Test' },
+        meta: { title: 'Test', requiresAuth: true },
       }
     ]
   },
@@ -105,17 +110,24 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
 router.beforeEach((to, from, next) => {
-  // Check if the current route is 'detail-habit'
-  if (to.name === 'detail-habit') {
-    // If the user refreshed the page (no 'from' route), redirect to the parent '/home' route
-    if (!from.name) {
-      next({ name: 'home' });
-    } else {
-      next(); // Proceed normally if navigating from within the app
-    }
-  } else {
-    next(); // Proceed normally for all other routes
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const isAuthenticated = store.getters.isAuthenticated;
+
+  // Handle the detail-habit route redirection logic
+  if (to.name === 'detail-habit' && !from.name) {
+    // Redirect to home if there is no "from" route (i.e., on page refresh)
+    next({ name: 'home' });
+  } 
+  // Handle authentication check
+  else if (requiresAuth && !isAuthenticated) {
+    // If the route requires authentication and the user is not authenticated, redirect to login
+    next({ name: 'login' });
+  } 
+  // Allow navigation if authenticated or if the route doesn't require authentication
+  else {
+    next();
   }
 });
 
