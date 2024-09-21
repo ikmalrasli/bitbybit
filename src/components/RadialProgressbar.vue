@@ -23,7 +23,7 @@ const props = defineProps({
     default: 0
   },
   datenumber: {
-    type: String,
+    type: Number,
     default: 0
   }
 });
