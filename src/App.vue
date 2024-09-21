@@ -6,7 +6,6 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
 import loading from './views/loading.vue';
 
 export default {

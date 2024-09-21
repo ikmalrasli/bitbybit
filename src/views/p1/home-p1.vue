@@ -1,7 +1,6 @@
 <template>
   <div class="w-full flex flex-row p-4">
     <div class="flex-auto">
-
       <!-- Day Selector (Responsive) -->
       <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
         <calendarRow @date-selected="handleDateSelected" />
@@ -90,11 +89,17 @@ export default {
     },
 
     completedHabits() {
-      return this.combinedHabits.filter(habit => habit.progress >= habit.dailyGoal);
+      return this.combinedHabits.filter(habit => 
+        habit.progress >= habit.dailyGoal 
+        && habit.termStart.toDate()<=this.$store.state.selectedDay
+      ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
     },
 
     uncompletedHabits() {
-      return this.combinedHabits.filter(habit => habit.progress < habit.dailyGoal);
+      return this.combinedHabits.filter(habit => 
+        habit.progress < habit.dailyGoal
+        && habit.termStart.toDate()<=this.$store.state.selectedDay
+      ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
     }
   },
   methods: {
@@ -125,6 +130,9 @@ export default {
         }
       });
       this.$store.dispatch('updateSelectedHabit', habit)
+    },
+    check(){
+      console.log(this.unc)
     }
   }
 };

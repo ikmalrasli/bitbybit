@@ -53,7 +53,7 @@ export default createStore({
       commit('setSelectedDay', day);
     },
     updateSelectedHabit({ commit }, habit) {
-      commit('setSelectedHabit', habit)
+      commit('setSelectedHabit', habit);
     },
     async login({ commit }, { email, password }) {
       const auth = getAuth();
@@ -81,6 +81,7 @@ export default createStore({
             commit('SET_USER', user);
           } else {
             commit('CLEAR_USER');
+            //commit('setLoading', false);
           }
           resolve(user);
         });
@@ -97,9 +98,9 @@ export default createStore({
             where('userId', '==', userId), // Filter habits by userId
           );
 
-          const habits = [];
           // Set up a real-time listener
           onSnapshot(q, (querySnapshot) => {
+            const habits = [];
             querySnapshot.forEach((doc) => {
               habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
