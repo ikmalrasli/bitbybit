@@ -59,9 +59,11 @@ export default {
         }
         let progress = 0;
         let totalDailyGoal = 0;
-        
-        const validHabits = this.habits
-        .filter(habit => habit.termStart.toDate()<=day.dateobj)
+
+        const validHabitsStart = this.habits.filter(habit => habit.termStart.toDate()<=day.dateobj)
+
+        const validHabits = validHabitsStart.filter(habit => 
+        habit.termEnd===null || habit.termEnd.toDate()>=day.dateobj )
 
         validHabits.forEach(habit => {
           totalDailyGoal += habit.dailyGoal
