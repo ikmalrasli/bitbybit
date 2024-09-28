@@ -23,7 +23,7 @@
             <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
               <HomeProgress 
                 :percent="habit.progress * 100 / habit.dailyGoal"
-                :text="habit.name+'-'+habit.habitId"
+                :text="habit.name"
                 :timesdone="habit.progress + '/' + habit.dailyGoal"
                 color="bg-violet-400"
                 class="cursor-pointer"
@@ -47,7 +47,7 @@
           <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
             <HomeProgress 
               :percent="habit.progress * 100 / habit.dailyGoal"
-              :text="habit.name+'-'+habit.habitId"
+              :text="habit.name"
               :timesdone="habit.progress + '/' + habit.dailyGoal"
               color="bg-violet-400"
             />

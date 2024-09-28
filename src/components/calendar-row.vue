@@ -32,6 +32,7 @@
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
 import { mapActions, mapState } from 'vuex';
+import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 
 export default {
   components: {
@@ -88,57 +89,7 @@ export default {
       return this.selectedDay === day || (this.selectedDay === null && day.isToday);
     },
     habitsProgress(day) {
-      const dayProgress = [];
-      const dayStart = new Date(day);
-      const dayEnd = new Date(day);
-      dayStart.setHours(0, 0, 0, 0);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      this.weekProgress.forEach(habit => {
-        const habitTimestamp = habit.timestamp ? habit.timestamp.toDate() : null;
-
-        if (habitTimestamp && habitTimestamp >= dayStart && habitTimestamp <= dayEnd) {
-          dayProgress.push(habit);
-        }
-      });
-
-      const combinedDayHabits = this.habits.map(habit => {
-        const progressEntry = dayProgress.find(weekHabit => weekHabit.habitId === habit.habitId);
-        return {
-          ...habit,
-          progress: progressEntry ? progressEntry.progress : 0, // Use progress from weekProgress or 0 if none
-          progressId: progressEntry ? progressEntry.progressId : '',
-          timestamp: progressEntry ? progressEntry.timestamp : null,
-        };
-      });
-
-      const StartHabits = combinedDayHabits.filter(habit => habit.termStart.toDate() <= day);
-      const EndHabits = StartHabits.filter(habit =>
-        habit.termEnd === null || habit.termEnd.toDate() >= day
-      ).sort((a, b) => a.name.localeCompare(b.name));
-
-      let progress = 0;
-      let totalDailyGoal = 0;
-
-      // Create copies of day to avoid mutating it directly
-      const startDay = new Date(day).setHours(0, 0, 0, 0);
-      const endDay = new Date(day).setHours(23, 59, 59, 999);
-
-      EndHabits.forEach(habit => {
-        const habitDate = habit.timestamp ? habit.timestamp.toDate() : null;
-
-        // Make sure habitDate falls within the day range
-        if (habitDate && habitDate <= endDay && habitDate >= startDay) {
-          progress += Number(habit.progress); // Accumulate progress
-        }
-
-        // Accumulate totalDailyGoal for each habit
-        totalDailyGoal += habit.dailyGoal || 0; // Assuming each habit has a dailyGoal field
-      });
-
-      // Avoid division by zero
-      const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
-      console.log('Day:',day,'Progress:',progress,'Total Daily Goal:',totalDailyGoal,'Total Progress:', totalProgress)
+      const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits);
       return totalProgress;
     }
   },
