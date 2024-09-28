@@ -23,7 +23,7 @@
             <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
               <HomeProgress 
                 :percent="habit.progress * 100 / habit.dailyGoal"
-                :text="habit.name"
+                :text="habit.name+'-'+habit.habitId"
                 :timesdone="habit.progress + '/' + habit.dailyGoal"
                 color="bg-violet-400"
                 class="cursor-pointer"
@@ -47,7 +47,7 @@
           <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
             <HomeProgress 
               :percent="habit.progress * 100 / habit.dailyGoal"
-              :text="habit.name"
+              :text="habit.name+'-'+habit.habitId"
               :timesdone="habit.progress + '/' + habit.dailyGoal"
               color="bg-violet-400"
             />
@@ -75,39 +75,17 @@ export default {
     };
   },
   computed: {
-    ...mapState(['habits', 'dayHabits']), // Map Vuex state to component
-    // Combine habits data with progress for the selected day
-    combinedHabits() {
-      return this.habits.map(habit => {
-        const progressEntry = this.dayHabits.find(dayHabit => dayHabit.habitId === habit.habitId);
-        return {
-          ...habit,
-          progress: progressEntry ? progressEntry.progress : 0, // Use progress from dayHabits or 0 if none
-          progressId: progressEntry ? progressEntry.progressId : '',
-        };
-      });
-    },
-
+    ...mapState(['habits', 'weekHabits' ,'dayHabits']),
     completedHabits() {
-      const StartHabits = this.combinedHabits.filter(habit => 
-        habit.progress >= habit.dailyGoal 
-        && habit.termStart.toDate()<=this.$store.state.selectedDay)
-      const EndHabits = StartHabits.filter(habit =>
-        habit.termEnd === null
-        || habit.termEnd.toDate()>=this.$store.state.selectedDay
-      ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
-      return EndHabits
+      const completed = this.dayHabits.filter(habit => 
+        habit.progress >= habit.dailyGoal)
+      return completed
     },
 
     uncompletedHabits() {
-      const StartHabits = this.combinedHabits.filter(habit => 
-        habit.progress < habit.dailyGoal
-        && habit.termStart.toDate()<=this.$store.state.selectedDay)
-      const EndHabits = StartHabits.filter(habit =>
-        habit.termEnd === null
-        || habit.termEnd.toDate()>=this.$store.state.selectedDay
-      ).sort((a, b) => a.name.localeCompare(b.name)); // Sort by name (A-Z);
-      return EndHabits
+      const uncompleted = this.dayHabits.filter(habit => 
+        habit.progress < habit.dailyGoal)
+      return uncompleted
     }
   },
   methods: {
@@ -120,7 +98,7 @@ export default {
     },
     handleDateSelected(date) {
       this.$store.dispatch('updateSelectedDay', date); // Update the selected day in Vuex
-      this.$store.dispatch('getDayHabits'); // Fetch day-specific progress for the selected date
+      this.$store.dispatch('getDayHabits', date); // Fetch day-specific progress for the selected date
     },
     formatDate(date){
       const year = date.getFullYear();

@@ -15,10 +15,11 @@ export default createStore({
     user: null,
     isAuthenticated: false,
     habits: [],
+    weekProgress: [],
     weekHabits: [],
     dayHabits: [],
     selectedHabit: [],
-    loading: true
+    loading: false
   },
   mutations: {
     setLoading(state, loading) {
@@ -37,6 +38,9 @@ export default createStore({
     },
     SET_HABITS(state, habits) {
       state.habits = habits;
+    },  
+    SET_WEEK_PROGRESS(state, weekProgress) {
+      state.weekProgress = weekProgress;
     },
     SET_WEEK_HABITS(state, weekHabits) {
       state.weekHabits = weekHabits;
@@ -174,10 +178,9 @@ export default createStore({
                 return acc;
               }, []);
               
-              //console.log(outputArray);   
-              
-              commit('SET_WEEK_HABITS', outputArray);
-              this.dispatch('getDayHabits')
+              console.log(outputArray)
+              commit('SET_WEEK_PROGRESS', outputArray);
+              this.dispatch('getDayHabits', this.state.selectedDay)
             });
           });          
         } catch (error) {
@@ -185,25 +188,68 @@ export default createStore({
         }
       });
     },
-    async getDayHabits({ commit, state }) {
-      //console.log(this.weekHabits)
-      const dayHabits = []
-      state.weekHabits.forEach(habit => {
-        //console.log(habit.timestamp.toDate())
-        //console.log('selected day:', this.getSelectedDay)
-        const selectStart = new Date(state.selectedDay)
-        const selectEnd = new Date(state.selectedDay)
-        selectStart.setHours(0, 0, 0, 0)
-        selectEnd.setHours(23, 59, 59, 999)
-        if (habit.timestamp.toDate() >= selectStart) {
-          if (habit.timestamp.toDate() <= selectEnd) {
-            dayHabits.push(habit)
-          }
+    async getDayHabits({ commit, state }, day) {
+      const dayProgress = [];
+      const dayStart = new Date(day);
+      const dayEnd = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      dayEnd.setHours(23, 59, 59, 999);
+    
+      state.weekProgress.forEach(habit => {
+        const habitTimestamp = habit.timestamp ? habit.timestamp.toDate() : null;
+
+        if (habitTimestamp 
+          && habitTimestamp >= dayStart 
+          && habitTimestamp <= dayEnd) {
+          dayProgress.push(habit);
         }
-      })
-      //console.log(dayHabits)
-      commit('SET_DAY_HABITS', dayHabits)
-      commit('setLoading', false)
+      });
+
+      const combinedDayHabits = state.habits.map(habit => {
+        const progressEntry = dayProgress.find(weekHabit => weekHabit.habitId === habit.habitId);
+        return {
+          ...habit,
+          progress: progressEntry ? progressEntry.progress : 0, // Use progress from weekProgress or 0 if none
+          progressId: progressEntry ? progressEntry.progressId : '',
+          timestamp: progressEntry ? progressEntry.timestamp : null,
+        };
+      });
+
+      const StartHabits = combinedDayHabits.filter(habit => 
+         habit.termStart.toDate()<=day)
+      const EndHabits = StartHabits.filter(habit =>
+        habit.termEnd === null
+        || habit.termEnd.toDate()>=day
+      ).sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log(EndHabits)
+
+      //if (save) {
+        commit('SET_DAY_HABITS', EndHabits);
+        commit('setLoading', false);
+      //} 
+      // else {
+      //   let progress = 0;
+      //   let totalDailyGoal = 0;
+
+        
+      //   const startDay = new Date(day)
+      //   startDay.setHours(0, 0, 0, 0)
+      //   const endDay = new Date(day)
+      //   endDay.setHours(23, 59, 59, 999)
+
+      //   EndHabits.forEach(habit => {
+      //     const habitDate = new Date(habit.timestamp)
+      //     totalDailyGoal += habit.dailyGoal
+      //     if (habitDate <= endDay && habitDate >= startDay) {
+      //       progress += habit.progress
+      //     }
+      //   })
+
+      //   const totalProgress = (progress / totalDailyGoal) * 100
+      //   return totalProgress;
+      // }
+    
     },
   },
   getters: {
