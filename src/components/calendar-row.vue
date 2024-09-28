@@ -16,7 +16,7 @@
           <span class="min-w-8 text-center text-xs sm:text-sm">{{ day.name }}</span>
           <RadialProgressbar
             :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
-            :progress="habitsProgress(day)"
+            :progress="habitsProgress(day.dateobj)"
             :size="24"
             :radius="40"
             :datenumber="day.date"
@@ -51,38 +51,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(['habits', 'weekHabits']), // Map habits from the Vuex store
-    habitsProgress() { // Rename for clarity
-      return function(day) {
-        if (!this.habits || !this.habits.length) {
-          return 0;
-        }
-        let progress = 0;
-        let totalDailyGoal = 0;
-
-        const validHabitsStart = this.habits.filter(habit => habit.termStart.toDate()<=day.dateobj)
-
-        const validHabits = validHabitsStart.filter(habit => 
-        habit.termEnd===null || habit.termEnd.toDate()>=day.dateobj )
-
-        validHabits.forEach(habit => {
-          totalDailyGoal += habit.dailyGoal
-        })
-        const startDay = day.dateobj.setHours(0, 0, 0, 0)
-        const endDay =day.dateobj.setHours(23, 59, 59, 999)
-
-        this.weekHabits.forEach(habit => {
-          const habitDate = habit.timestamp.toDate()
-
-          if (habitDate <= endDay && habitDate >= startDay) {
-            progress += habit.progress
-          }
-        })
-        const totalProgress = (progress / totalDailyGoal) * 100
-        return totalProgress;
-      }
-    
-    },
+    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress']), // Map habits from the Vuex store
   },
   methods: {
     ...mapActions(['updateSelectedDay']), // Map Vuex actions
@@ -112,11 +81,65 @@ export default {
       this.selectedDay = day;
       const selectedDate = new Date(day.dateobj);
       this.updateSelectedDay(selectedDate); // Update the selected day in Vuex store
-      this.$store.dispatch('getDayHabits');
+      this.$store.dispatch('getDayHabits', selectedDate, true);
     },
     isSelected(day) {
       // Check if the day is the selected day
       return this.selectedDay === day || (this.selectedDay === null && day.isToday);
+    },
+    habitsProgress(day) {
+      const dayProgress = [];
+      const dayStart = new Date(day);
+      const dayEnd = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      this.weekProgress.forEach(habit => {
+        const habitTimestamp = habit.timestamp ? habit.timestamp.toDate() : null;
+
+        if (habitTimestamp && habitTimestamp >= dayStart && habitTimestamp <= dayEnd) {
+          dayProgress.push(habit);
+        }
+      });
+
+      const combinedDayHabits = this.habits.map(habit => {
+        const progressEntry = dayProgress.find(weekHabit => weekHabit.habitId === habit.habitId);
+        return {
+          ...habit,
+          progress: progressEntry ? progressEntry.progress : 0, // Use progress from weekProgress or 0 if none
+          progressId: progressEntry ? progressEntry.progressId : '',
+          timestamp: progressEntry ? progressEntry.timestamp : null,
+        };
+      });
+
+      const StartHabits = combinedDayHabits.filter(habit => habit.termStart.toDate() <= day);
+      const EndHabits = StartHabits.filter(habit =>
+        habit.termEnd === null || habit.termEnd.toDate() >= day
+      ).sort((a, b) => a.name.localeCompare(b.name));
+
+      let progress = 0;
+      let totalDailyGoal = 0;
+
+      // Create copies of day to avoid mutating it directly
+      const startDay = new Date(day).setHours(0, 0, 0, 0);
+      const endDay = new Date(day).setHours(23, 59, 59, 999);
+
+      EndHabits.forEach(habit => {
+        const habitDate = habit.timestamp ? habit.timestamp.toDate() : null;
+
+        // Make sure habitDate falls within the day range
+        if (habitDate && habitDate <= endDay && habitDate >= startDay) {
+          progress += Number(habit.progress); // Accumulate progress
+        }
+
+        // Accumulate totalDailyGoal for each habit
+        totalDailyGoal += habit.dailyGoal || 0; // Assuming each habit has a dailyGoal field
+      });
+
+      // Avoid division by zero
+      const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
+      console.log('Day:',day,'Progress:',progress,'Total Daily Goal:',totalDailyGoal,'Total Progress:', totalProgress)
+      return totalProgress;
     }
   },
 };
