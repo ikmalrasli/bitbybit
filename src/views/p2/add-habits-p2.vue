@@ -13,7 +13,7 @@
           <!-- Name -->
           <div>
             <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
-            <input v-model="formData.name" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+            <input v-model="formData.name" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" autocomplete="off" />
           </div>
 
           <!-- Daily Goal -->
@@ -52,7 +52,30 @@
           <!-- Notes -->
           <div>
             <label for="notes" class="text-left block text-sm font-medium text-gray-700">Notes</label>
-            <textarea v-model="formData.notes" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Optional"></textarea>
+            <textarea v-model="formData.notes" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16" placeholder="Optional"></textarea>
+          </div>
+
+          <!-- Image Upload Button -->
+          <div class="mt-2 flex justify-end gap-2">
+            <!-- Display Selected Image Thumbnail -->
+            <div v-if="formData.imageUrl" class="flex items-center border rounded-md content-center text-sm">
+              <img :src="imagePreviewUrl" alt="Selected Image" class="h-10 w-10 object-cover rounded-md" />
+              <span class="ml-2">{{ formatFileName(formData.imageUrl) }}</span>
+              <button @click="removeImage" class="ml-2 text-black text-sm">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <input type="file" @change="onFileSelected" ref="fileInput" class="hidden" />
+
+            <button 
+              type="button" 
+              @click="triggerFileInput" 
+              class="bg-gray-300 text-gray-700 p-2 rounded-full h-10 w-10 flex justify-center items-center transition-colors duration-200"
+              :class="{'bg-violet-400': formData.imageUrl, 'bg-gray-300': !formData.imageUrl}" 
+            >
+              <span class="material-icons" :class="{'text-white': formData.imageUrl, 'text-gray-700': !formData.imageUrl}" >image</span>
+            </button>
           </div>
 
           <!-- Term -->
@@ -71,8 +94,8 @@
 
       <!-- Floating Create Button -->
       <div class="sticky bottom-0 p-4">
-        <button @click="createEntry" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
-          Create 
+        <button @click="createEntry" class="min-h-12 w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
+          {{ buttonText }} 
         </button>
       </div>
     </div>
@@ -83,6 +106,7 @@
 import { db } from "../../firebase"; // Firestore instance
 import { collection, addDoc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
 
 export default {
   data() {
@@ -95,16 +119,26 @@ export default {
         notes: "",
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: "",
+        imageUrl: "", // New field for storing image URL
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      selectedFile: null, // To store the selected image file
+      imagePreviewUrl: "", // To store the image preview URL
+      isLoading: false, // Loading state for the button
+      loadingText: 'Create', // Initial button text
     };
+  },
+  computed: {
+    buttonText() {
+      return this.isLoading ? this.loadingText : 'Create'; // Toggle text based on loading state
+    }
   },
   methods: {
     toggleRepeat(day) {
       this.formData.repeatDays[day] = !this.formData.repeatDays[day];
     },
     goBack() {
-      this.$router.go(-1);
+      this.$router.push('/');
     },
     increaseGoal() {
       this.formData.dailyGoal++;
@@ -117,8 +151,59 @@ export default {
     setReminder() {
       alert("Reminder feature not implemented yet!");
     },
+    triggerFileInput() {
+      this.$refs.fileInput.click(); // Trigger the hidden file input click
+    },
+    onFileSelected(event) {
+      this.selectedFile = event.target.files[0];
+      if (this.selectedFile) {
+        this.formData.imageUrl = this.selectedFile.name; // Show the selected file name
+        this.imagePreviewUrl = URL.createObjectURL(this.selectedFile); // Create a preview URL
+      }
+    },
+    formatFileName(fileName) {
+      const maxLength = 10; // Maximum length before truncating
+      const extension = fileName.split('.').pop(); // Get file extension
+      const baseName = fileName.substring(0, fileName.length - extension.length - 1); // Get base name without extension
+      
+      if (baseName.length > maxLength) {
+        return `${baseName.substring(0, maxLength)}... .${extension}`; // Truncate and append ellipsis
+      }
+      
+      return fileName; // Return original file name if it's within limit
+    },
+    removeImage() {
+      this.formData.imageUrl = ""; // Clear the image name
+      this.imagePreviewUrl = ""; // Clear the preview URL
+      this.selectedFile = null; // Clear the selected file
+    },
+    async uploadImage() {
+      if (!this.selectedFile) return ""; // Return empty string if no file selected
+
+      const storage = getStorage();
+      const storageRef = ref(storage, `habit_img/${this.$store.state.user.uid}/${this.formData.name}/${this.selectedFile.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, this.selectedFile);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          null,
+          (error) => {
+            console.error("Error uploading image:", error);
+            reject("Failed to upload image.");
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL); // Resolve with the download URL
+          }
+        );
+      });
+    },
     async createEntry() {
       try {
+        this.isLoading = true; // Set loading state to true
+        this.startLoadingDots();
+
         const auth = getAuth();
         const user = auth.currentUser;
 
@@ -126,9 +211,12 @@ export default {
           throw new Error("User not authenticated. Please log in.");
         }
 
-        // Step 1: Add the habit to the "habits" collection with userId
+        // Upload the image if one is selected and get the download URL
+        const imageUrl = await this.uploadImage();
+
+        // Step 1: Add the habit to the "habits" collection with userId and image URL
         const habitRef = await addDoc(collection(db, "habits"), {
-          userId: user.uid, // Add userId to the document
+          userId: user.uid,
           name: this.formData.name,
           dailyGoal: this.formData.dailyGoal,
           reminder: this.formData.reminder,
@@ -137,27 +225,35 @@ export default {
           termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
           createdAt: new Date(),
           repeat: this.formData.repeatDays,
+          imageUrl: imageUrl || this.formData.imageUrl, // Save image URL in Firestore if it exists
         });
 
         console.log("Habit created successfully with userId:", user.uid);
         alert("Habit created successfully!");
-        this.goBack(); // Navigate back after successful creation
-      } catch (e) {
-        console.error("Error adding document: ", e);
-        alert("An error occurred while creating the habit. Please try again.");
+      } catch (error) {
+        console.error("Error creating habit:", error);
+        alert("Error creating habit: " + error.message);
+      } finally {
+        this.isLoading = false; // Reset loading state
+        this.loadingText = 'Create'; // Reset button text
+        this.goBack();
       }
+    },
+    startLoadingDots() {
+      let dotCount = 1;
+      const loadingInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4; // Loop between 0 and 3
+        this.loadingText = '.'.repeat(dotCount); // Update loading text with dots
+
+        if (!this.isLoading) {
+          clearInterval(loadingInterval); // Stop interval if not loading
+        }
+      }, 250); // Update every 250 ms
     },
   },
 };
 </script>
 
 <style scoped>
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
 
-.scrollbar-hide {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
 </style>
