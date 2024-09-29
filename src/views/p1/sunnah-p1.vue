@@ -15,7 +15,7 @@
           :key="sunnah.id"
           class="mb-2"
         >
-          <div class="w-full p-8 mb-4 bg-white shadow-md rounded-xl cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-8 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>
@@ -40,7 +40,7 @@
           :key="sunnah.id"
           class="mb-2"
         >
-          <div class="w-full p-8 mb-4 bg-white shadow-md rounded-xl cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-8 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>

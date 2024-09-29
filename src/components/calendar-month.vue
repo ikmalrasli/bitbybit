@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col bg-white rounded-lg shadow-lg p-4 text-center">
+  <div class="flex flex-col bg-white rounded-lg p-4 text-center">
     <!-- Calendar Header -->
     <div class="flex justify-between items-center mb-4">
       <button class="text-gray-500 hover:text-gray-700 material-icons" @click="previousMonth">chevron_left</button>
