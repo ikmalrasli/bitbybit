@@ -18,21 +18,38 @@
       <div
         v-for="(day, index) in calendarDays"
         :key="index"
-        :class="[
+        :class="[ 
           day.isCurrentMonth ? 'text-black' : 'text-gray-400',
-          day.isToday ? 'bg-violet-100 text-violet-500' : '',
-          'relative', 'p-4', 'rounded-full',
-          'transition-colors duration-300'
+          day.isToday ? 'font-semibold text-violet-500' : '', 
+          'relative', 'p-2', 'rounded-full', 
+          'transition-colors duration-300' 
         ]"
       >
-        {{ day.day }}
+        
+        <div class="flex flex-col items-center">
+          <RadialProgressbar
+          :show="day.isToday"
+          :progress="30"
+          :radius="40"
+          :datenumber="day.day"
+          color="text-violet-400"/>
+          <svg v-if="day.isToday" class="fill-violet-400 w-2 h-2 mt-1">
+            <circle r="3" cx="3" cy="3" />
+          </svg>
+        </div> 
       </div>
     </div>
+
   </div>
 </template>
 
 <script>
+import RadialProgressbar from './RadialProgressbar.vue';
+
 export default {
+  components: {
+    RadialProgressbar,
+  },
   data() {
     return {
       currentMonth: new Date().getMonth(), // 0-11, current month

@@ -6,10 +6,6 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  size: {
-    type: Number,
-    default: 60 // Keep the default size for fallback, but it won't be fixed.
-  },
   color: {
     type: String,
     default: 'text-primary'

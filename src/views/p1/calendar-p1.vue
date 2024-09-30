@@ -9,7 +9,12 @@
                 :percent="habitsProgress(day.dateobj)"
                 color="bg-violet-400"
               />
-              <span class="mt-2">{{ day.name }}</span>
+              <div class="flex flex-col items-center">
+                <span class="flex mt-2" :class="{ 'text-violet-400 font-semibold': day.dateobj.getDate() === new Date().getDate() }">{{ day.name }}</span>
+                <svg v-if="day.dateobj.getDate() === new Date().getDate()" class="fill-violet-400 w-2 h-2">
+                  <circle r="3" cx="3" cy="3" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

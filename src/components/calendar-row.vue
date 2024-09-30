@@ -17,7 +17,6 @@
           <RadialProgressbar
             :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
             :progress="habitsProgress(day.dateobj)"
-            :size="24"
             :radius="40"
             :datenumber="day.date"
             style="margin-top:12px;"
