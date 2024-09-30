@@ -99,7 +99,7 @@ export default createStore({
       
       try {
         if (state.user) { // Ensure the user is authenticated
-          //commit('setLoading', true);
+          commit('setLoading', true);
           const userId = state.user.uid; // Get the authenticated user's ID
           
           // Query Firestore for habits belonging to the authenticated user
@@ -189,40 +189,6 @@ export default createStore({
       });
     },
     async getDayHabits({ commit, state }, day) {
-      // const dayProgress = [];
-      // const dayStart = new Date(day);
-      // const dayEnd = new Date(day);
-      // dayStart.setHours(0, 0, 0, 0);
-      // dayEnd.setHours(23, 59, 59, 999);
-    
-      // state.weekProgress.forEach(habit => {
-      //   const habitTimestamp = habit.timestamp ? habit.timestamp.toDate() : null;
-
-      //   if (habitTimestamp 
-      //     && habitTimestamp >= dayStart 
-      //     && habitTimestamp <= dayEnd) {
-      //     dayProgress.push(habit);
-      //   }
-      // });
-
-      // const combinedDayHabits = state.habits.map(habit => {
-      //   const progressEntry = dayProgress.find(weekHabit => weekHabit.habitId === habit.habitId);
-      //   return {
-      //     ...habit,
-      //     progress: progressEntry ? progressEntry.progress : 0, // Use progress from weekProgress or 0 if none
-      //     progressId: progressEntry ? progressEntry.progressId : '',
-      //     timestamp: progressEntry ? progressEntry.timestamp : null,
-      //   };
-      // });
-
-      // const StartHabits = combinedDayHabits.filter(habit => 
-      //    habit.termStart.toDate()<=day)
-      // const EndHabits = StartHabits.filter(habit =>
-      //   habit.termEnd === null
-      //   || habit.termEnd.toDate()>=day
-      // ).sort((a, b) => a.name.localeCompare(b.name));
-
-      // console.log(EndHabits)
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoading', false);
