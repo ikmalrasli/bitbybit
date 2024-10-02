@@ -6,6 +6,9 @@
         <calendarRow @date-selected="handleDateSelected" />
       </div>
 
+      <div v-if="uncompletedHabits.length===0 && completedHabits.length===0" class="w-full p-4 mb-4 text-gray-700">
+        <p class="text-center">No Habits</p>
+      </div>
       <!-- Collapsible Section -->
       <div class="mb-4">
         <!-- Uncompleted habits -->
@@ -27,7 +30,7 @@
                 :timesdone="habit.progress + '/' + habit.dailyGoal"
                 color="bg-violet-400"
                 class="cursor-pointer"
-                @click="openDetail(habit)"
+                @click="this.selectedDay <= new Date().setHours(23, 59, 59, 999) && this.selectedDay >= new Date().setHours(0, 0, 0, 0) ? openDetail(habit) : null"
               />
             </div>
           </div>
@@ -75,7 +78,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(['habits', 'weekHabits' ,'dayHabits']),
+    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay']),
     completedHabits() {
       const completed = this.dayHabits.filter(habit => 
         habit.progress >= habit.dailyGoal)
