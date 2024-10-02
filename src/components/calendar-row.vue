@@ -10,6 +10,7 @@
         :class="[
           'rounded-lg border-2 bg-white', 
           isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-400 border-opacity-10',
+          day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer' : 'cursor-default',
         ]"
       >
         <div class="flex flex-col items-center">
@@ -82,6 +83,7 @@ export default {
       const selectedDate = new Date(day.dateobj);
       this.updateSelectedDay(selectedDate); // Update the selected day in Vuex store
       this.$store.dispatch('getDayHabits', selectedDate, true);
+      this.$router.push('/');
     },
     isSelected(day) {
       // Check if the day is the selected day

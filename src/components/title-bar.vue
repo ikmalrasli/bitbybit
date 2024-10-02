@@ -1,7 +1,7 @@
 <template>
   <div class="w-full flex justify-between items-center bg-white px-4 py-2 h-14">
     <!-- Sidebar Toggle Button for Mobile -->
-    <span @click="toggleSidebar" class="material-icons md:invisible ">
+    <span @click="toggleSidebar" class="material-icons cursor-pointer md:invisible ">
       menu
     </span>
     <!-- Title (Centered) -->

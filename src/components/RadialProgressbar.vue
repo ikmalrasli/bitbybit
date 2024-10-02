@@ -21,6 +21,14 @@ const props = defineProps({
   datenumber: {
     type: Number,
     default: 0
+  },
+  datecolor: {
+    type: String,
+    default: '#000000'
+  },
+  datesize: {
+    type: Number,
+    default: 32
   }
 });
 
@@ -60,15 +68,18 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
         :stroke-dasharray="circumference"
         :stroke-dashoffset="strokeDashOffset"
       />
+      
       <text
         :x="viewBoxSize / 2"
         :y="viewBoxSize / 2"
-        font-size="32"
+        :font-size="datesize"
         text-anchor="middle"
         alignment-baseline="middle"
+        :style="{ fill: datecolor }"
       >
         {{ props.datenumber }}
       </text>
+      
     </svg>
   </div>
 </template>

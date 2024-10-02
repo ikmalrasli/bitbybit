@@ -19,19 +19,20 @@
         v-for="(day, index) in calendarDays"
         :key="index"
         :class="[ 
-          day.isCurrentMonth ? 'text-black' : 'text-gray-400',
-          day.isToday ? 'font-semibold text-violet-500' : '', 
+          day.isToday ? 'text-purple-500' : '', 
           'relative', 'p-2', 'rounded-full', 
           'transition-colors duration-300' 
         ]"
       >
         
-        <div class="flex flex-col items-center">
+        <div class="min-h-10 flex flex-col items-center">
           <RadialProgressbar
-          :show="day.isToday"
-          :progress="30"
+          :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
+          :progress="day.randomProgress"
           :radius="40"
           :datenumber="day.day"
+          :datecolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
+          :datesize="36"
           color="text-violet-400"/>
           <svg v-if="day.isToday" class="fill-violet-400 w-2 h-2 mt-1">
             <circle r="3" cx="3" cy="3" />
@@ -54,8 +55,8 @@ export default {
     return {
       currentMonth: new Date().getMonth(), // 0-11, current month
       currentYear: new Date().getFullYear(),
-      selectedDay: 10, // Example for selected day
-      highlightedDays: [9, 10], // Example for highlighted days
+      // selectedDay: 10, // Example for selected day
+      // highlightedDays: [9, 10], // Example for highlighted days
       daysOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       today: new Date().getDate(), // Today's date
       todayMonth: new Date().getMonth(), // Today's month
@@ -84,7 +85,8 @@ export default {
         days.push({
           day: prevMonthDays - i,
           isCurrentMonth: false,
-          isToday: false
+          isToday: false,
+          randomProgress: Math.floor(Math.random() * 100)
         });
       }
 
@@ -94,8 +96,9 @@ export default {
           day: i,
           isCurrentMonth: true,
           isSelected: i === this.selectedDay,
-          isHighlighted: this.highlightedDays.includes(i),
-          isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear
+          //isHighlighted: this.highlightedDays.includes(i),
+          isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear,
+          randomProgress: Math.floor(Math.random() * 100)
         });
       }
 
@@ -105,7 +108,8 @@ export default {
         days.push({
           day: i,
           isCurrentMonth: false,
-          isToday: false
+          isToday: false,
+          randomProgress: Math.floor(Math.random() * 100)
         });
       }
 

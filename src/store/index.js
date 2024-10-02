@@ -20,7 +20,7 @@ export default createStore({
     weekHabits: [],
     dayHabits: [],
     selectedHabit: [],
-    loading: false
+    loading: true
   },
   mutations: {
     setLoading(state, loading) {
@@ -89,7 +89,7 @@ export default createStore({
             commit('SET_USER', user);
           } else {
             commit('CLEAR_USER');
-            //commit('setLoading', false);
+            commit('setLoading', false);
           }
           resolve(user);
         });
@@ -114,6 +114,11 @@ export default createStore({
             querySnapshot.forEach((doc) => {
               habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
+
+              if (habits.length === 0){
+                commit('setLoading', false);
+              }
+
               this.dispatch('fetchWeekProgress')
             });
           }, (error) => {
@@ -180,7 +185,13 @@ export default createStore({
               }, []);
               
               commit('SET_WEEK_PROGRESS', outputArray);
+
+              if (outputArray.length === 0){
+                commit('setLoading', false);
+              }
+              
               this.dispatch('getDayHabits', this.state.selectedDay)
+          
             });
           });          
         } catch (error) {
@@ -192,7 +203,6 @@ export default createStore({
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoading', false);
-    
     },
   },
   getters: {
