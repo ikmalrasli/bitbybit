@@ -1,3 +1,8 @@
+function getDayOfWeek(date) {
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  return days[new Date(date).getDay()];  // getDay() returns 0 for Sunday, 6 for Saturday
+}
+
 export function getTotalProgressDay(day, weekProgress, habits) {
     const dayProgress = [];
     const dayStart = new Date(day);
@@ -23,10 +28,13 @@ export function getTotalProgressDay(day, weekProgress, habits) {
       };
     });
   
-    const startHabits = combinedDayHabits.filter(habit => habit.termStart.toDate() <= day);
+    const dayOfWeek = getDayOfWeek(day);
+    const filteredHabits = combinedDayHabits.filter(habit => habit.repeat[dayOfWeek]);
+    const startHabits = filteredHabits.filter(habit => habit.termStart.toDate() <= day);
     const endHabits = startHabits.filter(habit =>
       habit.termEnd === null || habit.termEnd.toDate() >= day
     ).sort((a, b) => a.name.localeCompare(b.name));
+    
   
     let progress = 0;
     let totalDailyGoal = 0;
