@@ -14,7 +14,6 @@
 
     <!-- Calendar Days -->
     <div class="grid grid-cols-7 text-center gap-x-1">
-      <!-- Render all days (previous, current, and next) -->
       <div
         v-for="(day, index) in calendarDays"
         :key="index"
@@ -24,28 +23,32 @@
           'transition-colors duration-300' 
         ]"
       >
-        
-        <div class="min-h-10 flex flex-col items-center">
+        <div class="min-h-16 flex flex-col items-center">
+          <!-- Show RadialProgressBar for current month and days up to today -->
           <RadialProgressbar
-          :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
-          :progress="day.randomProgress"
-          :radius="40"
-          :datenumber="day.day"
-          :datecolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
-          :datesize="36"
-          color="text-violet-400"/>
+            :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
+            :progress="day.progress"
+            :radius="40"
+            :datenumber="day.day"
+            :datecolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
+            :datesize="36"
+            color="text-violet-400"
+          />
           <svg v-if="day.isToday" class="fill-violet-400 w-2 h-2 mt-1">
             <circle r="3" cx="3" cy="3" />
           </svg>
-        </div> 
+        </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import RadialProgressbar from './RadialProgressbar.vue';
+import { getTotalProgressDayForMonth } from '../utils/getTotalProgressDayForMonth';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default {
   components: {
@@ -53,71 +56,27 @@ export default {
   },
   data() {
     return {
-      currentMonth: new Date().getMonth(), // 0-11, current month
+      currentMonth: new Date().getMonth(),
       currentYear: new Date().getFullYear(),
-      // selectedDay: 10, // Example for selected day
-      // highlightedDays: [9, 10], // Example for highlighted days
       daysOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-      today: new Date().getDate(), // Today's date
-      todayMonth: new Date().getMonth(), // Today's month
-      todayYear: new Date().getFullYear(), // Today's year
+      today: new Date().getDate(),
+      todayMonth: new Date().getMonth(),
+      todayYear: new Date().getFullYear(),
+      calendarDays: [],
+      progressArray: [], // Combined progress data
     };
   },
   computed: {
-    // Get the name of the current month
     currentMonthName() {
       const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June', 'July',
-        'August', 'September', 'October', 'November', 'December',
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
+        'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
       ];
       return monthNames[this.currentMonth];
     },
-
-    // Generate the days of the calendar
-    calendarDays() {
-      const days = [];
-      const totalDaysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
-      const firstDayOfMonth = new Date(this.currentYear, this.currentMonth, 1).getDay();
-
-      // Days from previous month to fill the first row
-      const prevMonthDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
-      for (let i = firstDayOfMonth - 1; i >= 0; i--) {
-        days.push({
-          day: prevMonthDays - i,
-          isCurrentMonth: false,
-          isToday: false,
-          randomProgress: Math.floor(Math.random() * 100)
-        });
-      }
-
-      // Current month days
-      for (let i = 1; i <= totalDaysInMonth; i++) {
-        days.push({
-          day: i,
-          isCurrentMonth: true,
-          isSelected: i === this.selectedDay,
-          //isHighlighted: this.highlightedDays.includes(i),
-          isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear,
-          randomProgress: Math.floor(Math.random() * 100)
-        });
-      }
-
-      // Fill the last row with next month's days
-      const remainingDays = (7 - (days.length % 7)) % 7;
-      for (let i = 1; i <= remainingDays; i++) {
-        days.push({
-          day: i,
-          isCurrentMonth: false,
-          isToday: false,
-          randomProgress: Math.floor(Math.random() * 100)
-        });
-      }
-
-      return days;
-    },
+    ...mapState(['habits', 'weekProgress']),
   },
   methods: {
-    // Go to the previous month
     previousMonth() {
       if (this.currentMonth === 0) {
         this.currentMonth = 11;
@@ -125,8 +84,8 @@ export default {
       } else {
         this.currentMonth--;
       }
+      this.fetchProgress();
     },
-    // Go to the next month
     nextMonth() {
       if (this.currentMonth === 11) {
         this.currentMonth = 0;
@@ -134,7 +93,110 @@ export default {
       } else {
         this.currentMonth++;
       }
+      this.fetchProgress();
     },
+    fetchProgress() {
+      const firstDayOfCurrentMonth = new Date(this.currentYear, this.currentMonth, 1);
+      const q = query(
+        collection(db, 'progress'),
+        where('timestamp', '>=', firstDayOfCurrentMonth),
+        orderBy('timestamp', 'desc')
+      );
+
+      onSnapshot(q, (querySnapshot) => {
+        const progressArray = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          progressArray.push({ ...data, progressId: doc.id });
+        });
+        this.processProgressData(progressArray);
+      });
+    },
+    processProgressData(progressArray) {
+      const outputArray = progressArray.reduce((acc, curr) => {
+        const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
+        const currentDay = currentDate.setHours(0, 0, 0, 0);
+
+        const existingHabit = acc.find(habit => {
+          const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
+          const existingDay = habitDate.setHours(0, 0, 0, 0);
+          return habit.habitId === curr.habitId && existingDay === currentDay;
+        });
+
+        if (existingHabit) {
+          if (curr.progress > existingHabit.progress) {
+            acc[acc.indexOf(existingHabit)] = curr;
+          }
+        } else {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      // Calculate the start and end of yesterday
+      const now = new Date();
+      const yesterdayStart = new Date(now.setDate(now.getDate() - 1)).setHours(0, 0, 0, 0);
+      const yesterdayEnd = new Date(now.setDate(now.getDate() + 1)).setHours(0, 0, 0, -1); // End of yesterday
+
+      // Filter outputArray for timestamps within yesterday's timeframe
+      const filteredOutputArray = outputArray.filter(item => {
+        const itemTimestamp = item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
+        return itemTimestamp >= yesterdayStart && itemTimestamp <= yesterdayEnd;
+      });
+
+      // Log the filtered output for yesterday
+      //console.log('Entries for Yesterday:', filteredOutputArray);
+      
+      this.progressArray = outputArray;
+      this.calculateMonthProgress();
+    },
+    calculateMonthProgress() {
+      const totalDaysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+      const firstDayOfMonth = new Date(this.currentYear, this.currentMonth, 1).getDay();
+      const prevMonthDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
+
+      let days = [];
+
+      // Add previous month's days
+      for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+        days.push({
+          day: prevMonthDays - i,
+          isCurrentMonth: false,
+          isToday: false,
+          progress: 0,
+        });
+      }
+
+      // Add current month's days with progress
+      for (let i = 1; i <= totalDaysInMonth; i++) {
+        const dayDate = new Date(this.currentYear, this.currentMonth, i);
+        const { totalProgress, endHabits } = getTotalProgressDayForMonth(dayDate, this.progressArray, this.habits);
+        //console.log(i, endHabits) //troubleshoot for yesterday's habit not appearing
+        days.push({
+          day: i,
+          isCurrentMonth: true,
+          isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear,
+          progress: totalProgress,
+        });
+
+      }
+
+      // Fill remaining days from the next month
+      const remainingDays = (7 - (days.length % 7)) % 7;
+      for (let i = 1; i <= remainingDays; i++) {
+        days.push({
+          day: i,
+          isCurrentMonth: false,
+          isToday: false,
+          progress: 0,
+        });
+      }
+
+      this.calendarDays = days;
+    },
+  },
+  mounted() {
+    this.fetchProgress();
   },
 };
 </script>

@@ -107,7 +107,7 @@ export default createStore({
             collection(db, 'habits'),
             where('userId', '==', userId), // Filter habits by userId
           );
-
+          
           // Set up a real-time listener
           onSnapshot(q, (querySnapshot) => {
             const habits = [];
@@ -115,12 +115,13 @@ export default createStore({
               habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
 
-              if (habits.length === 0){
-                commit('setLoading', false);
-              }
-
               this.dispatch('fetchWeekProgress')
             });
+
+            if (querySnapshot.empty) {
+              console.log('No habits found');
+              commit('setLoading', false);
+            }
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
           });          
@@ -157,13 +158,10 @@ export default createStore({
               progressArray.push({ ...data, progressId: doc.id });
               
               const outputArray = progressArray.reduce((acc, curr) => {
-                // Convert Firestore timestamp to JavaScript Date object
                 const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
               
-                // Get the day (ignoring time) for the current entry
                 const currentDay = currentDate.setHours(0, 0, 0, 0);
               
-                // Find if there's already a habit with the same habitId and same day in acc
                 const existingHabit = acc.find(habit => {
                   const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
                   const existingDay = habitDate.setHours(0, 0, 0, 0);
@@ -171,13 +169,11 @@ export default createStore({
                   return habit.habitId === curr.habitId && existingDay === currentDay;
                 });
               
-                // If habit on the same day is found, replace it if the progress is higher
                 if (existingHabit) {
                   if (curr.progress > existingHabit.progress) {
                     acc[acc.indexOf(existingHabit)] = curr;
                   }
                 } else {
-                  // Otherwise, add the new entry
                   acc.push(curr);
                 }
               
@@ -188,11 +184,17 @@ export default createStore({
 
               if (outputArray.length === 0){
                 commit('setLoading', false);
+                console.log('No weekProgress found')
               }
               
               this.dispatch('getDayHabits', this.state.selectedDay)
           
             });
+
+            if (querySnapshot.empty) {
+              console.log('No weekProgress found');
+              commit('setLoading', false);
+            }
           });          
         } catch (error) {
           console.error("Error fetching latest progress:", error);

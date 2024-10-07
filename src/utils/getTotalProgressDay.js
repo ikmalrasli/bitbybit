@@ -28,18 +28,21 @@ export function getTotalProgressDay(day, weekProgress, habits) {
       };
     });
   
+    const startDay = new Date(day).setHours(0, 0, 0, 0);
+    const endDay = new Date(day).setHours(23, 59, 59, 999);
+    
     const dayOfWeek = getDayOfWeek(day);
     const filteredHabits = combinedDayHabits.filter(habit => habit.repeat[dayOfWeek]);
-    const startHabits = filteredHabits.filter(habit => habit.termStart.toDate() <= day);
+    const startHabits = filteredHabits.filter(habit => {
+      const termStart = habit.termStart.toDate().setHours(0, 0, 0, 0); // Normalize termStart
+      return termStart <= endDay;
+    });
     const endHabits = startHabits.filter(habit =>
-      habit.termEnd === null || habit.termEnd.toDate() >= day
+      habit.termEnd === null || habit.termEnd.toDate() >= endDay
     ).sort((a, b) => a.name.localeCompare(b.name));
-    
   
     let progress = 0;
     let totalDailyGoal = 0;
-    const startDay = new Date(day).setHours(0, 0, 0, 0);
-    const endDay = new Date(day).setHours(23, 59, 59, 999);
   
     endHabits.forEach(habit => {
       const habitDate = habit.timestamp ? habit.timestamp.toDate() : null;
