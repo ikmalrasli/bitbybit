@@ -128,17 +128,29 @@ export default {
       loadingText: 'Create', // Initial button text
     };
   },
+  mounted() {
+    if (this.$store.getters.selectedSunnah) {
+      this.formData.name = this.$store.getters.selectedSunnah.name;
+      this.formData.dailyGoal = this.$store.getters.selectedSunnah.dailyGoal;
+      this.formData.repeatDays = this.$store.getters.selectedSunnah.repeat;
+    }
+  },
   computed: {
     buttonText() {
       return this.isLoading ? this.loadingText : 'Create'; // Toggle text based on loading state
-    }
+    },
   },
   methods: {
     toggleRepeat(day) {
       this.formData.repeatDays[day] = !this.formData.repeatDays[day];
     },
     goBack() {
-      this.$router.push('/');
+      if (this.$store.getters.selectedSunnah) {
+        this.$router.push('/sunnahs/' + this.$store.getters.selectedSunnah.sunnahId);
+      }
+      else{
+        this.$router.push('/');
+      }
     },
     increaseGoal() {
       this.formData.dailyGoal++;

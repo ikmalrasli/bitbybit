@@ -62,6 +62,7 @@ export default {
       this.$route.name === "detail-habit";
     },
     openAddPage() {
+      this.$store.commit('setSelectedSunnah', null);
       this.$router.push('/add-habit');
     }
   }

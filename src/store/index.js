@@ -20,9 +20,14 @@ export default createStore({
     weekHabits: [],
     dayHabits: [],
     selectedHabit: [],
-    loading: true
+    allSunnahs: [],
+    loading: true,
+    selectedSunnah: null
   },
   mutations: {
+    setSelectedSunnah(state, sunnah) {
+      state.selectedSunnah = sunnah;
+    },
     setLoading(state, loading) {
       state.loading = loading;
     },
@@ -51,6 +56,9 @@ export default createStore({
     },
     setSelectedHabit(state, habit) {
       state.selectedHabit = habit
+    },
+    SET_SUNNAHS(state, sunnahs) {
+      state.allSunnahs = sunnahs;
     }
   },
   actions: {
@@ -206,6 +214,16 @@ export default createStore({
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoading', false);
     },
+    fetchSunnahs({ commit }) {
+      const sunnahs = [];
+      // Fetch sunnahs from Firestore
+      onSnapshot(query(collection(db, 'sunnahs')), (snapshot) => {
+        snapshot.forEach(doc => {
+          sunnahs.push({ sunnahId: doc.id, ...doc.data() });
+        });
+        commit('SET_SUNNAHS', sunnahs);
+      });
+    }
   },
   getters: {
     getSelectedDay: (state) => state.selectedDay,
@@ -213,5 +231,7 @@ export default createStore({
     user: (state) => state.user,
     habits: (state) => state.habits,
     weekHabits: (state) => state.weekHabits,
+    allSunnahs: state => state.allSunnahs,
+    selectedSunnah: state => state.selectedSunnah
   },
 });

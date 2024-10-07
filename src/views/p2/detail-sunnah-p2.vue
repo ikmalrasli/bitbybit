@@ -1,66 +1,62 @@
 <template>
-    <div class="w-full h-full flex flex-row">
-      <div class="w-full h-full flex flex-col bg-white">
-        <!-- Header -->
-        <header class="bg-white p-4 flex flex-row relative">
-          <button @click="goBack" class="material-icons">chevron_left</button>
-          <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{sunnahData?.name}}</h1>
-        </header>
+  <div class="w-full h-full flex flex-col flex p-4">
+    <div v-if="sunnah" class="w-full h-full flex flex-col bg-white">
+      <!-- Header -->
+      <header class="bg-white p-4 flex flex-row relative">
+        <button @click="goBack" class="material-icons">chevron_left</button>
+        <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{sunnah.name}}</h1>
+      </header>
+      <p class="mt-2 p-4">{{ sunnah.description }}</p>
 
-        <!-- Floating Create Button -->
-      <div class="sticky bottom-0 p-4">
-        <button @click="createEntry" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
-          Add to habits 
-        </button>
-      </div>
-      </div>
-
-      
     </div>
+    <div v-else>
+      <p>Loading...</p>
+    </div>
+
+    <!-- Floating Create Button -->
+    <div class="sticky bottom-0 p-4">
+      <button v-if="sunnah" @click="addToHabits" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
+        Add to habits 
+      </button>
+    </div>
+  </div>
 </template>
 
 <script>
-  export default {
-    props: {
-      sunnahId: {
-        type: String,
-        required: true
-      }
+import { mapGetters } from 'vuex';
+
+export default {
+  data() {
+    return {
+      sunnah: null
+    };
+  },
+  computed: {
+    ...mapGetters(['allSunnahs']),
+  },
+  methods: {
+    fetchSunnahDetail() {
+      const sunnahId = this.$route.params.sunnahId;
+      this.sunnah = this.allSunnahs.find(sunnah => sunnah.sunnahId === sunnahId);
     },
-    data() {
-      return {
-        sunnahData: null,
-        allSunnahs: [
-            { id: 'bfghjadfsbg', name: "Ayatul Kursi before sleep", frequency: "Daily" },
-            { id: 'gbndfjhgkjg', name: "Doa after Wudhu", frequency: "Daily" },
-            { id: 'erutyhyiure', name: "Sedekah Subuh", frequency: "Daily" },
-            { id: 'ureyutiirti', name: "Fasting on Mondays and Thurdays", frequency: "Weekly" },
-            { id: 'fuighufhguh', name: "Recite Al-Kahfi on Fridays", frequency: "Weekly" }
-        ]
-      };
+    goBack() {
+      this.$router.push('/sunnahs');
     },
-    created() {
-      this.loadSunnahData();
-    },
-    watch: {
-      sunnahId(newId, oldId) {
-        if (newId !== oldId) {
-          this.loadSunnahData();
+    addToHabits() {
+      this.$store.commit('setSelectedSunnah', this.sunnah);
+      this.$router.push({
+        name: 'add-sunnah',  // Assuming this is the name of the route
+        params: {
+          sunnahId: this.sunnah.sunnahId
         }
-      }
-    },
-    methods: {
-      loadSunnahData() {
-        this.sunnahData = this.allSunnahs.find(sunnah => sunnah.id === this.sunnahId);
-  
-        if (!this.sunnahData) {
-          console.error(`Habit with ID ${this.sunnahId} not found.`);
-        }
-      },
-      goBack() {
-        // Go back to the previous page
-        this.$router.go(-1);
-      },
+      });
     }
+  },
+  watch: {
+    '$route.params.sunnahId': 'fetchSunnahDetail'
+  },
+  mounted() {
+    this.fetchSunnahDetail();
   }
-  </script>
+};
+</script>

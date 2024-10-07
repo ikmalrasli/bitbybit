@@ -13,6 +13,7 @@ import DetailSunnah from '../views/p2/detail-sunnah-p2.vue'
 import Login from '../views/auth/login-page.vue'
 import Register from '../views/auth/register-page.vue'
 import ForgotPassword from '../views/auth/forgot-page.vue'
+import AddSunnahs from '../views/add-sunnahs.vue'
 
 const routes = [
   {
@@ -74,6 +75,18 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'sunnahs/:sunnahId-add',
+        name: 'add-sunnah',
+        components: {
+          default: Sunnahs,
+          right: AddHabit
+        },
+        props: {
+          right: (route) => ({ sunnahId: route.params.sunnahId })  // Pass habitData to the right view
+        },
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'stats',
         name: 'stats',
         component: Stats,
@@ -103,6 +116,12 @@ const routes = [
     name: 'forgot-password',
     component: ForgotPassword,
     meta: { title: 'Forgot Password' }
+  },
+  {
+    path: '/add-sunnahs',
+    name: 'add-sunnahs',
+    component: AddSunnahs,
+    meta: { title: 'Add Sunnahs' }
   }
 ];
 
@@ -119,6 +138,10 @@ router.beforeEach((to, from, next) => {
   if (to.name === 'detail-habit' && !from.name) {
     // Redirect to home if there is no "from" route (i.e., on page refresh)
     next({ name: 'home' });
+  } 
+  else if (to.name === 'detail-sunnah' && !from.name) {
+    // Redirect to home if there is no "from" route (i.e., on page refresh)
+    next({ name: 'sunnahs' });
   } 
   // Handle authentication check
   else if (requiresAuth && !isAuthenticated) {
