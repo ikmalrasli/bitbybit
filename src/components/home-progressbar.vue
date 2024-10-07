@@ -37,7 +37,7 @@ const updateTextColor = () => {
     const progressBarWidth = (props.percent / 100) * containerWidth; // Get progress bar width
 
     // If the progress bar width is larger than the text width, change task text color to white
-    textColor.value = progressBarWidth > textWidth ? 'text-white' : 'text-black';
+    textColor.value = progressBarWidth >= textWidth ? 'text-white' : 'text-black';
 
     // Calculate remaining space on the right side and compare it to timesdone text width
     const remainingSpaceRight = containerWidth - progressBarWidth;
