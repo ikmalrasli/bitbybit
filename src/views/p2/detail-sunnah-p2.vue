@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col flex p-4">
+  <div class="w-full h-full flex flex-col flex">
     <div v-if="sunnah" class="w-full h-full flex flex-col bg-white">
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">

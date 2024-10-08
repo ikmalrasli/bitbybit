@@ -84,9 +84,9 @@ export default {
 },
   methods: {
     toggleSection(section) {
-      if (section === 'daily') {
+      if (section === 'Daily') {
         this.showDaily = !this.showDaily;
-      } else if (section === 'weekly') {
+      } else if (section === 'Weekly') {
         this.showWeekly = !this.showWeekly;
       }
     },
