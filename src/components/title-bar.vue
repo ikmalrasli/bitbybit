@@ -47,7 +47,8 @@ export default {
         return formattedDate; // Use the globally selected date
       }
       if (this.$route.name === "sunnahs" ||  
-      this.$route.name === "detail-sunnah" ) {
+      this.$route.name === "detail-sunnah" ||
+      this.$route.name === "add-sunnah") {
         return "Sunnahs";
       }
       return this.$route.meta.title; // Otherwise, use the meta title
