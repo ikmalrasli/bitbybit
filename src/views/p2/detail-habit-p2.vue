@@ -4,7 +4,26 @@
     <header class="bg-white p-4 flex flex-row relative justify-between">
       <button @click="goBack" class="material-icons">chevron_left</button>
       <h1 class="text-xl text-black font-bold">{{ selectedHabit?.name || 'Habit Details' }}</h1>
-      <button class="material-icons disabled:opacity-50">more_horiz</button>
+
+      <!-- More Options Button (Dropdown Toggle) -->
+      <div class="relative">
+        <!-- Dropdown Toggle Button -->
+        <button @click="toggleDropdown" class="material-icons">more_horiz</button>
+
+        <!-- Dropdown Menu -->
+        <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
+          <ul class="py-1 text-gray-700">
+            <li @click="option1" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
+              <span class="material-icons">edit</span>
+              <span class="text-center w-full">Edit habit</span>
+            </li>
+            <li @click="option2" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md text-red-500 hover:bg-gray-100 cursor-pointer">
+              <span class="material-icons">delete</span>
+              <span class="text-center w-full">Delete habit</span>
+            </li>
+          </ul>
+        </div>
+      </div>
     </header>
 
     <div class="flex-1 overflow-y-auto px-4">
@@ -12,7 +31,6 @@
       <div class="w-full p-8 mb-4 text-gray-700 bg-white border rounded-lg text-center">
         <h2 class="flex-auto text-xl block mb-2">Progress</h2>
         <h1 class="flex-auto text-5xl">{{ addProgress }}</h1>
-
         <h2 class="flex-auto text-xl mb-2">/ {{ selectedHabit?.dailyGoal }}</h2>
 
         <div class="w-full justify-center flex">
@@ -20,8 +38,8 @@
           <button type="button" @click="decreaseGoal" class="material-icons text-gray-700">remove</button>
 
           <!-- Slider -->
-          <input v-if="selectedHabit" 
-            type="range" :min="0" :max="selectedHabit.dailyGoal" 
+          <input v-if="selectedHabit"
+            type="range" :min="0" :max="selectedHabit.dailyGoal"
             v-model="addProgress"
             class="range accent-violet-400 w-2/5 mx-2" />
 
@@ -29,7 +47,7 @@
           <button type="button" @click="increaseGoal" class="material-icons text-gray-700">add</button>
         </div>
 
-        <!-- Reset Progress Button-->
+        <!-- Reset Progress Button -->
         <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4">replay</button>
       </div>
 
@@ -56,7 +74,7 @@ export default {
   data() {
     return {
       addProgress: 0,
-      existProgress: false,
+      isDropdownOpen: false,
       docId: '',
     };
   },
@@ -68,44 +86,33 @@ export default {
     }
   },
   methods: {
-    async removeTodayEntries() {
-      try {
-        // Get the start and end of today
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0); // Beginning of the day
+    toggleDropdown(event) {
+      event.stopPropagation(); // Prevent the outside click listener from being triggered
+      this.isDropdownOpen = !this.isDropdownOpen;
 
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999); // End of the day
-
-        const habitId = this.selectedHabit.habitId;
-
-        // Query for documents with habitId and timestamp within today
-        const q = query(
-          collection(db, 'progress'),
-          where('habitId', '==', habitId),
-          where('timestamp', '>=', Timestamp.fromDate(todayStart)),
-          where('timestamp', '<=', Timestamp.fromDate(todayEnd))
-        );
-
-        const querySnapshot = await getDocs(q);
-
-        // Delete each document found
-        querySnapshot.forEach(async (doc) => {
-          await deleteDoc(doc.ref);
-          console.log(`Deleted document with ID: ${doc.id}`);
-        });
-
-        this.$store.dispatch('fetchWeekProgress');
-        this.addProgress = 0; // Reset addProgress to 0
-        this.$store.state.selectedHabit.progress = 0; // Reset selectedHabit's progress
-        this.createProgress();
-      } catch (error) {
-        console.error("Error removing today's entries: ", error);
-        alert('Error removing entries.');
+      // If the dropdown is open, add the click listener to detect clicks outside
+      if (this.isDropdownOpen) {
+        document.addEventListener('click', this.handleClickOutside);
+      } else {
+        document.removeEventListener('click', this.handleClickOutside);
       }
     },
-    goBack() {
-      this.$router.push('/');
+    handleClickOutside(event) {
+      const dropdown = this.$el.querySelector('.absolute');
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.isDropdownOpen = false;  // Close dropdown
+        document.removeEventListener('click', this.handleClickOutside); // Remove the event listener
+      }
+    },
+    option1() {
+      this.editHabit();
+      this.isDropdownOpen = false;
+      document.removeEventListener('click', this.handleClickOutside);
+    },
+    option2() {
+      this.deleteHabit();
+      this.isDropdownOpen = false;
+      document.removeEventListener('click', this.handleClickOutside);
     },
     increaseGoal() {
       if (this.addProgress < this.selectedHabit.dailyGoal) {
@@ -117,70 +124,89 @@ export default {
         this.addProgress--;
       }
     },
-    createProgress() {
+    async removeTodayEntries() {
       try {
-        const auth = getAuth();
-        const user = auth.currentUser;
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
-        if (!user) {
-          throw new Error("User not authenticated. Please log in.");
-        }
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
 
-        const habitRef = addDoc(collection(db, "progress"), {
-          habitId: this.selectedHabit.habitId,
-          progress: 0,
-          timestamp: new Date(),
+        const habitId = this.selectedHabit.habitId;
+
+        const q = query(
+          collection(db, 'progress'),
+          where('habitId', '==', habitId),
+          where('timestamp', '>=', Timestamp.fromDate(todayStart)),
+          where('timestamp', '<=', Timestamp.fromDate(todayEnd))
+        );
+
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach(async (doc) => {
+          await deleteDoc(doc.ref);
         });
-        
-        // Access the ID from the returned promise
-        habitRef.then((docRef) => {
-          this.existProgress = true;
-          this.docId = docRef.id;
-          console.log('Document created:', this.docId);
-          //start watch for addProgress change
-          this.$watch('addProgress', (newVal, oldVal) => {
-            if (newVal != oldVal && newVal > 0) {
-              this.updateProgress();
-            } else if (newVal === 0) {
-              this.removeTodayEntries();
-            }
-          })
-        });
-      } catch (e) {
-        console.error("Error adding document: ", e);
+
+        this.$store.dispatch('fetchWeekProgress');
+        this.addProgress = 0;
+        this.$store.state.selectedHabit.progress = 0;
+        this.createProgress();
+      } catch (error) {
+        alert('Error removing entries.');
       }
     },
+    goBack() {
+      this.$router.push('/');
+    },
+    createProgress() {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        throw new Error("User not authenticated. Please log in.");
+      }
+
+      const habitRef = addDoc(collection(db, "progress"), {
+        habitId: this.selectedHabit.habitId,
+        progress: 0,
+        timestamp: new Date(),
+      });
+
+      habitRef.then((docRef) => {
+        this.docId = docRef.id;
+        this.$watch('addProgress', (newVal, oldVal) => {
+          if (newVal != oldVal && newVal > 0) {
+            this.updateProgress();
+          } else if (newVal === 0) {
+            this.removeTodayEntries();
+          }
+        });
+      });
+    },
     updateProgress() {
-      if (this.docId != '') {
-        try {
-          const docRef = doc(db, 'progress', this.docId);
-          updateDoc(docRef, {
-            progress: this.addProgress,
-            timestamp: Timestamp.fromDate(new Date()),
-          });
-          console.log('Updated document:', this.docId);
-          this.$store.dispatch('fetchWeekProgress');
-        } catch (error) {
-          console.error('Error updating document:', error);
-        }
+      if (this.docId) {
+        const docRef = doc(db, 'progress', this.docId);
+        updateDoc(docRef, {
+          progress: this.addProgress,
+          timestamp: Timestamp.fromDate(new Date()),
+        });
+        this.$store.dispatch('fetchWeekProgress');
       }
     },
     watchProgress() {
-      //start watch for addProgress change
       this.$watch('addProgress', (newVal, oldVal) => {
-            if (newVal != oldVal && newVal > 0) {
-              this.updateProgress();
-            } else if (newVal === 0) {
-              this.removeTodayEntries();
-            }
-          })
+        if (newVal != oldVal && newVal > 0) {
+          this.updateProgress();
+        } else if (newVal === 0) {
+          this.removeTodayEntries();
+        }
+      });
     },
     checkProgress() {
-      //Query for documents with habitId and timestamp within today
       const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0); // Beginning of the day
+      todayStart.setHours(0, 0, 0, 0);
+
       const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999); // End of the day
+      todayEnd.setHours(23, 59, 59, 999);
 
       const q = query(
         collection(db, 'progress'),
@@ -190,23 +216,51 @@ export default {
         orderBy('timestamp', 'desc')
       );
 
-      const querySnapshot = getDocs(q);
-
-      querySnapshot.then((querySnapshot) => {
+      getDocs(q).then((querySnapshot) => {
         if (querySnapshot.empty) {
-          console.log('No progress found, creating new document...');
           this.createProgress();
         } else {
-          // this.addProgress = querySnapshot.docs[0].data().progress;
-          this.docId = querySnapshot.docs[0].id
-          console.log('update mode...')
+          this.docId = querySnapshot.docs[0].id;
           this.watchProgress();
         }
       });
     },
+    editHabit() {
+      //use addHabit layout for edit habit
+      this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.habitId } });
+    },
+    deleteHabit() {
+      //confirmation to delete habit
+      if (confirm('Are you sure you want to delete this habit?')) {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user){
+          //delete all progress from firestore with the habit id
+          const q = query(
+            collection(db, 'progress'),
+            where('habitId', '==', this.selectedHabit.habitId)
+          );
+          getDocs(q).then((querySnapshot) => {
+            querySnapshot.forEach((doc) => {
+              deleteDoc(doc.ref);
+            });
+          });
+
+          //delete habit from firestore
+          const docRef = doc(db, "habits", this.selectedHabit.habitId);
+          deleteDoc(docRef);
+
+          this.$store.dispatch('fetchHabits');
+          this.$router.push('/');
+        }
+      }
+    },
   },
   mounted() {
     this.checkProgress();
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.handleClickOutside);
   }
-}
+};
 </script>

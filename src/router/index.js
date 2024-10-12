@@ -13,7 +13,7 @@ import DetailSunnah from '../views/p2/detail-sunnah-p2.vue'
 import Login from '../views/auth/login-page.vue'
 import Register from '../views/auth/register-page.vue'
 import ForgotPassword from '../views/auth/forgot-page.vue'
-import AddSunnahs from '../views/add-sunnahs.vue'
+import AddSunnahs from '../views/add-sunnahs-admin.vue'
 
 const routes = [
   {
@@ -47,6 +47,18 @@ const routes = [
           right: (route) => ({ 
             habitId: route.params.habitId, 
             timestamp: route.params.timestamp})  // Pass habitData to the right view
+        },
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'edit/:habitId',
+        name: 'edit-habit',
+        components: {
+          default: Home,
+          right: AddHabit
+        },
+        props: {
+          right: (route) => ({ habitId: route.params.habitId })  // Pass habitData to the right view
         },
         meta: { requiresAuth: true }
       },

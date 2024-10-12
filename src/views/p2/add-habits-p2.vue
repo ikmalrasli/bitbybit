@@ -4,7 +4,7 @@
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">
         <button @click="goBack" class="material-icons">chevron_left</button>
-        <h1 class="text-lg text-black font-semibold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{ formData.name === '' ? 'Add Habit' : formData.name }}</h1>
+        <h1 class="text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{ formData.name === '' ? title : formData.name }}</h1>
       </header>
 
       <!-- Form Content -->
@@ -19,10 +19,10 @@
           <!-- Daily Goal -->
           <div>
             <label for="dailyGoal" class="text-left block text-sm font-medium text-gray-700">Daily Goal</label>
-            <div class="mt-1 flex justify-center items-center space-x-2">
-              <button type="button" @click="decreaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">-</button>
-              <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="bg-white text-black w-16 p-2 border border-gray-300 rounded-md text-center"/>
-              <button type="button" @click="increaseGoal" class="bg-gray-300 text-gray-700 p-2 rounded-md">+</button>
+            <div class="mt-1 flex items-center justify-center space-x-2">
+              <button type="button" @click="decreaseGoal" class="material-icons bg-violet-400 text-white p-2 rounded-full hover:bg-violet-500">remove</button>
+              <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="no-arrows bg-white text-black w-12 p-2 border border-gray-300 rounded-md text-center"/>
+              <button type="button" @click="increaseGoal" class="material-icons bg-violet-400 text-white p-2 rounded-full hover:bg-violet-500">add</button>
               <span>Times</span>
             </div>
           </div>
@@ -94,7 +94,7 @@
 
       <!-- Floating Create Button -->
       <div class="sticky bottom-0 p-4">
-        <button @click="createEntry" class="min-h-12 w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
+        <button @click="createEntry" class="min-h-12 w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-violet-500">
           {{ buttonText }} 
         </button>
       </div>
@@ -104,13 +104,15 @@
 
 <script>
 import { db } from "../../firebase"; // Firestore instance
-import { collection, addDoc } from "firebase/firestore"; // Firestore methods
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
+import { mapState } from "vuex";
 
 export default {
   data() {
     return {
+      title: "Add Habits",
       formData: {
         name: "",
         dailyGoal: 1,
@@ -129,16 +131,30 @@ export default {
     };
   },
   mounted() {
-    if (this.$store.getters.selectedSunnah) {
+    if (this.$store.getters.selectedSunnah && this.$route.name === 'add-sunnah') {
       this.formData.name = this.$store.getters.selectedSunnah.name;
       this.formData.dailyGoal = this.$store.getters.selectedSunnah.dailyGoal;
       this.formData.repeatDays = this.$store.getters.selectedSunnah.repeat;
+    } else if (this.$route.name === 'edit-habit') {
+      this.title = 'Edit Habit';
+      this.loadingText = 'Apply'
+      this.formData.name = this.selectedHabit.name;
+      this.formData.dailyGoal = this.selectedHabit.dailyGoal;
+      this.formData.repeatDays = this.selectedHabit.repeat;
+      this.formData.notes = this.selectedHabit.notes;
+      this.formData.termStart = this.selectedHabit.termStart ? this.selectedHabit.termStart.toDate().toISOString().split("T")[0] : '';
+      this.formData.imageUrl = this.selectedHabit.imageUrl;
+      this.imagePreviewUrl = this.selectedHabit.imageUrl;
     }
   },
   computed: {
     buttonText() {
+      if (this.$route.name === 'edit-habit') {
+        return this.isLoading ? this.loadingText : 'Apply';
+      }
       return this.isLoading ? this.loadingText : 'Create'; // Toggle text based on loading state
     },
+    ...mapState(["selectedHabit"]),
   },
   methods: {
     toggleRepeat(day) {
@@ -178,6 +194,12 @@ export default {
       const extension = fileName.split('.').pop(); // Get file extension
       const baseName = fileName.substring(0, fileName.length - extension.length - 1); // Get base name without extension
       
+      if (this.$route.name === 'edit-habit') {
+        if (baseName.length > maxLength) {
+          return `${baseName.substring(0, maxLength)}...`; // Truncate and append ellipsis
+        }
+      }
+
       if (baseName.length > maxLength) {
         return `${baseName.substring(0, maxLength)}... .${extension}`; // Truncate and append ellipsis
       }
@@ -212,10 +234,36 @@ export default {
       });
     },
     async createEntry() {
-      try {
-        this.isLoading = true; // Set loading state to true
-        this.startLoadingDots();
+      //edit habit section
+      if (this.$route.name === 'edit-habit') {
+        try {
+          this.isLoading = true; // Set loading state to true
+          this.startLoadingDots();
+          const imageUrl = await this.uploadImage();
+          await updateDoc(doc(db, "habits", this.selectedHabit.habitId), {
+            name: this.formData.name,
+            dailyGoal: this.formData.dailyGoal,
+            repeat: this.formData.repeatDays,
+            notes: this.formData.notes,
+            termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
+            termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
+            reminder: this.formData.reminder,
+            imageUrl: imageUrl || this.formData.imageUrl, // Save image URL in Firestore if it exists
+          });
 
+          alert("Habit updated successfully!");
+        } catch (error) {
+          console.error("Error updating habit:", error);
+        } finally {
+          this.isLoading = false; // Reset loading state
+          this.loadingText = 'Apply'; // Reset button text
+          this.goBack();
+        }
+        return
+      }
+
+      //create habit section
+      try {
         const auth = getAuth();
         const user = auth.currentUser;
 
@@ -267,5 +315,17 @@ export default {
 </script>
 
 <style scoped>
+.no-arrows {
+  -moz-appearance: textfield;  /* Firefox */
+  -webkit-appearance: none;    /* Chrome, Safari, Opera */
+  appearance: none;            /* Standard */
+}
+
+/* Hides the arrows in Internet Explorer and Edge */
+.no-arrows::-webkit-inner-spin-button,
+.no-arrows::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 </style>
