@@ -9,8 +9,8 @@
       <div 
         :class="[
           'rounded-lg border-2 bg-white', 
-          isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-400 border-opacity-10',
-          day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer' : 'cursor-default',
+          isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-100',
+          day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default bg-slate-100',
         ]"
       >
         <div class="flex flex-col items-center">

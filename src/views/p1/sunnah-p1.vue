@@ -1,7 +1,7 @@
 <template>
-  <div class="w-full p-2 sm:p-4">
+  <div class="w-full px-4 py-2">
     <!-- Daily Sunnah (Collapsible Section) -->
-    <div class="mb-4">
+    <div>
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Daily')">
         <span class="font-semibold text-black">Daily</span>
         <span v-if="showDaily" class="material-icons">keyboard_arrow_up</span>
@@ -9,13 +9,12 @@
       </div>
 
       <!-- Daily Tasks List -->
-      <div v-show="showDaily" class="mb-4 py-4 transition-all duration-300 ease-in-out">
+      <div v-show="showDaily" class="py-4 transition-all duration-300 ease-in-out">
         <div
           v-for="sunnah in dailySunnahs"
           :key="sunnah.id"
-          class="mb-2"
         >
-          <div class="w-full p-8 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-5 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>
@@ -26,7 +25,7 @@
     </div>
 
     <!-- Weekly Sunnah (Collapsible Section) -->
-    <div class="mb-4">
+    <div>
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Weekly')">
         <span class="font-semibold text-black">Weekly</span>
         <span v-if="showWeekly" class="material-icons">keyboard_arrow_up</span>
@@ -40,7 +39,7 @@
           :key="sunnah.sunnahId"
           class="mb-2"
         >
-          <div class="w-full p-8 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-5 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>

@@ -157,10 +157,9 @@ export default createStore({
             where('timestamp', '>=', startOfWeek),
             orderBy('timestamp', 'desc'),
           );
-
+          
           // Set up real-time listener
           onSnapshot(q, (querySnapshot) => {
-
             querySnapshot.forEach((doc) => {
               const data = doc.data();
               progressArray.push({ ...data, progressId: doc.id });
@@ -189,11 +188,6 @@ export default createStore({
               }, []);
               
               commit('SET_WEEK_PROGRESS', outputArray);
-
-              if (outputArray.length === 0){
-                commit('setLoading', false);
-                console.log('No weekProgress found')
-              }
               
               this.dispatch('getDayHabits', this.state.selectedDay)
           

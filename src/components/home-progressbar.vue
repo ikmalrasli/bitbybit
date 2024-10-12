@@ -52,7 +52,7 @@ onMounted(updateTextColor);
 </script>
 
 <template>
-    <div class="progress bg-gray-200">
+    <div class="progress h-14 bg-gray-200">
         <!-- Progress bar fill -->
         <div :class="[color, 'progress__fill']" :style="{ width: `${props.percent}%` }"></div>
 
@@ -72,7 +72,6 @@ onMounted(updateTextColor);
 <style scoped>
 .progress {
     width: 100%;
-    height: 64px;
     position: relative;
     border-radius: 8px;
     overflow: hidden;

@@ -13,12 +13,16 @@ const props = defineProps({
   percent: {
     type: Number,
     default: 0
-  }
+  },
+  bgcolor: {
+    type: String,
+    default: 'bg-gray-200'
+  },
 });
 </script>
 
 <template>
-  <div class="progress bg-gray-200">
+  <div class="progress" :class="[bgcolor]">
         <!-- Progress bar fill -->
         <div :class="[color, 'progress__fill']" :style="{ height: `${props.percent}%` }"></div>
     </div>

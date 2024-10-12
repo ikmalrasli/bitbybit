@@ -23,7 +23,7 @@
           :to="link.path"
           class="flex items-center p-2 pl-8 hover:bg-violet-200"
           :class="{ 
-            'text-white font-semibold bg-violet-400': isLinkActive(link.path) 
+            'text-white font-semibold bg-violet-400 hover:bg-violet-500': isLinkActive(link.path) 
           }"
         >
           <span class="material-icons mr-2">{{ link.icon }}</span> 
