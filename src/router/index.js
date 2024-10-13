@@ -130,8 +130,8 @@ const routes = [
     meta: { title: 'Forgot Password' }
   },
   {
-    path: '/add-sunnahs',
-    name: 'add-sunnahs',
+    path: '/admin/add-sunnahs',
+    name: 'add-sunnahs-admin',
     component: AddSunnahs,
     meta: { title: 'Add Sunnahs' }
   }
@@ -146,13 +146,17 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   const isAuthenticated = store.getters.isAuthenticated;
 
-  // Handle the detail-habit route redirection logic
+  // Handle refreshing the page returns to parent (due to no data in store)
   if (to.name === 'detail-habit' && !from.name) {
-    // Redirect to home if there is no "from" route (i.e., on page refresh)
+    next({ name: 'home' });
+  } 
+  else if (to.name === 'edit-habit' && !from.name) {
     next({ name: 'home' });
   } 
   else if (to.name === 'detail-sunnah' && !from.name) {
-    // Redirect to home if there is no "from" route (i.e., on page refresh)
+    next({ name: 'sunnahs' });
+  } 
+  else if (to.name === 'add-sunnah' && !from.name) {
     next({ name: 'sunnahs' });
   } 
   // Handle authentication check

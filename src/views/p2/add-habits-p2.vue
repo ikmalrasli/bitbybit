@@ -120,7 +120,7 @@ export default {
         reminder: null,
         notes: "",
         termStart: new Date().toISOString().split("T")[0], // Default to today
-        termEnd: "",
+        termEnd: null,
         imageUrl: "", // New field for storing image URL
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],

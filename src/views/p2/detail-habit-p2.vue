@@ -41,14 +41,19 @@
           <input v-if="selectedHabit"
             type="range" :min="0" :max="selectedHabit.dailyGoal"
             v-model="addProgress"
-            class="range accent-violet-400 w-2/5 mx-2" />
+            class="range accent-violet-400 w-1/2 mx-2" />
 
           <!-- Plus Button -->
           <button type="button" @click="increaseGoal" class="material-icons text-gray-700">add</button>
         </div>
 
         <!-- Reset Progress Button -->
-        <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4">replay</button>
+        <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4 mr-2 p-1">replay</button>
+        <!-- Add Progress Button-->
+        <button type="button" @click="confirmProgress" 
+        class="material-icons text-gray-700 mt-4 ml-2 p-1 rounded-full disabled:text-gray-400"
+        :disabled="addProgress == selectedHabit?.progress"
+        >check</button>
       </div>
 
       <!-- Notes and Image -->
@@ -173,33 +178,38 @@ export default {
 
       habitRef.then((docRef) => {
         this.docId = docRef.id;
-        this.$watch('addProgress', (newVal, oldVal) => {
-          if (newVal != oldVal && newVal > 0) {
-            this.updateProgress();
-          } else if (newVal === 0) {
-            this.removeTodayEntries();
-          }
-        });
       });
     },
     updateProgress() {
       if (this.docId) {
-        const docRef = doc(db, 'progress', this.docId);
-        updateDoc(docRef, {
-          progress: this.addProgress,
-          timestamp: Timestamp.fromDate(new Date()),
-        });
+        try{
+          const docRef = doc(db, 'progress', this.docId);
+          updateDoc(docRef, {
+            progress: this.addProgress,
+            timestamp: Timestamp.fromDate(new Date()),
+          });
         this.$store.dispatch('fetchWeekProgress');
+
+        if (this.addProgress === this.selectedHabit.dailyGoal) {
+          alert('Congratulations! You have completed this habit!');
+          this.$router.push('/');
+        } else if (this.addProgress > this.selectedHabit.progress) {
+          alert('Habit progress increased! Keep it up!');
+        }
+        
+        } catch(error) {
+          console.log(error);
+        }
       }
     },
-    watchProgress() {
-      this.$watch('addProgress', (newVal, oldVal) => {
-        if (newVal != oldVal && newVal > 0) {
-          this.updateProgress();
-        } else if (newVal === 0) {
-          this.removeTodayEntries();
-        }
-      });
+    confirmProgress() {
+      if (this.addProgress > 0) {
+        this.updateProgress();
+      }
+
+      if (this.addProgress === 0) {
+        this.removeTodayEntries();
+      }
     },
     checkProgress() {
       const todayStart = new Date();
