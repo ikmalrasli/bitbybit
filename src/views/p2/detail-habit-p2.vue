@@ -51,7 +51,7 @@
         <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4 mr-2 p-1">replay</button>
         <!-- Add Progress Button-->
         <button type="button" @click="confirmProgress" 
-        class="material-icons text-gray-700 mt-4 ml-2 p-1 rounded-full disabled:text-gray-400"
+        class="material-icons text-violet-400 font-semibold mt-4 ml-2 p-1 rounded-full disabled:text-gray-400 disabled:font-normal"
         :disabled="addProgress == selectedHabit?.progress"
         >check</button>
       </div>
@@ -81,10 +81,12 @@ export default {
       addProgress: 0,
       isDropdownOpen: false,
       docId: '',
+      setTimestamp: new Date(),
+      onTime: true
     };
   },
   computed: {
-    ...mapState(['selectedHabit']),
+    ...mapState(['selectedHabit', 'selectedDay']),
     selectedHabit() {
       this.addProgress = this.$store.state.selectedHabit.progress;
       return this.$store.state.selectedHabit;
@@ -169,11 +171,12 @@ export default {
       if (!user) {
         throw new Error("User not authenticated. Please log in.");
       }
-
+      
       const habitRef = addDoc(collection(db, "progress"), {
         habitId: this.selectedHabit.habitId,
         progress: 0,
-        timestamp: new Date(),
+        timestamp: this.setTimestamp,
+        onTime: this.onTime
       });
 
       habitRef.then((docRef) => {
@@ -186,7 +189,8 @@ export default {
           const docRef = doc(db, 'progress', this.docId);
           updateDoc(docRef, {
             progress: this.addProgress,
-            timestamp: Timestamp.fromDate(new Date()),
+            timestamp: this.setTimestamp,
+            onTime: this.onTime
           });
         this.$store.dispatch('fetchWeekProgress');
 
@@ -196,7 +200,7 @@ export default {
         } else if (this.addProgress > this.selectedHabit.progress) {
           alert('Habit progress increased! Keep it up!');
         }
-        
+        this.selectedHabit.progress = this.addProgress;
         } catch(error) {
           console.log(error);
         }
@@ -212,17 +216,17 @@ export default {
       }
     },
     checkProgress() {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const dayStart = new Date(this.selectedDay);
+      dayStart.setHours(0, 0, 0, 0);
 
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
+      const dayEnd = new Date(this.selectedDay);
+      dayEnd.setHours(23, 59, 59, 999);
 
       const q = query(
         collection(db, 'progress'),
         where('habitId', '==', this.selectedHabit.habitId),
-        where('timestamp', '>=', Timestamp.fromDate(todayStart)),
-        where('timestamp', '<=', Timestamp.fromDate(todayEnd)),
+        where('timestamp', '>=', Timestamp.fromDate(dayStart)),
+        where('timestamp', '<=', Timestamp.fromDate(dayEnd)),
         orderBy('timestamp', 'desc')
       );
 
@@ -231,7 +235,6 @@ export default {
           this.createProgress();
         } else {
           this.docId = querySnapshot.docs[0].id;
-          this.watchProgress();
         }
       });
     },
@@ -267,6 +270,11 @@ export default {
     },
   },
   mounted() {
+    if (this.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
+      this.setTimestamp = new Date(this.selectedDay);
+      this.setTimestamp.setHours(23, 59, 59, 999);
+      this.onTime = false
+    }
     this.checkProgress();
   },
   beforeDestroy() {
