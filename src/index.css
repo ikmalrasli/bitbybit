@@ -11,3 +11,27 @@
         @apply flex justify-center w-full h-full
     }
 }
+
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+    opacity: 0; /* 🟦 Initially hidden */
+    transition: opacity 0.3s ease; /* 🟦 Smooth transition */
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+    opacity: 1; /* 🟩 Show when hovered */
+}

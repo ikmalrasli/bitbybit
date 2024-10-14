@@ -1,68 +1,84 @@
 <template>
-  <div class="w-full flex flex-row p-4">
+  <div class="w-full flex flex-row px-4 py-2">
     <div class="flex-auto">
-      <!-- Day Selector (Responsive) -->
-      <div class="flex justify-start overflow-x-auto mb-4 scrollbar-hide">
-        <calendarRow @date-selected="handleDateSelected" />
-      </div>
-
-      <div v-if="uncompletedHabits.length===0 && completedHabits.length===0" class="w-full p-4 mb-4 text-gray-700">
-        <p class="text-center">No Habits</p>
-      </div>
-      <!-- Collapsible Section -->
-      <div class="mb-4">
-        <!-- Uncompleted habits -->
+        <div v-if="uncompletedHabits.length===0 && completedHabits.length===0" class="w-full p-4 mb-4 text-gray-700">
+          <p class="text-center">No Habits</p>
+        </div>
+        <!-- Collapsible Section -->
         <div class="mb-4">
-          <div v-if="uncompletedHabits.length!==0" class="flex justify-between items-center cursor-pointer" @click="toggleSection('Uncompleted')">
-            <span class="font-bold text-black">Uncompleted
-              <span class="pl-2 font-medium text-gray-500">{{ uncompletedHabits.length }}</span>
-            </span>
-            <span v-if="showUncompleted" class="material-icons">keyboard_arrow_up</span>
-            <span v-else class="material-icons">keyboard_arrow_down</span>
+          <!-- Uncompleted habits -->
+          <div class="mb-4">
+            <div v-if="uncompletedHabits.length !== 0" class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
+              <div class="flex items-center">
+                <span class="font-semibold text-black">Uncompleted</span>
+                <span class="pl-3 text-gray-500">{{ uncompletedHabits.length }}</span>
+              </div>
+
+              <!-- Horizontal Line -->
+              <hr class="flex-grow border-t border-gray-300 mx-4"/>
+
+              <!-- Arrow -->
+              <div class="flex items-center">
+                <span v-if="showUncompleted" class="material-icons">keyboard_arrow_up</span>
+                <span v-else class="material-icons">keyboard_arrow_down</span>
+              </div>
+            </div>
+
+
+            <!-- Uncompleted habits List -->
+            <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
+              <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
+                <HomeProgress 
+                  :percent="habit.progress * 100 / habit.dailyGoal"
+                  :text="habit.name"
+                  :timesdone="habit.progress + '/' + habit.dailyGoal"
+                  color="bg-violet-400"
+                  class="cursor-pointer"
+                  @click="openDetail(habit)"
+                />
+              </div>
+            </div>
           </div>
 
-          <!-- Uncompleted habits List -->
-          <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
-            <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
+          <!-- Completed habits -->
+          <div v-if="completedHabits.length !== 0" class="flex items-center justify-between cursor-pointer" @click="toggleSection('Completed')">
+            <div class="flex items-center">
+              <span class="font-semibold text-black">Completed</span>
+              <span class="pl-3 text-gray-500">{{ completedHabits.length }}</span>
+            </div>
+
+            <!-- Horizontal Line -->
+            <hr class="flex-grow border-t border-gray-300 mx-4"/>
+
+            <!-- Arrow -->
+            <div class="flex items-center">
+              <span v-if="showCompleted" class="material-icons">keyboard_arrow_up</span>
+              <span v-else class="material-icons">keyboard_arrow_down</span>
+            </div>
+          </div>
+
+
+          <!-- Completed habits List -->
+          <div v-if="completedHabits.length!==0" v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
+            <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
               <HomeProgress 
                 :percent="habit.progress * 100 / habit.dailyGoal"
                 :text="habit.name"
                 :timesdone="habit.progress + '/' + habit.dailyGoal"
                 color="bg-violet-400"
                 class="cursor-pointer"
-                @click="this.selectedDay <= new Date().setHours(23, 59, 59, 999) && this.selectedDay >= new Date().setHours(0, 0, 0, 0) ? openDetail(habit) : null"
+                @click="openDetail(habit)"
               />
             </div>
           </div>
-        </div>
-
-        <!-- Completed habits -->
-        <div v-if="completedHabits.length!==0" class="flex justify-between items-center cursor-pointer" @click="toggleSection('Completed')">
-          <span class="font-bold text-black">Completed
-            <span class="pl-2 font-medium text-gray-500">{{ completedHabits.length }}</span>
-          </span>
-          <span v-if="showCompleted" class="material-icons">keyboard_arrow_up</span>
-          <span v-else class="material-icons">keyboard_arrow_down</span>
-        </div>
-
-        <!-- Completed habits List -->
-        <div v-if="completedHabits.length!==0" v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
-          <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
-            <HomeProgress 
-              :percent="habit.progress * 100 / habit.dailyGoal"
-              :text="habit.name"
-              :timesdone="habit.progress + '/' + habit.dailyGoal"
-              color="bg-violet-400"
-            />
-          </div>
-        </div>
+        
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex';
+import { mapState } from 'vuex';
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/home-progressbar.vue";
 
@@ -110,7 +126,7 @@ export default {
       return `${year}${month}${day}`;
     },
     openDetail(habit) {
-      //console.log(habit)
+      console.log(habit)
       this.$router.push({
         name: 'detail-habit',
         params: { 
@@ -120,9 +136,6 @@ export default {
       });
       this.$store.dispatch('updateSelectedHabit', habit)
     },
-    check(){
-      console.log(this.unc)
-    }
   }
 };
 </script>
