@@ -1,34 +1,43 @@
 <template>
-  <div class="flex relative justify-center min-h-screen h-full w-full">
-    <!-- Sidebar -->
-    <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
+  <div class="flex relative justify-center w-full h-dvh">
+    <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar"
+      :class="!isMobile ? 'h-auto' : ''" />
 
-    <!-- Main Content Area -->
-    <div v-if="!isMobile || !isDetailView" :class="contentClass" class="flex-1 border-l border-r relative">
-      <!-- Title Bar stays on top within the container only if sidebar is closed -->
-      <div :class="['z-50 bg-white', { 'sticky top-0': !showSidebar }]">
+    <div v-if="!isMobile || !isDetailView" :class="contentClass"
+      class="flex-1 flex flex-col h-full border-l border-r">
+
+      <!--Title Bar-->
+      <div>
         <TitleBar @toggle-sidebar="toggleSidebar" />
       </div>
-      
-      <!-- Content below the title bar -->
-      <div class="h-auto overflow-auto scrollbar-hide mb-8">
+
+      <!--Calendar Row-->
+      <div v-if="showCalendarRow"
+        class="flex-shrink-0 justify-start h-auto mb-2"> <!-- Set flexible height -->
+        <calendarRow @date-selected="handleDateSelected" />
+      </div>
+
+      <!--Main Router View-->
+      <div class="flex-grow overflow-y-auto scrollbar-hide">
         <router-view />
       </div>
     </div>
-    
-    <!-- Right Detail View -->
-    <div v-if="!isMobile || isDetailView" class="flex-1 border-gray-200">
+
+    <!--Right Router View-->
+    <div v-if="!isMobile || isDetailView" class="flex-1 h-full">
       <router-view class="w-full" name="right" />
     </div>
-  </div>  
+  </div>
 </template>
 
 <script>
 import TitleBar from "../components/title-bar.vue";
 import Sidebar from "../components/nav-bar.vue";
+import calendarRow from "../components/calendar-row.vue";
 
 export default {
   components: {
+    calendarRow,
     TitleBar,
     Sidebar
   },
@@ -39,6 +48,14 @@ export default {
     };
   },
   computed: {
+    showCalendarRow(){
+      return (
+        this.$route.name === 'home' ||
+        this.$route.name === 'add-habit' ||
+        this.$route.name === 'edit-habit' ||
+        this.$route.name === 'detail-habit'
+      );
+    },
     isDetailView() {
       return (
         this.$route.name === 'add-habit' ||
@@ -49,7 +66,7 @@ export default {
       );
     },
     contentClass() {
-      return this.isMobile ? "px-4 pt-2 pb-4" : "ml-56"; // On desktop, add margin for the sidebar
+      return this.isMobile ? "px-1" : "ml-56"; // On desktop, add margin for the sidebar
     },
   },
   methods: {
