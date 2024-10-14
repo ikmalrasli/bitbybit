@@ -12,7 +12,7 @@ export default createStore({
   })
   ],
   state: {
-    selectedDay: null,
+    selectedDay: new Date(),
     user: null,
     isAuthenticated: false,
     habits: [],
@@ -104,7 +104,6 @@ export default createStore({
       });
     },
     async fetchHabits({ commit, state }) {
-      
       try {
         if (state.user) { // Ensure the user is authenticated
           commit('setLoading', true);
@@ -139,14 +138,14 @@ export default createStore({
       }
     },
     async fetchWeekProgress({ commit, state }) {
-      //get progress for up until sunday
+      //get progress for up until last sunday sunday
       const progressArray = [];
       const today = new Date();
       const currentDayOfWeek = today.getDay();
       const currentDate = today.getDate();
 
       const startOfWeek = new Date(today);
-      startOfWeek.setDate(currentDate - currentDayOfWeek);
+      startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
       startOfWeek.setHours(0, 0, 0, 0);
       
       state.habits.forEach(habit => {

@@ -1,33 +1,56 @@
 <template>
-  <div class="w-full flex flex-row gap-1 mb-4">
-    <div
-      v-for="day in days"
-      :key="day.date"
-      :class="['flex-auto', 'cursor-pointer']"
-      @click="day.dateobj <= new Date().setHours(23, 59, 59, 999) ? selectDay(day) : null"
+  <div class="w-full flex items-center">
+    <!-- Left Chevron (previous week) -->
+    <button 
+      class="text-gray-500 hover:text-gray-700 material-icons mr-1" 
+      :class="{ 'invisible': currentWeek === 'lastWeek' }" 
+      @click="showLastWeek"
     >
-      <div 
-        :class="[
-          'rounded-lg border-2 bg-white', 
-          isSelected(day) ? 'border-violet-400 border-2' : 'border-slate-100',
-          day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default bg-slate-100',
-        ]"
+      chevron_left
+    </button>
+
+    <!-- Days display -->
+    <div class="flex flex-row gap-0.5 md:gap-1 flex-grow">
+      <div
+        v-for="day in days"
+        :key="day.date"
+        :class="['flex-auto', 'cursor-pointer']"
+        @click="day.dateobj <= new Date().setHours(23, 59, 59, 999) ? selectDay(day) : null"
       >
-        <div class="flex flex-col items-center">
-          <span class="min-w-8 text-center text-xs sm:text-sm">{{ day.name }}</span>
-          <RadialProgressbar
-            :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
-            :progress="habitsProgress(day.dateobj)"
-            :radius="40"
-            :datenumber="day.date"
-            style="margin-top:12px;"
-            color="text-violet-400"
-          />
+        <div 
+          :class="[ 
+            'rounded-lg border-2 bg-white', 
+            this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 border-2' : 'border-slate-200',
+            day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default border-gray-50 bg-gray-50',
+          ]"
+        >
+          <div class="flex flex-col items-center">
+            <span class="min-w-8 text-center text-xs sm:text-sm"
+            :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-violet-400 font-semibold' : null]">{{ day.name }}</span>
+            <RadialProgressbar
+              :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
+              :progress="habitsProgress(day.dateobj)"
+              :radius="40"
+              :datenumber="day.date"
+              style="margin-top:12px;"
+              color="text-violet-400"
+            />
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Right Chevron (next week) -->
+    <button 
+      class="text-gray-500 hover:text-gray-700 material-icons ml-1" 
+      :class="{ 'invisible': currentWeek === 'thisWeek' }" 
+      @click="showThisWeek"
+    >
+      chevron_right
+    </button>
   </div>
 </template>
+
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
@@ -40,30 +63,43 @@ export default {
   },
   data() {
     return {
-      days: this.generateWeekDays(),
-      selectedDay: null,
+      currentWeek: 'thisWeek', // Tracks the currently viewed week
+      days: this.generateWeekDays('thisWeek'), // Initially show this week's days
     };
   },
   mounted() {
-    // Select today by default on mount
-    const today = this.days.find(day => day.isToday);
-    if (today) {
-      this.selectDay(today);
-    }
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    if (this.selectedDay.getDate() < startOfWeek.getDate()) {
+        this.currentWeek = 'lastWeek';
+        this.days = this.generateWeekDays('lastWeek');
+      } else {
+        this.currentWeek = 'thisWeek';
+        this.days = this.generateWeekDays('thisWeek');
+      }
   },
   computed: {
-    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress']), // Map habits from the Vuex store
+    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay']),
   },
   methods: {
-    ...mapActions(['updateSelectedDay']), // Map Vuex actions
-    generateWeekDays() {
+    ...mapActions(['updateSelectedDay']),
+    
+    generateWeekDays(week) {
       const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const today = new Date();
       const currentDayOfWeek = today.getDay();
-      const currentDate = today.getDate();
 
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(currentDate - currentDayOfWeek);
+      let startOfWeek;
+
+      if (week === 'thisWeek') {
+        startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - currentDayOfWeek);
+      } else if (week === 'lastWeek') {
+        startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - currentDayOfWeek - 7); // Adjust for last week
+      }
 
       return Array.from({ length: 7 }).map((_, i) => {
         const day = new Date(startOfWeek);
@@ -73,26 +109,33 @@ export default {
           name: daysOfWeek[day.getDay()],
           date: day.getDate(),
           isToday: day.toDateString() === today.toDateString(),
-          month: new Intl.DateTimeFormat("en-US", { month: "short" }).format(day), // Get month in words (like "Jan")
+          month: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(day),
           dateobj: new Date(day),  // Store the Date object for comparison
         };
       });
     },
+
     selectDay(day) {
-      this.selectedDay = day;
       const selectedDate = new Date(day.dateobj);
-      this.updateSelectedDay(selectedDate); // Update the selected day in Vuex store
+      this.updateSelectedDay(selectedDate);
       this.$store.dispatch('getDayHabits', selectedDate, true);
       this.$router.push('/');
     },
-    isSelected(day) {
-      // Check if the day is the selected day
-      return this.selectedDay === day || (this.selectedDay === null && day.isToday);
-    },
+
     habitsProgress(day) {
       const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits);
       return totalProgress;
-    }
+    },
+
+    showLastWeek() {
+      this.currentWeek = 'lastWeek';
+      this.days = this.generateWeekDays('lastWeek'); // Generate days for last week
+    },
+
+    showThisWeek() {
+      this.currentWeek = 'thisWeek';
+      this.days = this.generateWeekDays('thisWeek'); // Generate days for this week
+    },
   },
 };
 </script>
