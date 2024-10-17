@@ -86,7 +86,7 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
 
 <style scoped>
 .progress-ring_circle {
-  transition: stroke-dashoffset 0.35s;
+  transition: stroke-dashoffset 0.2s;
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }
