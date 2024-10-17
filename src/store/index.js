@@ -138,23 +138,24 @@ export default createStore({
       }
     },
     async fetchWeekProgress({ commit, state }) {
-      //get progress for up until last sunday sunday
+      // get progress for up until last sunday sunday
       const progressArray = [];
       const today = new Date();
       const currentDayOfWeek = today.getDay();
       const currentDate = today.getDate();
-
+    
       const startOfWeek = new Date(today);
       startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
       startOfWeek.setHours(0, 0, 0, 0);
-      
-      state.habits.forEach(habit => {
+    
+      for (const index in state.habits) {
+        const habit = state.habits[index]; // Access habit by index
         try {
           const q = query(
             collection(db, 'progress'),
             where('habitId', '==', habit.habitId),
             where('timestamp', '>=', startOfWeek),
-            orderBy('timestamp', 'desc'),
+            orderBy('timestamp', 'desc')
           );
           
           // Set up real-time listener
@@ -165,43 +166,40 @@ export default createStore({
               
               const outputArray = progressArray.reduce((acc, curr) => {
                 const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
-              
                 const currentDay = currentDate.setHours(0, 0, 0, 0);
-              
+                
                 const existingHabit = acc.find(habit => {
                   const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
                   const existingDay = habitDate.setHours(0, 0, 0, 0);
                   
                   return habit.habitId === curr.habitId && existingDay === currentDay;
                 });
-              
+                
                 if (existingHabit) {
-                  if (curr.progress > existingHabit.progress) {
+                  if (curr.timestamp >= existingHabit.timestamp) {
                     acc[acc.indexOf(existingHabit)] = curr;
                   }
                 } else {
                   acc.push(curr);
                 }
-              
+                
                 return acc;
               }, []);
               
               commit('SET_WEEK_PROGRESS', outputArray);
-              
-              this.dispatch('getDayHabits', this.state.selectedDay)
-          
+              this.dispatch('getDayHabits', this.state.selectedDay);
             });
-
+    
             if (querySnapshot.empty) {
               console.log('No weekProgress found');
               commit('setLoading', false);
             }
-          });          
+          });
         } catch (error) {
           console.error("Error fetching latest progress:", error);
         }
-      });
-    },
+      }
+    },    
     async getDayHabits({ commit, state }, day) {
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
