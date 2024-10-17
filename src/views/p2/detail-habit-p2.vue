@@ -59,7 +59,7 @@
       <!-- Notes and Image -->
       <div v-if="selectedHabit?.imageUrl || selectedHabit?.notes" class="w-full p-4 mb-4 text-gray-700 bg-white border rounded-lg">
         <h2 class="text-xl text-center block mb-2">Notes</h2>
-        <p v-if="selectedHabit?.notes" class="text-lg px-4 py-2">{{ selectedHabit?.notes }}</p>
+        <p v-if="selectedHabit?.notes" class="text-lg px-4 py-2" style="white-space: pre-wrap;">{{ selectedHabit?.notes }}</p>
         <div v-if="selectedHabit?.imageUrl">
           <img :src="selectedHabit.imageUrl" alt="Uploaded Image" class="object-cover rounded-md" />
         </div>

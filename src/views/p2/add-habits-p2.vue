@@ -52,7 +52,14 @@
           <!-- Notes -->
           <div>
             <label for="notes" class="text-left block text-sm font-medium text-gray-700">Notes</label>
-            <textarea v-model="formData.notes" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16" placeholder="Optional"></textarea>
+            <textarea
+              v-model="formData.notes"
+              id="notes"
+              ref="notesTextarea"
+              class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16 resize-none overflow-y-auto"
+              placeholder="Optional"
+              @input="adjustTextareaHeight"
+            ></textarea>
           </div>
 
           <!-- Image Upload Button -->
@@ -157,6 +164,11 @@ export default {
     ...mapState(["selectedHabit"]),
   },
   methods: {
+    adjustTextareaHeight() {
+      const textarea = this.$refs.notesTextarea;
+      textarea.style.height = 'auto'; // Reset the height
+      textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px'; // Adjust height based on content, with a max of 200px
+    },
     toggleRepeat(day) {
       this.formData.repeatDays[day] = !this.formData.repeatDays[day];
     },
