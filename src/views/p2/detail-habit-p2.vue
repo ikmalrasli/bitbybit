@@ -93,6 +93,7 @@ export default {
     }
   },
   methods: {
+    // Back and Dropdown Functions
     toggleDropdown(event) {
       event.stopPropagation(); // Prevent the outside click listener from being triggered
       this.isDropdownOpen = !this.isDropdownOpen;
@@ -121,6 +122,10 @@ export default {
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);
     },
+    goBack() {
+      this.$router.push('/');
+    },
+    // Progress Functions
     increaseGoal() {
       if (this.addProgress < this.selectedHabit.dailyGoal) {
         this.addProgress++;
@@ -133,19 +138,19 @@ export default {
     },
     async removeTodayEntries() {
       try {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const dayStart = new Date(this.selectedDay);
+        dayStart.setHours(0, 0, 0, 0);
 
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
+        const dayEnd = new Date(this.selectedDay);
+        dayEnd.setHours(23, 59, 59, 999);
 
         const habitId = this.selectedHabit.habitId;
 
         const q = query(
           collection(db, 'progress'),
           where('habitId', '==', habitId),
-          where('timestamp', '>=', Timestamp.fromDate(todayStart)),
-          where('timestamp', '<=', Timestamp.fromDate(todayEnd))
+          where('timestamp', '>=', Timestamp.fromDate(dayStart)),
+          where('timestamp', '<=', Timestamp.fromDate(dayEnd))
         );
 
         const querySnapshot = await getDocs(q);
@@ -161,8 +166,21 @@ export default {
         alert('Error removing entries.');
       }
     },
-    goBack() {
-      this.$router.push('/');
+    // Habit functions
+    handleSelectedHabitChange() {
+      if (this.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
+        this.setTimestamp = new Date(this.selectedDay);
+        this.setTimestamp.setHours(23, 59, 59, 999);
+        this.onTime = false;
+      }
+      this.checkProgress();
+    },
+    checkProgress() {
+      if (this.selectedHabit.progressId !== '') {
+        this.docId = this.selectedHabit.progressId;
+      } else {
+        this.createProgress();
+      }
     },
     createProgress() {
       const auth = getAuth();
@@ -192,13 +210,14 @@ export default {
             timestamp: this.setTimestamp,
             onTime: this.onTime
           });
-        this.$store.dispatch('fetchWeekProgress');
+
+          //console.log('progressId:', this.docId, 'progress:', this.addProgress, 'timestamp:', this.setTimestamp, 'onTime:', this.onTime);
 
         if (this.addProgress === this.selectedHabit.dailyGoal) {
           alert('Congratulations! You have completed this habit!');
           this.$router.push('/');
         } else if (this.addProgress > this.selectedHabit.progress) {
-          alert('Habit progress increased! Keep it up!');
+          // alert('Habit progress increased! Keep it up!');
         }
         this.selectedHabit.progress = this.addProgress;
         } catch(error) {
@@ -214,29 +233,6 @@ export default {
       if (this.addProgress === 0) {
         this.removeTodayEntries();
       }
-    },
-    checkProgress() {
-      const dayStart = new Date(this.selectedDay);
-      dayStart.setHours(0, 0, 0, 0);
-
-      const dayEnd = new Date(this.selectedDay);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const q = query(
-        collection(db, 'progress'),
-        where('habitId', '==', this.selectedHabit.habitId),
-        where('timestamp', '>=', Timestamp.fromDate(dayStart)),
-        where('timestamp', '<=', Timestamp.fromDate(dayEnd)),
-        orderBy('timestamp', 'desc')
-      );
-
-      getDocs(q).then((querySnapshot) => {
-        if (querySnapshot.empty) {
-          this.createProgress();
-        } else {
-          this.docId = querySnapshot.docs[0].id;
-        }
-      });
     },
     editHabit() {
       //use addHabit layout for edit habit
@@ -269,13 +265,11 @@ export default {
       }
     },
   },
+  watch: {
+    selectedHabit: 'handleSelectedHabitChange'
+  },
   mounted() {
-    if (this.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
-      this.setTimestamp = new Date(this.selectedDay);
-      this.setTimestamp.setHours(23, 59, 59, 999);
-      this.onTime = false
-    }
-    this.checkProgress();
+    this.handleSelectedHabitChange();
   },
   beforeDestroy() {
     document.removeEventListener('click', this.handleClickOutside);
