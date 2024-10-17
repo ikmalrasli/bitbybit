@@ -1,14 +1,16 @@
 <template>
   <div class="w-full flex flex-row px-4 py-2">
     <div class="flex-auto">
+        <!-- if no habits-->
         <div v-if="uncompletedHabits.length===0 && completedHabits.length===0" class="w-full p-4 mb-4 text-gray-700">
           <p class="text-center">No Habits</p>
         </div>
+
         <!-- Collapsible Section -->
-        <div class="mb-4">
+        <div class="mt-1">
           <!-- Uncompleted habits -->
-          <div class="mb-4">
-            <div v-if="uncompletedHabits.length !== 0" class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
+          <div v-if="uncompletedHabits.length !== 0">
+            <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
               <div class="flex items-center">
                 <span class="font-semibold text-black">Uncompleted</span>
                 <span class="pl-3 text-gray-500">{{ uncompletedHabits.length }}</span>
@@ -26,7 +28,7 @@
 
 
             <!-- Uncompleted habits List -->
-            <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-4 py-4 transition-all duration-300 ease-in-out">
+            <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-2 py-4 transition-all duration-300 ease-in-out">
               <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
                 <HomeProgress 
                   :percent="habit.progress * 100 / habit.dailyGoal"
@@ -41,34 +43,36 @@
           </div>
 
           <!-- Completed habits -->
-          <div v-if="completedHabits.length !== 0" class="flex items-center justify-between cursor-pointer" @click="toggleSection('Completed')">
-            <div class="flex items-center">
-              <span class="font-semibold text-black">Completed</span>
-              <span class="pl-3 text-gray-500">{{ completedHabits.length }}</span>
+          <div v-if="completedHabits.length !== 0">
+            <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
+              <div class="flex items-center">
+                <span class="font-semibold text-black">Completed</span>
+                <span class="pl-3 text-gray-500">{{ completedHabits.length }}</span>
+              </div>
+
+              <!-- Horizontal Line -->
+              <hr class="flex-grow border-t border-gray-300 mx-4"/>
+
+              <!-- Arrow -->
+              <div class="flex items-center">
+                <span v-if="showCompleted" class="material-icons">keyboard_arrow_up</span>
+                <span v-else class="material-icons">keyboard_arrow_down</span>
+              </div>
             </div>
 
-            <!-- Horizontal Line -->
-            <hr class="flex-grow border-t border-gray-300 mx-4"/>
 
-            <!-- Arrow -->
-            <div class="flex items-center">
-              <span v-if="showCompleted" class="material-icons">keyboard_arrow_up</span>
-              <span v-else class="material-icons">keyboard_arrow_down</span>
-            </div>
-          </div>
-
-
-          <!-- Completed habits List -->
-          <div v-if="completedHabits.length!==0" v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
-            <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
-              <HomeProgress 
-                :percent="habit.progress * 100 / habit.dailyGoal"
-                :text="habit.name"
-                :timesdone="habit.progress + '/' + habit.dailyGoal"
-                color="bg-violet-400"
-                class="cursor-pointer"
-                @click="openDetail(habit)"
-              />
+            <!-- Uncompleted habits List -->
+            <div v-if="completedHabits.length!==0" v-show="showCompleted" class="mb-2 py-4 transition-all duration-300 ease-in-out">
+              <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
+                <HomeProgress 
+                  :percent="habit.progress * 100 / habit.dailyGoal"
+                  :text="habit.name"
+                  :timesdone="habit.progress + '/' + habit.dailyGoal"
+                  color="bg-violet-400"
+                  class="cursor-pointer"
+                  @click="openDetail(habit)"
+                />
+              </div>
             </div>
           </div>
         
