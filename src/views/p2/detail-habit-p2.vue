@@ -2,13 +2,13 @@
   <div class="w-full h-full flex flex-col bg-white border-r">
     <!-- Header -->
     <header class="bg-white p-4 flex flex-row relative justify-between">
-      <button @click="goBack" class="material-icons">chevron_left</button>
+      <button @click="goBack" class="material-icons rounded-full active:bg-gray-200">chevron_left</button>
       <h1 class="text-xl text-black font-bold">{{ selectedHabit?.name || 'Habit Details' }}</h1>
 
       <!-- More Options Button (Dropdown Toggle) -->
       <div class="relative">
         <!-- Dropdown Toggle Button -->
-        <button @click="toggleDropdown" class="material-icons">more_horiz</button>
+        <button @click="toggleDropdown" class="material-icons rounded-full active:bg-gray-200">more_horiz</button>
 
         <!-- Dropdown Menu -->
         <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
@@ -35,23 +35,25 @@
 
         <div class="w-full justify-center flex">
           <!-- Minus Button -->
-          <button type="button" @click="decreaseGoal" class="material-icons text-gray-700">remove</button>
+          <button type="button" @click="decreaseGoal" 
+          class="material-icons p-1 text-gray-700 rounded-full active:bg-gray-200">remove</button>
 
           <!-- Slider -->
           <input v-if="selectedHabit"
             type="range" :min="0" :max="selectedHabit.dailyGoal"
-            v-model="addProgress"
+            v-model.number="addProgress"
             class="range accent-violet-400 w-1/2 mx-2" />
 
           <!-- Plus Button -->
-          <button type="button" @click="increaseGoal" class="material-icons text-gray-700">add</button>
+          <button type="button" @click="increaseGoal" 
+          class="material-icons p-1 text-gray-700 rounded-full active:bg-gray-200">add</button>
         </div>
 
         <!-- Reset Progress Button -->
-        <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4 mr-2 p-1">replay</button>
+        <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4 mr-2 p-1 rounded-full active:bg-gray-200">replay</button>
         <!-- Add Progress Button-->
         <button type="button" @click="confirmProgress" 
-        class="material-icons text-violet-400 font-semibold mt-4 ml-2 p-1 rounded-full disabled:text-gray-400 disabled:font-normal"
+        class="material-icons text-violet-400 font-semibold mt-4 ml-2 p-1 rounded-full active:bg-gray-200 disabled:text-gray-400 disabled:font-normal"
         :disabled="addProgress == selectedHabit?.progress"
         >check</button>
       </div>
@@ -64,6 +66,7 @@
           <img :src="selectedHabit.imageUrl" alt="Uploaded Image" class="object-cover rounded-md" />
         </div>
       </div>
+
     </div>
   </div>
 </template>
@@ -73,6 +76,7 @@ import { mapState } from 'vuex';
 import { db } from "../../firebase"; // Firestore instance
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
+import { inject } from "vue";
 import { mapGetters } from 'vuex';
 
 export default {
@@ -82,7 +86,7 @@ export default {
       isDropdownOpen: false,
       docId: '',
       setTimestamp: new Date(),
-      onTime: true
+      onTime: true,
     };
   },
   computed: {
@@ -163,7 +167,10 @@ export default {
         this.$store.state.selectedHabit.progress = 0;
         this.createProgress();
       } catch (error) {
-        alert('Error removing entries.');
+        this.$toast.error({
+          message: 'Error resetting progress. Please try again.',
+          duration: 2000
+        });
       }
     },
     // Habit functions
@@ -211,13 +218,21 @@ export default {
             onTime: this.onTime
           });
 
-          //console.log('progressId:', this.docId, 'progress:', this.addProgress, 'timestamp:', this.setTimestamp, 'onTime:', this.onTime);
-
         if (this.addProgress === this.selectedHabit.dailyGoal) {
-          alert('Congratulations! You have completed this habit!');
-          this.$router.push('/');
+          this.$toast.success({
+            message: 'Congratulations! You have completed this habit!',
+            duration: 2000
+          });
+
+          setTimeout(() => {
+            this.$router.push('/');
+          }, 300);
+          
         } else if (this.addProgress > this.selectedHabit.progress) {
-          // alert('Habit progress increased! Keep it up!');
+          this.$toast.info({
+            message: 'Habit progress increased! Keep it up!',
+            duration: 2000
+          });
         }
         this.selectedHabit.progress = this.addProgress;
         } catch(error) {
@@ -258,9 +273,15 @@ export default {
           //delete habit from firestore
           const docRef = doc(db, "habits", this.selectedHabit.habitId);
           deleteDoc(docRef);
+          this.$toast.info({
+            message: 'Habit deleted successfully!',
+            duration: 2000
+          });
 
           this.$store.dispatch('fetchHabits');
-          this.$router.push('/');
+          setTimeout(() => {
+            this.$router.push('/');
+          }, 300);
         }
       }
     },
