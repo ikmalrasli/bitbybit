@@ -5,6 +5,8 @@ import { db } from '../firebase'; // Import your Firestore instance
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 
+const loadTimeout = 250;
+
 export default createStore({
   plugins: [
     createPersistedState({
@@ -106,7 +108,6 @@ export default createStore({
     async fetchHabits({ commit, state }) {
       try {
         if (state.user) { // Ensure the user is authenticated
-          commit('setLoading', true);
           const userId = state.user.uid; // Get the authenticated user's ID
           
           // Query Firestore for habits belonging to the authenticated user
@@ -127,7 +128,9 @@ export default createStore({
 
             if (querySnapshot.empty) {
               console.log('No habits found');
-              commit('setLoading', false);
+              setTimeout(() => {
+                commit('setLoading', false);
+              }, loadTimeout);
             }
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
@@ -191,8 +194,9 @@ export default createStore({
             });
     
             if (querySnapshot.empty) {
-              console.log('No weekProgress found');
-              commit('setLoading', false);
+              setTimeout(() => {
+                commit('setLoading', false);
+              }, loadTimeout);
             }
           });
         } catch (error) {
@@ -203,7 +207,10 @@ export default createStore({
     async getDayHabits({ commit, state }, day) {
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
-      commit('setLoading', false);
+      setTimeout(() => {
+        commit('setLoading', false);
+      }, loadTimeout);
+      this.dispatch('fetchSunnahs');
     },
     fetchSunnahs({ commit }) {
       const sunnahs = [];
