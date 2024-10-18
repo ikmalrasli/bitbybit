@@ -46,9 +46,11 @@ import { mapActions } from "vuex";
 import { getAuth } from "firebase/auth";
 
 export default {
+  props: {
+    showSidebar: Boolean,
+  },
   data() {
     return {
-      showSidebar: false, // Controls the sidebar visibility on mobile
       links: [
         { name: "Home", icon: "home", path: "/" },
         { name: "Calendar", icon: "calendar_today", path: "/calendar" },

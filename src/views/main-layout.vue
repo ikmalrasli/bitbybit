@@ -27,6 +27,8 @@
     <div v-if="!isMobile || isDetailView" class="flex-1 h-full">
       <router-view class="w-full" name="right" />
     </div>
+
+    <Toast />
   </div>
 </template>
 
@@ -34,12 +36,14 @@
 import TitleBar from "../components/title-bar.vue";
 import Sidebar from "../components/nav-bar.vue";
 import calendarRow from "../components/calendar-row.vue";
+import Toast from "../components/toast-noti.vue";
 
 export default {
   components: {
     calendarRow,
     TitleBar,
-    Sidebar
+    Sidebar,
+    Toast
   },
   data() {
     return {
@@ -76,6 +80,11 @@ export default {
     checkMobile() {
       this.isMobile = window.innerWidth < 768;
     },
+    handleDateSelected(date) {
+      // Define the logic for what should happen when a date is selected.
+      console.log("Date selected:", date);
+      // You can dispatch actions, navigate, or any other necessary logic
+    }
   },
   mounted() {
     this.checkMobile();
