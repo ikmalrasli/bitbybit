@@ -7,7 +7,7 @@
         </div>
 
         <!-- Collapsible Section -->
-        <div class="mt-1">
+        <div class="mt-1 space-y-4">
           <!-- Uncompleted habits -->
           <div v-if="uncompletedHabits.length !== 0">
             <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
@@ -26,10 +26,9 @@
               </div>
             </div>
 
-
             <!-- Uncompleted habits List -->
-            <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="mb-2 py-4 transition-all duration-300 ease-in-out">
-              <div v-for="(habit, index) in uncompletedHabits" :key="index" class="mb-2">
+            <div v-if="uncompletedHabits.length!==0" v-show="showUncompleted" class="py-4 space-y-1 transition-all duration-300 ease-in-out">
+              <div v-for="(habit, index) in uncompletedHabits" :key="index">
                 <HomeProgress 
                   :percent="habit.progress * 100 / habit.dailyGoal"
                   :text="habit.name"
@@ -44,7 +43,7 @@
 
           <!-- Completed habits -->
           <div v-if="completedHabits.length !== 0">
-            <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
+            <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Completed')">
               <div class="flex items-center">
                 <span class="font-semibold text-black">Completed</span>
                 <span class="pl-3 text-gray-500">{{ completedHabits.length }}</span>
@@ -62,7 +61,7 @@
 
 
             <!-- Uncompleted habits List -->
-            <div v-if="completedHabits.length!==0" v-show="showCompleted" class="mb-2 py-4 transition-all duration-300 ease-in-out">
+            <div v-if="completedHabits.length!==0" v-show="showCompleted" class="py-4 transition-all duration-300 ease-in-out">
               <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
                 <HomeProgress 
                   :percent="habit.progress * 100 / habit.dailyGoal"

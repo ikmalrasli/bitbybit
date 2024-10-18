@@ -30,8 +30,8 @@ const props = defineProps({
 
 <style scoped>
 .progress {
-    width: 20px;
-    height: 100px;
+    width: 10px;
+    height: 80px;
     position: relative;
     border-radius: 8px;
     overflow: hidden;
