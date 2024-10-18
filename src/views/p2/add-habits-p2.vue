@@ -97,7 +97,43 @@
             </div>
           </div>
         </form>
+
+        <!-- Color Picker Button and Dropdown -->
+        <div class="py-2">
+          <!-- Button to show selected color and toggle the dropdown -->
+          <button 
+            @click="toggleColorPicker" 
+            class="flex items-center justify-between p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-400"
+          >
+            <div class="flex items-center space-x-2">
+              <!-- Show the selected color -->
+              <div 
+                :style="{ backgroundColor: formData.color }" 
+                class="w-6 h-6 rounded-full border border-gray-400"
+              ></div>
+            </div>
+            <!-- Arrow Icon to show that it can be clicked -->
+            <span class="material-icons transform" :class="{ 'rotate-180': showColorPicker }">expand_more</span>
+          </button>
+
+          <!-- Color Picker Dropdown -->
+          <div 
+            v-if="showColorPicker" 
+            class="absolute z-10 mt-2 p-2 bg-white border border-gray-300 rounded-md shadow-lg grid grid-cols-4 gap-2"
+          >
+            <div
+              v-for="(color, index) in pastelColors"
+              :key="index"
+              :style="{ backgroundColor: color }"
+              class="w-8 h-8 rounded-full cursor-pointer border-2"
+              :class="formData.color === color ? 'border-black' : 'border-transparent'"
+              @click="selectColor(color)"
+            ></div>
+          </div>
+        </div>
       </div>
+
+      
 
       <!-- Floating Create Button -->
       <div class="sticky bottom-0 p-4">
@@ -128,13 +164,26 @@ export default {
         notes: "",
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: null,
-        imageUrl: "", // New field for storing image URL
+        imageUrl: "",
+        color: "#A78BFA",
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
       selectedFile: null, // To store the selected image file
       imagePreviewUrl: "", // To store the image preview URL
       isLoading: false, // Loading state for the button
       loadingText: 'Create', // Initial button text
+      pastelColors: [
+        "#A78BFA", // Pastel Purple
+        "#ffd1dc", // Light Pink
+        "#ffcbf2", // Light Purple
+        "#a0e7e5", // Light Blue
+        "#b4f8c8", // Light Green
+        "#fdfd96", // Light Yellow
+        "#f7c7db", // Light Coral
+        "#ff9aa2", // Soft Red
+        "#ffdac1", // Peach
+      ],
+      showColorPicker: false,
     };
   },
   mounted() {
@@ -164,6 +213,13 @@ export default {
     ...mapState(["selectedHabit"]),
   },
   methods: {
+    toggleColorPicker() {
+      this.showColorPicker = !this.showColorPicker; // Toggle the visibility
+    },
+    selectColor(color) {
+      this.formData.color = color; // Set the selected color
+      this.showColorPicker = false; // Close the color picker after selection
+    },
     adjustTextareaHeight() {
       const textarea = this.$refs.notesTextarea;
       textarea.style.height = 'auto'; // Reset the height
@@ -189,7 +245,10 @@ export default {
       }
     },
     setReminder() {
-      alert("Reminder feature not implemented yet!");
+      this.$toast.info({
+        message: 'Reminder feature not implemented yet!',
+        duration: 2000
+      });
     },
     triggerFileInput() {
       this.$refs.fileInput.click(); // Trigger the hidden file input click
@@ -260,10 +319,14 @@ export default {
             termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
             termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
             reminder: this.formData.reminder,
-            imageUrl: imageUrl || this.formData.imageUrl, // Save image URL in Firestore if it exists
+            imageUrl: imageUrl || this.formData.imageUrl,
+            color: this.formData.color,
           });
 
-          alert("Habit updated successfully!");
+          this.$toast.info({
+            message: "Habit updated successfully!",
+            duration: 2000
+          });
         } catch (error) {
           console.error("Error updating habit:", error);
         } finally {
@@ -297,14 +360,22 @@ export default {
           termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
           createdAt: new Date(),
           repeat: this.formData.repeatDays,
-          imageUrl: imageUrl || this.formData.imageUrl, // Save image URL in Firestore if it exists
+          imageUrl: imageUrl || this.formData.imageUrl,
+          color: this.formData.color,
         });
 
-        console.log("Habit created successfully with userId:", user.uid);
-        alert("Habit created successfully!");
+        this.$toast.success({
+          message: "Habit created successfully!",
+          duration: 2000
+        });
+        
       } catch (error) {
         console.error("Error creating habit:", error);
-        alert("Error creating habit: " + error.message);
+        
+        this.$toast.error({
+          message: "Error creating habit: " + error.message,
+          duration: 2000
+        });
       } finally {
         this.isLoading = false; // Reset loading state
         this.loadingText = 'Create'; // Reset button text
