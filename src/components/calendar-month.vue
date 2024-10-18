@@ -8,7 +8,7 @@
     </div>
 
     <!-- Days of the Week -->
-    <div class="w-full grid grid-cols-7 text-gray-600 mb-2 gap-x-1">
+    <div class="w-full grid grid-cols-7 text-black mb-2 gap-x-1">
       <div v-for="day in daysOfWeek" :key="day" class="flex-1">{{ day }}</div>
     </div>
 
@@ -23,7 +23,7 @@
           'transition-colors duration-300' 
         ]"
       >
-        <div class="min-h-16 flex flex-col items-center">
+        <div class="flex flex-col items-center">
           <!-- Show RadialProgressBar for current month and days up to today -->
           <RadialProgressbar
             :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
@@ -34,9 +34,12 @@
             :datesize="36"
             color="text-violet-400"
           />
-          <svg v-if="day.isToday" class="fill-violet-400 w-2 h-2 mt-1">
-            <circle r="3" cx="3" cy="3" />
-          </svg>
+          <div class="fill-violet-400 h-1 w-1 md:h-2 md:w-2"
+          :class="{ 'invisible': !day.isToday }">
+            <svg class="h-full w-full" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
