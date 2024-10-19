@@ -42,7 +42,8 @@
           <input v-if="selectedHabit"
             type="range" :min="0" :max="selectedHabit.dailyGoal"
             v-model.number="addProgress"
-            class="range accent-violet-400 w-1/2 mx-2" />
+            class="range w-1/2 mx-2"
+            :class="selectedHabit.color ? replaceBgWithAccent(selectedHabit.color.default): ''" />
 
           <!-- Plus Button -->
           <button type="button" @click="increaseGoal" 
@@ -97,6 +98,11 @@ export default {
     }
   },
   methods: {
+    replaceBgWithAccent(className) {
+      const result = className.replace('bg-', 'accent-');
+      console.log(result);
+      return result;
+    },
     // Back and Dropdown Functions
     toggleDropdown(event) {
       event.stopPropagation(); // Prevent the outside click listener from being triggered
@@ -127,7 +133,9 @@ export default {
       document.removeEventListener('click', this.handleClickOutside);
     },
     goBack() {
-      this.$router.push('/');
+      setTimeout(() => {
+            this.$router.push('/');
+          }, 100);
     },
     // Progress Functions
     increaseGoal() {

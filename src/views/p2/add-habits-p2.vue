@@ -10,19 +10,68 @@
       <!-- Form Content -->
       <div class="flex-1 overflow-y-auto p-4">
         <form @submit.prevent="createEntry" class="space-y-4">
-          <!-- Name -->
-          <div>
-            <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
-            <input v-model="formData.name" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" autocomplete="off" />
+          <!-- Name and color picker-->
+          <div class="flex space-x-4 items-center">
+            <!-- Name Field -->
+            <div class="flex-1">
+              <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
+              <input v-model="formData.name" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" autocomplete="off" />
+            </div>
+
+            <!-- Color Picker Button -->
+            <div class="relative">
+              <label for="color" class="text-left block text-sm font-medium text-gray-700">Color</label>
+              <button 
+                type="button"
+                @click="toggleColorPicker" 
+                class="flex items-center justify-between p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-400"
+              >
+                <div class="flex items-center space-x-2">
+                  <!-- Show the selected color -->
+                  <div 
+                    :class="formData.color.default" 
+                    class="w-6 h-6 rounded-full border border-gray-400"
+                  ></div>
+                </div>
+                <span class="material-icons transform" :class="{ 'rotate-180': showColorPicker }">expand_more</span>
+              </button>
+
+              <!-- Color Picker Dropdown -->
+              <div 
+                v-if="showColorPicker" 
+                class="items-center absolute z-10 w-16 mt-2 p-2 bg-white border border-gray-300 rounded-md shadow-lg flex flex-col gap-2"
+              >
+                <div
+                  v-for="(color, index) in listColors"
+                  :key="index"
+                  :class="[
+                    color.default,
+                    formData.color === color ? 'border-black' : 'border-transparent',
+                    'border-2 w-8 h-8 rounded-full cursor-pointer transition duration-200'
+                  ]"
+                  @click="selectColor(color)"
+                ></div>
+              </div>
+            </div>
           </div>
 
           <!-- Daily Goal -->
           <div>
             <label for="dailyGoal" class="text-left block text-sm font-medium text-gray-700">Daily Goal</label>
             <div class="mt-1 flex items-center justify-center space-x-2">
-              <button type="button" @click="decreaseGoal" class="material-icons bg-violet-400 text-white p-2 rounded-full hover:bg-violet-500">remove</button>
+              <button 
+                type="button" 
+                @click="decreaseGoal" 
+                class="material-icons text-white p-2 rounded-full" 
+                :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+              >remove</button>
               <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="no-arrows bg-white text-black w-12 p-2 border border-gray-300 rounded-md text-center"/>
-              <button type="button" @click="increaseGoal" class="material-icons bg-violet-400 text-white p-2 rounded-full hover:bg-violet-500">add</button>
+              <button 
+                type="button" 
+                @click="increaseGoal" 
+                class="material-icons text-white p-2 rounded-full" 
+                :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+              >add</button>
               <span>Times</span>
             </div>
           </div>
@@ -64,7 +113,6 @@
 
           <!-- Image Upload Button -->
           <div class="mt-2 flex justify-end gap-2">
-            <!-- Display Selected Image Thumbnail -->
             <div v-if="formData.imageUrl" class="flex items-center border rounded-md content-center text-sm">
               <img :src="imagePreviewUrl" alt="Selected Image" class="h-10 w-10 object-cover rounded-md" />
               <span class="ml-2">{{ formatFileName(formData.imageUrl) }}</span>
@@ -74,12 +122,12 @@
             </div>
 
             <input type="file" @change="onFileSelected" ref="fileInput" class="hidden" />
-
             <button 
               type="button" 
               @click="triggerFileInput" 
               class="bg-gray-300 text-gray-700 p-2 rounded-full h-10 w-10 flex justify-center items-center transition-colors duration-200"
-              :class="{'bg-violet-400': formData.imageUrl, 'bg-gray-300': !formData.imageUrl}" 
+              :class="{'bg-gray-300': !formData.imageUrl}" 
+              :style="{ backgroundColor: formData.imageUrl ? formData.color : '#e5e7eb' }"
             >
               <span class="material-icons" :class="{'text-white': formData.imageUrl, 'text-gray-700': !formData.imageUrl}" >image</span>
             </button>
@@ -97,48 +145,17 @@
             </div>
           </div>
         </form>
-
-        <!-- Color Picker Button and Dropdown -->
-        <div class="py-2">
-          <!-- Button to show selected color and toggle the dropdown -->
-          <button 
-            @click="toggleColorPicker" 
-            class="flex items-center justify-between p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-400"
-          >
-            <div class="flex items-center space-x-2">
-              <!-- Show the selected color -->
-              <div 
-                :style="{ backgroundColor: formData.color }" 
-                class="w-6 h-6 rounded-full border border-gray-400"
-              ></div>
-            </div>
-            <!-- Arrow Icon to show that it can be clicked -->
-            <span class="material-icons transform" :class="{ 'rotate-180': showColorPicker }">expand_more</span>
-          </button>
-
-          <!-- Color Picker Dropdown -->
-          <div 
-            v-if="showColorPicker" 
-            class="absolute z-10 mt-2 p-2 bg-white border border-gray-300 rounded-md shadow-lg grid grid-cols-4 gap-2"
-          >
-            <div
-              v-for="(color, index) in pastelColors"
-              :key="index"
-              :style="{ backgroundColor: color }"
-              class="w-8 h-8 rounded-full cursor-pointer border-2"
-              :class="formData.color === color ? 'border-black' : 'border-transparent'"
-              @click="selectColor(color)"
-            ></div>
-          </div>
-        </div>
       </div>
-
-      
 
       <!-- Floating Create Button -->
       <div class="sticky bottom-0 p-4">
-        <button @click="createEntry" class="min-h-12 w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-violet-500">
-          {{ buttonText }} 
+        <button 
+          @click="createEntry" 
+          class="min-h-12 w-full text-white font-bold py-3 rounded-lg shadow-lg disabled:bg-gray-300"
+          :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+          :disabled="formData.name === ''"
+        >
+          {{ buttonText }}
         </button>
       </div>
     </div>
@@ -165,23 +182,20 @@ export default {
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: null,
         imageUrl: "",
-        color: "#A78BFA",
+        color: { default: "bg-violet-400", active: "bg-violet-500" }
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
       selectedFile: null, // To store the selected image file
       imagePreviewUrl: "", // To store the image preview URL
       isLoading: false, // Loading state for the button
       loadingText: 'Create', // Initial button text
-      pastelColors: [
-        "#A78BFA", // Pastel Purple
-        "#ffd1dc", // Light Pink
-        "#ffcbf2", // Light Purple
-        "#a0e7e5", // Light Blue
-        "#b4f8c8", // Light Green
-        "#fdfd96", // Light Yellow
-        "#f7c7db", // Light Coral
-        "#ff9aa2", // Soft Red
-        "#ffdac1", // Peach
+      listColors:[
+        { default: "bg-violet-400", active: "bg-violet-500" },
+        { default: "bg-red-400", active: "bg-red-500" },
+        { default: "bg-yellow-400", active: "bg-yellow-500" },
+        { default: "bg-green-400", active: "bg-green-500" },
+        { default: "bg-blue-400", active: "bg-blue-500" },
+        { default: "bg-pink-400", active: "bg-pink-500" },
       ],
       showColorPicker: false,
     };
@@ -199,8 +213,18 @@ export default {
       this.formData.repeatDays = this.selectedHabit.repeat;
       this.formData.notes = this.selectedHabit.notes;
       this.formData.termStart = this.selectedHabit.termStart ? this.selectedHabit.termStart.toDate().toISOString().split("T")[0] : '';
+      this.formData.termEnd = this.selectedHabit.termEnd ? this.selectedHabit.termEnd.toDate().toISOString().split("T")[0] : '';
+
+      if (!this.selectedHabit.imageUrl) {
+        this.selectedHabit.imageUrl = '';
+      }
       this.formData.imageUrl = this.selectedHabit.imageUrl;
       this.imagePreviewUrl = this.selectedHabit.imageUrl;
+      this.formData.reminder = this.selectedHabit.reminder;
+      if (this.selectedHabit.color) {
+        this.formData.color = { default: this.selectedHabit.color.default, active: this.selectedHabit.color.active };
+      }
+      
     }
   },
   computed: {
@@ -311,6 +335,7 @@ export default {
           this.isLoading = true; // Set loading state to true
           this.startLoadingDots();
           const imageUrl = await this.uploadImage();
+          console.log('imageUrl', '('+imageUrl+')', 'this.formData.imageUrl', this.formData.imageUrl);
           await updateDoc(doc(db, "habits", this.selectedHabit.habitId), {
             name: this.formData.name,
             dailyGoal: this.formData.dailyGoal,
@@ -322,7 +347,7 @@ export default {
             imageUrl: imageUrl || this.formData.imageUrl,
             color: this.formData.color,
           });
-
+          
           this.$toast.info({
             message: "Habit updated successfully!",
             duration: 2000

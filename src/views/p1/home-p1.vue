@@ -33,7 +33,7 @@
                   :percent="habit.progress * 100 / habit.dailyGoal"
                   :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  color="bg-violet-400"
+                  :color="habit.color ? habit.color.default : 'bg-violet-400'"
                   class="cursor-pointer"
                   @click="openDetail(habit)"
                 />
@@ -67,7 +67,7 @@
                   :percent="habit.progress * 100 / habit.dailyGoal"
                   :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  color="bg-violet-400"
+                  :color="habit.color ? habit.color.default : 'bg-violet-400'"
                   class="cursor-pointer"
                   @click="openDetail(habit)"
                 />
