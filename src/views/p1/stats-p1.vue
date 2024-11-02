@@ -11,19 +11,19 @@
 
     <div v-if="fetched" class="overflow-y-auto h-full">
       <div v-if="habitsMonth.length !== 0">
-      <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center">
-        <h2 class="p-2 font-semibold w-3/4">{{ mainText }}</h2>
-        <div class="w-1/4">
-          <RadialProgressbar
-            :progress="Number(overallProgress)"
-            :radius="40"
-            :text="String(displayValue)"
-            color="text-violet-400"
-            class="cursor-pointer"
-            @click="toggleGrade"
-          />
+        <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-28">
+          <h2 class="p-2 font-semibold w-3/4">{{ mainText }}</h2>
+          <div class="w-1/4">
+            <RadialProgressbar
+              :progress="Number(overallProgress)"
+              :radius="40"
+              :text="String(displayValue)"
+              color="text-violet-400"
+              class="cursor-pointer"
+              @click="toggleGrade"
+            />
+          </div>
         </div>
-      </div>
 
       
         <div class="p-4 flex items-center justify-between">
@@ -63,21 +63,23 @@
           <div
             v-for="habit in habitsMonth"
             :key="habit.id">
-            <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
+            <div class="w-full min-h-18 p-4 bg-white border rounded-lg flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
             @click="openDetail(habit)">
-              <div class="flex flex-row items-center w-3/4">
-                <div class="h-2 w-2 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
+              <div class="flex flex-row items-center">
+                <div class="h-3 w-3 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
                   <svg class="h-full w-full" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" />
                   </svg>
                 </div>
-                <h2 class="p-2 font-semibold w-3/4">{{ habit.name }}</h2>
+                <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
               </div>
-              <div class="flex flex-row items-center w-1/4">
-                <span class="material-icons" :class="habit.color ? `text-${habit.color.default}`: 'text-violet-400'">pie_chart</span>
-                <h3 class="p-2 font-semibold min-w-10">{{ habit.progressPercent }}%</h3>
+              <div class="flex flex-row items-center">
+                <span class="material-icons p-1" 
+                      :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'">pie_chart</span>
+                <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
                 <span class="material-icons">chevron_right</span>
               </div>
+
             </div>
           </div>
         </div>
@@ -86,28 +88,44 @@
         <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
       </div>
     </div>
-    <!--<div v-else class="flex justify-center items-center h-64">
-      <div class="spinner"></div>
-    </div>-->
-    <!-- Skeleton Loader -->
-    <div v-else class="space-y-4 p-4">
-      <!-- Main Text Skeleton -->
-      <div class="w-full h-8 bg-gray-200 rounded-md animate-pulse"></div>
-      
-      <!-- Habit Item Skeletons -->
-      <div v-for="n in 3" :key="n" class="w-full p-4 bg-gray-200 border rounded-lg flex flex-row items-center animate-pulse">
-        <div class="h-6 w-6 bg-gray-300 rounded-full"></div>
-        <div class="ml-4 w-3/4 h-6 bg-gray-300 rounded-md"></div>
-        <div class="ml-auto w-1/4 h-6 bg-gray-300 rounded-md"></div>
+    <!-- Skeleton Animation -->
+    <div v-else>
+      <div class="w-full p-4 bg-gray-200 border rounded-lg flex flex-row items-center h-28 animate-pulse">
+        <div class="w-3/4 space-y-2 p-2">
+          <div class="h-6 bg-gray-300 rounded-md w-full"></div>
+          <div class="h-6 bg-gray-300 rounded-md w-3/4"></div>
+        </div>
+        <div class="w-1/4">
+          <RadialProgressbar
+            :progress="100"
+            :radius="40"
+            :text="''"
+            color="text-gray-300"
+          />
+        </div>
+      </div>
+
+      <div class="p-4 flex items-center justify-between">
+        <span class="font-semibold text-black">More info</span>
+        <hr class="flex-grow border-t border-gray-300 mx-4" />
+
+        <!-- More Options Button (Dropdown Toggle) -->
+        <div class="relative">
+          <!-- Dropdown Toggle Button -->
+            <div class="space-x-1 flex items-center cursor-pointer" @click="toggleDropdown">
+            <span class="material-icons rounded-full">sort</span>
+            <span class="font-semibold">Sort</span>
+            </div>
+
+        </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
-import { query, collection, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { query, collection, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { mapState } from 'vuex';
 import { useStatStore } from '../../store/statStore.js';
@@ -158,10 +176,6 @@ export default {
     },
   },
   methods: {
-    updateState() {
-      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
-      this.fetchHabitsMonth();
-    },
     previousMonth() {
       if (this.currentMonth === 0) {
           this.currentMonth = 11;
@@ -169,7 +183,7 @@ export default {
       } else {
           this.currentMonth--;
       }
-      this.updateState();
+      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
       this.$router.push('/stats');
     },
     nextMonth() {
@@ -182,7 +196,7 @@ export default {
       } else {
         this.currentMonth++;
       }
-      this.updateState();
+      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
       this.$router.push('/stats');
     },
     toggleSort() {
@@ -236,19 +250,11 @@ export default {
       return 'F'; // For progress less than 20%
     },
     async fetchHabitsMonth() {
-      const cachedHabits = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
-      if (cachedHabits) {
-        this.habitsMonth = cachedHabits;
-        this.overallProgress = this.calcOverallProgress(cachedHabits);
-        this.fetched = true;
-      } else {
-        this.fetched = false;
-        const fetchedHabits = await this.getMonthStats();
-        this.habitsMonth = fetchedHabits;
-        this.overallProgress = this.calcOverallProgress(fetchedHabits);
-        this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
-        this.fetched = true;
-      }
+      this.fetched = false;
+      const fetchedHabits = await this.getMonthStats();
+      this.habitsMonth = fetchedHabits;
+      this.overallProgress = this.calcOverallProgress(fetchedHabits);
+      this.fetched = true;
     },
     async getMonthStats() {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
@@ -287,43 +293,50 @@ export default {
       }
       return dayCounts * habit.dailyGoal;
     },
-    async getProgressInMonth(habit) {
-      let totalProgress = 0;
+    getProgressInMonth(habit) {
+      return new Promise((resolve) => {
+        let totalProgress = 0;
 
-      // Define the start and end of the month
-      const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
-      const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
+        // Define the start and end of the month
+        const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
 
-      // Query all progress documents for this habit within the month
-      const q = query(
-        collection(db, "progress"),
-        where("timestamp", ">=", startOfMonth),
-        where("timestamp", "<=", endOfMonth),
-        where("habitId", "==", habit.habitId),
-        orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
-      );
+        // Query all progress documents for this habit within the month
+        const q = query(
+          collection(db, "progress"),
+          where("timestamp", ">=", startOfMonth),
+          where("timestamp", "<=", endOfMonth),
+          where("habitId", "==", habit.habitId),
+          orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
+        );
 
-      // Fetch all documents in the range
-      const querySnapshot = await getDocs(q);
+        // Set up a map to store the latest progress per day
+        const dailyProgressMap = {};
 
-      // Process documents to get the latest entry per day
-      const dailyProgressMap = {};
+        // Listen for real-time updates and process documents
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          // Clear the map on each snapshot
+          Object.keys(dailyProgressMap).forEach(key => delete dailyProgressMap[key]);
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const progressDate = new Date(data.timestamp.toDate());
-        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const progressDate = new Date(data.timestamp.toDate());
+            const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
 
-        // Only keep the latest document for each day
-        if (!dailyProgressMap[dayKey]) {
-          dailyProgressMap[dayKey] = Number(data.progress); // Save the first (latest) document per day
-        }
+            // Only keep the latest document for each day
+            if (!dailyProgressMap[dayKey]) {
+              dailyProgressMap[dayKey] = Number(data.progress); // Save the first (latest) document per day
+            }
+          });
+
+          // Calculate the total progress
+          totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
+
+          // Resolve the promise with the calculated total progress and unsubscribe
+          resolve(totalProgress);
+          unsubscribe(); // Unsubscribe to avoid multiple triggers if you only need a single calculation
+        });
       });
-      //console.log(habit.name+':',dailyProgressMap)
-      // Sum up the daily progress values
-      totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
-
-      return totalProgress;
     },
     calcOverallProgress(habits) {
       let goals = 0;

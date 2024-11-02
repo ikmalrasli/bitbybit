@@ -1,38 +1,37 @@
 import { defineStore } from 'pinia';
 
-export const useHabitStore = defineStore('habitStore', {
+export const useStatStore = defineStore('habitStore', {
   state: () => ({
-    selectedHabit: null,   // Holds the currently selected habit
+    selectedStat: null,   // Holds the currently selected habit
     selectedMonth: new Date().getMonth(), // Default to the current month
     selectedYear: new Date().getFullYear(), // Default to the current year
+    textColor: 'text-violet-400',
+    fillColor: 'fill-violet-400',
+    habitsCache: {}, // Caches habits data by month and year
   }),
   actions: {
     // Sets the selected habit
-    openDetail(habit) {
-      this.selectedHabit = habit;
+    selectStat(habit) {
+      this.selectedStat = habit;
+      if (habit.color) {
+        this.textColor = 'text-' + habit.color.default;
+        this.fillColor = 'fill-' + habit.color.default;
+      }
     },
     // Sets the selected month and year
     setMonthAndYear(month, year) {
       this.selectedMonth = month;
       this.selectedYear = year;
     },
-    // Increments the month and updates the year if necessary
-    nextMonth() {
-      if (this.selectedMonth === 11) {
-        this.selectedMonth = 0;
-        this.selectedYear++;
-      } else {
-        this.selectedMonth++;
-      }
+    // Stores habits for the specified month and year in cache
+    setHabitsForMonth(habits, month, year) {
+      const key = `${month}-${year}`;
+      this.habitsCache[key] = habits;
     },
-    // Decrements the month and updates the year if necessary
-    previousMonth() {
-      if (this.selectedMonth === 0) {
-        this.selectedMonth = 11;
-        this.selectedYear--;
-      } else {
-        this.selectedMonth--;
-      }
+    // Retrieves habits for the specified month and year from cache
+    getHabitsForMonth(month, year) {
+      const key = `${month}-${year}`;
+      return this.habitsCache[key] || null;
     },
   },
   getters: {
@@ -44,5 +43,6 @@ export const useHabitStore = defineStore('habitStore', {
       ];
       return monthNames[state.selectedMonth];
     },
+    getHabitId: (state) => state.selectedHabit,
   },
 });
