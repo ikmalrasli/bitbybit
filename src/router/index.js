@@ -10,6 +10,7 @@ import Test2 from '../views/p2/test-p2.vue'
 import AddHabit from '../views/p2/add-habits-p2.vue'
 import DetailHabit from '../views/p2/detail-habit-p2.vue'
 import DetailSunnah from '../views/p2/detail-sunnah-p2.vue'
+import DetailStats from '../views/p2/detail-stats-p2.vue'
 import Login from '../views/auth/login-page.vue'
 import Register from '../views/auth/register-page.vue'
 import ForgotPassword from '../views/auth/forgot-page.vue'
@@ -105,6 +106,20 @@ const routes = [
         meta: { title: 'Stats', requiresAuth: true },
       },
       {
+        path: 'stats/:habitId:timestamp',
+        name: 'detail-stats',
+        components: {
+          default: Stats,
+          right: DetailStats
+        },
+        props: {
+          right: (route) => ({ 
+            habitId: route.params.habitId, 
+            timestamp: route.params.timestamp})  // Pass habitData to the right view
+        },
+        meta: { requiresAuth: true }
+      },
+      {
         path: '/test',
         component: Test,
         meta: { title: 'Test', requiresAuth: true },
@@ -158,7 +173,10 @@ router.beforeEach((to, from, next) => {
   } 
   else if (to.name === 'add-sunnah' && !from.name) {
     next({ name: 'sunnahs' });
-  } 
+  }
+  else if (to.name === 'detail-stats' && !from.name) {
+    next({ name: 'stats' });
+  }
   // Handle authentication check
   else if (requiresAuth && !isAuthenticated) {
     // If the route requires authentication and the user is not authenticated, redirect to login
