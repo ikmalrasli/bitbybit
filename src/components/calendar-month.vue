@@ -29,9 +29,9 @@
             :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
             :progress="day.progress"
             :radius="40"
-            :datenumber="day.day"
-            :datecolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
-            :datesize="36"
+            :text="String(day.day)"
+            :textcolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
+            :textsize="36"
             color="text-violet-400"
           />
           <div class="fill-violet-400 h-1 w-1 md:h-2 md:w-2"
@@ -173,15 +173,14 @@ export default {
       // Add current month's days with progress
       for (let i = 1; i <= totalDaysInMonth; i++) {
         const dayDate = new Date(this.currentYear, this.currentMonth, i);
-        const { totalProgress, endHabits } = getTotalProgressDayForMonth(dayDate, this.progressArray, this.habits);
-        //console.log(i, endHabits) //troubleshoot for yesterday's habit not appearing
+        const { totalProgress } = getTotalProgressDayForMonth(dayDate, this.progressArray, this.habits);
+        
         days.push({
           day: i,
           isCurrentMonth: true,
           isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear,
           progress: totalProgress,
         });
-
       }
 
       // Fill remaining days from the next month

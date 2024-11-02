@@ -18,15 +18,15 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  datenumber: {
-    type: Number,
-    default: 0
+  text: {
+    type: String,
+    default: ''
   },
-  datecolor: {
+  textcolor: {
     type: String,
     default: '#000000'
   },
-  datesize: {
+  textsize: {
     type: Number,
     default: 32
   }
@@ -72,12 +72,12 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
       <text
         :x="viewBoxSize / 2"
         :y="viewBoxSize / 2"
-        :font-size="datesize"
+        :font-size="textsize"
         text-anchor="middle"
         alignment-baseline="middle"
-        :style="{ fill: datecolor }"
+        :style="{ fill: textcolor }"
       >
-        {{ props.datenumber }}
+        {{ props.text }}
       </text>
       
     </svg>

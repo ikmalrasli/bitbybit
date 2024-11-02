@@ -15,7 +15,17 @@
             <!-- Name Field -->
             <div class="flex-1">
               <label for="name" class="text-left block text-sm font-medium text-gray-700">Name</label>
-              <input v-model="formData.name" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" autocomplete="off" />
+              <input 
+                v-model="formData.name" 
+                type="text" 
+                id="name" 
+                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:outline-none" 
+                :class="[ 
+                  'focus:ring-1 focus:' + `ring-${formData.color.active}`, 
+                  'focus:' + `border-${formData.color.active}` 
+                ]" 
+                autocomplete="off" 
+              />
             </div>
 
             <!-- Color Picker Button -->
@@ -29,7 +39,7 @@
                 <div class="flex items-center space-x-2">
                   <!-- Show the selected color -->
                   <div 
-                    :class="formData.color.default" 
+                    :class="`bg-${formData.color.default}`" 
                     class="w-6 h-6 rounded-full border border-gray-400"
                   ></div>
                 </div>
@@ -45,8 +55,8 @@
                   v-for="(color, index) in listColors"
                   :key="index"
                   :class="[
-                    color.default,
-                    formData.color === color ? 'border-black' : 'border-transparent',
+                    `bg-${color.default}`,
+                    formData.color === color ? `border-${color.active}` : 'border-transparent',
                     'border-2 w-8 h-8 rounded-full cursor-pointer transition duration-200'
                   ]"
                   @click="selectColor(color)"
@@ -63,14 +73,14 @@
                 type="button" 
                 @click="decreaseGoal" 
                 class="material-icons text-white p-2 rounded-full" 
-                :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+                :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
               >remove</button>
               <input v-model="formData.dailyGoal" type="number" id="dailyGoal" class="no-arrows bg-white text-black w-12 p-2 border border-gray-300 rounded-md text-center"/>
               <button 
                 type="button" 
                 @click="increaseGoal" 
                 class="material-icons text-white p-2 rounded-full" 
-                :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+                :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
               >add</button>
               <span>Times</span>
             </div>
@@ -105,7 +115,11 @@
               v-model="formData.notes"
               id="notes"
               ref="notesTextarea"
-              class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16 resize-none overflow-y-auto"
+              class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16 resize-none overflow-y-auto "
+              :class="[
+                'focus:ring-1 focus-within:' + `ring-${formData.color.active}`, 
+                'focus-within:' + `border-${formData.color.active}`
+              ]"
               placeholder="Optional"
               @input="adjustTextareaHeight"
             ></textarea>
@@ -152,7 +166,7 @@
         <button 
           @click="createEntry" 
           class="min-h-12 w-full text-white font-bold py-3 rounded-lg shadow-lg disabled:bg-gray-300"
-          :class="[formData.color.default, 'hover:'+formData.color.active, 'active:'+formData.color.active]"
+          :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
           :disabled="formData.name === ''"
         >
           {{ buttonText }}
@@ -182,20 +196,21 @@ export default {
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: null,
         imageUrl: "",
-        color: { default: "bg-violet-400", active: "bg-violet-500" }
+        color: { default: "violet-400", active: "violet-500" }
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-      selectedFile: null, // To store the selected image file
-      imagePreviewUrl: "", // To store the image preview URL
-      isLoading: false, // Loading state for the button
-      loadingText: 'Create', // Initial button text
+      selectedFile: null,
+      imagePreviewUrl: "",
+      isLoading: false, 
+      loadingText: 'Create',
       listColors:[
-        { default: "bg-violet-400", active: "bg-violet-500" },
-        { default: "bg-red-400", active: "bg-red-500" },
-        { default: "bg-yellow-400", active: "bg-yellow-500" },
-        { default: "bg-green-400", active: "bg-green-500" },
-        { default: "bg-blue-400", active: "bg-blue-500" },
-        { default: "bg-pink-400", active: "bg-pink-500" },
+        { default: "violet-400", active: "violet-500" },
+        { default: "red-300", active: "red-400" },
+        { default: "orange-300", active: "orange-400" },
+        { default: "yellow-300", active: "yellow-400" },
+        { default: "emerald-300", active: "emerald-400" },
+        { default: "blue-300", active: "blue-400" },
+        { default: "pink-300", active: "pink-400" },
       ],
       showColorPicker: false,
     };
@@ -332,10 +347,10 @@ export default {
       //edit habit section
       if (this.$route.name === 'edit-habit') {
         try {
-          this.isLoading = true; // Set loading state to true
+          this.isLoading = true;
           this.startLoadingDots();
           const imageUrl = await this.uploadImage();
-          console.log('imageUrl', '('+imageUrl+')', 'this.formData.imageUrl', this.formData.imageUrl);
+          // console.log('imageUrl', '('+imageUrl+')', 'this.formData.imageUrl', this.formData.imageUrl);
           await updateDoc(doc(db, "habits", this.selectedHabit.habitId), {
             name: this.formData.name,
             dailyGoal: this.formData.dailyGoal,

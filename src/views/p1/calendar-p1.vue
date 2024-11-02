@@ -37,7 +37,6 @@ import CalendarMonth from "../../components/calendar-month.vue";
 import VerticalProgressbar from "../../components/VerticalProgressbar.vue";
 import { mapState } from "vuex";
 import { getTotalProgressDay } from "../../utils/getTotalProgressDay";
-import { getTotalProgressDayForMonth } from "../../utils/getTotalProgressDayForMonth";
 
 export default {
   components: {
