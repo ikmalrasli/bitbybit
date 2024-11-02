@@ -1,10 +1,11 @@
 <template>
   <div class="w-full h-full fixed inset-0 flex items-center justify-center">
-    <div class="flex-col">
-      <div class="w-full px-4 font-bold text-xl text-violet-400">BitByBit</div>
-      <div class="w-full px-4 text-sm">
+    <div class="flex flex-col items-center justify-center">
+      <div class="font-bold text-xl text-violet-400 mb-4">BitByBit</div>
+      <!--<div class="text-sm mb-2">
         Loading{{ dots }}
-      </div>
+      </div>-->
+      <div class="spinner"></div>
     </div>
   </div>
 </template>
@@ -30,5 +31,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Add any additional styles here */
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #a78bfa; /* Change color as needed */
+  border-radius: 50%;
+  width: 32px; /* Spinner size */
+  height: 32px; /* Spinner size */
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 </style>
