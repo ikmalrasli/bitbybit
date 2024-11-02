@@ -11,6 +11,9 @@
     <button v-if="showAdd()" @click="openAddPage" class="cursor-pointer material-icons">
       add
     </button>
+    <button v-else-if="showWeekMonth()" class="cursor-pointer material-icons font-normal">
+      calendar_view_week
+    </button>
     <button v-else class="material-icons invisible">add</button>
   </div>
 </template>
@@ -54,6 +57,12 @@ export default {
         return "Sunnahs";
       }
 
+      if (this.$route.name === "stats" ||
+      this.$route.name === "detail-stats"
+      ) {
+        return "Stats"
+      }
+
       return this.$route.meta.title; // Otherwise, use the meta title
     }
   },
@@ -68,7 +77,10 @@ export default {
     openAddPage() {
       this.$store.commit('setSelectedSunnah', null);
       this.$router.push('/add-habit');
-    }
+    },
+    showWeekMonth() {
+      return this.$route.name === "stats";
+    },
   }
 };
 </script>

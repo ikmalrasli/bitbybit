@@ -4,6 +4,10 @@
       <!-- if no habits-->
       <div v-if="uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
+        <p class="text-center">Tap the
+          <span class="material-icons">add</span>
+          button
+        </p>
       </div>
 
       <!-- Collapsible Section -->
@@ -23,14 +27,14 @@
           </div>
 
           <!-- Uncompleted habits List with Transition -->
-          <transition name="slide-fade" appear>
+          <transition name="slide-fade">
             <div v-if="showUncompleted" class="py-4 space-y-1">
               <div v-for="(habit, index) in uncompletedHabits" :key="index">
                 <HomeProgress 
                   :percent="habit.progress * 100 / habit.dailyGoal"
                   :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  :color="habit.color ? getBgColor(habit.color) : 'bg-violet-400'"
+                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'"
                   class="cursor-pointer"
                   @click="openDetail(habit)"
                 />
@@ -54,14 +58,14 @@
           </div>
 
           <!-- Completed habits List with Transition -->
-          <transition name="slide-fade" appear>
-            <div v-if="showCompleted" class="py-4">
-              <div v-for="(habit, index) in completedHabits" :key="index" class="mb-2">
+          <transition name="slide-fade">
+            <div v-if="showCompleted" class="py-4 space-y-1">
+              <div v-for="(habit, index) in completedHabits" :key="index">
                 <HomeProgress 
                   :percent="habit.progress * 100 / habit.dailyGoal"
                   :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  :color="habit.color ? getBgColor(habit.color) : 'bg-violet-400'"
+                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'"
                   class="cursor-pointer"
                   @click="openDetail(habit)"
                 />
@@ -77,8 +81,7 @@
 <script>
 import { mapState } from 'vuex';
 import calendarRow from "../../components/calendar-row.vue";
-import HomeProgress from "../../components/home-progressbar.vue";
-import { getBgColor, getActiveColor } from '../../utils/getColor';
+import HomeProgress from "../../components/habitpb.vue";
 
 export default {
   components: {
@@ -106,7 +109,6 @@ export default {
     }
   },
   methods: {
-    getBgColor, getActiveColor,
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
@@ -139,11 +141,21 @@ export default {
 </script>
 
 <style>
+/* Transition for slide-fade */
 .slide-fade-enter-active, .slide-fade-leave-active {
   transition: all 0.3s ease;
 }
-.slide-fade-enter, .slide-fade-leave-to {
+.slide-fade-enter-from, .slide-fade-leave-to {
   transform: translateY(-10px);
   opacity: 0;
+}
+
+/* Transition for expand-collapse */
+.expand-collapse-enter-active, .expand-collapse-leave-active {
+  transition: all 0.3s ease;
+}
+.expand-collapse-enter, .expand-collapse-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

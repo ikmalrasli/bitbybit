@@ -9,12 +9,12 @@
       </div>
 
       <!-- Daily Tasks List -->
-      <div v-show="showDaily" class="py-4 transition-all duration-300 ease-in-out">
+      <div v-show="showDaily" class="py-4 transition-all duration-300 ease-in-out space-y-1">
         <div
           v-for="sunnah in dailySunnahs"
           :key="sunnah.id"
         >
-          <div class="w-full p-5 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>
@@ -33,13 +33,13 @@
       </div>
 
       <!-- Weekly Tasks List -->
-      <div v-show="showWeekly" class="mb-4 py-4 transition-all duration-300 ease-in-out">
+      <div v-show="showWeekly" class="mb-4 py-4 transition-all duration-300 ease-in-out space-y-1">
         <div
           v-for="sunnah in weeklySunnahs"
           :key="sunnah.sunnahId"
           class="mb-2"
         >
-          <div class="w-full p-5 mb-4 bg-white border rounded-lg cursor-pointer" @click="openDetail(sunnah)">
+          <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
             <div class="flex justify-between">
               <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
               <span class="material-icons">chevron_right</span>

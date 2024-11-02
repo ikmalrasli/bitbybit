@@ -66,7 +66,8 @@ export default {
         this.$route.name === 'edit-habit' ||
         this.$route.name === 'detail-habit' ||
         this.$route.name === 'detail-sunnah' ||
-        this.$route.name === 'add-sunnah'
+        this.$route.name === 'add-sunnah' ||
+        this.$route.name === 'detail-stats'
       );
     },
     contentClass() {

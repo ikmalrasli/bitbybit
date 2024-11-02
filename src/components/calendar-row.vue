@@ -10,7 +10,7 @@
     </button>
 
     <!-- Days display -->
-    <div class="flex flex-row gap-0.5 md:gap-1 flex-grow">
+    <div class="flex flex-row gap-0.5 flex-grow">
       <div
         v-for="day in days"
         :key="day.date"
@@ -19,7 +19,7 @@
       >
         <div 
           :class="[ 
-            'rounded-lg border-2 bg-white', 
+            'rounded-xl border-2 bg-white', 
             this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 border-2' : 'border-slate-200',
             day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default border-gray-50 bg-gray-50',
           ]"
@@ -31,8 +31,8 @@
               :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
               :progress="habitsProgress(day.dateobj)"
               :radius="40"
-              :datenumber="day.date"
-              style="margin-top:12px;"
+              :text="String(day.date)"
+              class="pt-2 pb-1"
               color="text-violet-400"
             />
           </div>
@@ -130,12 +130,25 @@ export default {
     showLastWeek() {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek'); // Generate days for last week
+      // Set the selected day to Saturday
+      const lastSaturday = this.days.find(day => day.name === 'Sat');
+      if (lastSaturday) {
+        this.selectDay(lastSaturday);
+      }
     },
 
     showThisWeek() {
       this.currentWeek = 'thisWeek';
       this.days = this.generateWeekDays('thisWeek'); // Generate days for this week
+      // Set the selected day to today
+      const today = this.days.find(day => day.isToday);
+      if (today) {
+        this.selectDay(today);
+      }
     },
+  },
+  mounted() {
+    this.showThisWeek();
   },
 };
 </script>

@@ -4,7 +4,7 @@
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">
         <button @click="goBack" class="material-icons">chevron_left</button>
-        <h1 class="text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{sunnah.name}}</h1>
+        <h1 class="text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 truncate w-full max-w-xs text-center">{{sunnah.name}}</h1>
       </header>
 
       <!-- Content -->
