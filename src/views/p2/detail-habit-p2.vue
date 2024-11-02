@@ -3,7 +3,9 @@
     <!-- Header -->
     <header class="bg-white p-4 flex flex-row relative justify-between">
       <button @click="goBack" class="material-icons rounded-full active:bg-gray-200">chevron_left</button>
-      <h1 class="text-xl text-black font-bold">{{ selectedHabit?.name || 'Habit Details' }}</h1>
+      <h1 
+      class="text-xl text-black font-bold truncate max-w-xs whitespace-nowrap overflow-hidden">
+      {{ selectedHabit?.name || 'Habit Details' }}</h1>
 
       <!-- More Options Button (Dropdown Toggle) -->
       <div class="relative">
@@ -13,11 +15,11 @@
         <!-- Dropdown Menu -->
         <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
           <ul class="py-1 text-gray-700">
-            <li @click="option1" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
+            <li @click="editOption" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span class="material-icons">edit</span>
               <span class="text-center w-full">Edit habit</span>
             </li>
-            <li @click="option2" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md text-red-500 hover:bg-gray-100 cursor-pointer">
+            <li @click="deleteOption" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md text-red-500 hover:bg-gray-100 cursor-pointer">
               <span class="material-icons">delete</span>
               <span class="text-center w-full">Delete habit</span>
             </li>
@@ -43,7 +45,7 @@
             type="range" :min="0" :max="selectedHabit.dailyGoal"
             v-model.number="addProgress"
             class="range w-1/2 mx-2"
-            :class="selectedHabit.color ? replaceBgWithAccent(selectedHabit.color.default): ''" />
+            :class="[selectedHabit.color ? `accent-${selectedHabit.color.default}`: 'accent-violet-400']" />
 
           <!-- Plus Button -->
           <button type="button" @click="increaseGoal" 
@@ -54,9 +56,24 @@
         <button type="button" @click="removeTodayEntries" class="material-icons text-gray-700 mt-4 mr-2 p-1 rounded-full active:bg-gray-200">replay</button>
         <!-- Add Progress Button-->
         <button type="button" @click="confirmProgress" 
-        class="material-icons text-violet-400 font-semibold mt-4 ml-2 p-1 rounded-full active:bg-gray-200 disabled:text-gray-400 disabled:font-normal"
-        :disabled="addProgress == selectedHabit?.progress"
-        >check</button>
+          class="material-icons font-semibold mt-4 ml-2 p-1 rounded-full active:bg-gray-200 disabled:text-gray-400 disabled:font-normal"
+          :class="selectedHabit.color ? `text-${selectedHabit.color.default}` : 'text-violet-400'"
+          :disabled="addProgress == selectedHabit?.progress || loading" 
+        >
+          <template v-if="loading">
+            <!-- Circular Loading Indicator -->
+            <span class="loader"></span>
+          </template>
+          <template v-else>
+            check
+          </template>
+        </button>
+      </div>
+
+      <!-- Timeline Card -->
+      <div class="w-full p-4 mb-4 text-gray-700 bg-white border rounded-lg">
+        <h2 class="text-xl text-center block mb-2">Habit Started: {{ selectedHabit?.termStart.toDate().toLocaleDateString() }}</h2>
+        
       </div>
 
       <!-- Notes and Image -->
@@ -77,8 +94,6 @@ import { mapState } from 'vuex';
 import { db } from "../../firebase"; // Firestore instance
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
-import { inject } from "vue";
-import { mapGetters } from 'vuex';
 
 export default {
   data() {
@@ -88,6 +103,7 @@ export default {
       docId: '',
       setTimestamp: new Date(),
       onTime: true,
+      loading: false
     };
   },
   computed: {
@@ -98,11 +114,6 @@ export default {
     }
   },
   methods: {
-    replaceBgWithAccent(className) {
-      const result = className.replace('bg-', 'accent-');
-      console.log(result);
-      return result;
-    },
     // Back and Dropdown Functions
     toggleDropdown(event) {
       event.stopPropagation(); // Prevent the outside click listener from being triggered
@@ -122,12 +133,12 @@ export default {
         document.removeEventListener('click', this.handleClickOutside); // Remove the event listener
       }
     },
-    option1() {
+    editOption() {
       this.editHabit();
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);
     },
-    option2() {
+    deleteOption() {
       this.deleteHabit();
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);
@@ -173,7 +184,7 @@ export default {
         this.$store.dispatch('fetchWeekProgress');
         this.addProgress = 0;
         this.$store.state.selectedHabit.progress = 0;
-        this.createProgress();
+        this.docId = null;
       } catch (error) {
         this.$toast.error({
           message: 'Error resetting progress. Please try again.',
@@ -194,7 +205,7 @@ export default {
       if (this.selectedHabit.progressId !== '') {
         this.docId = this.selectedHabit.progressId;
       } else {
-        this.createProgress();
+        this.docId = null;
       }
     },
     createProgress() {
@@ -204,48 +215,71 @@ export default {
       if (!user) {
         throw new Error("User not authenticated. Please log in.");
       }
-      
+
+      this.loading = true; // Start loading
       const habitRef = addDoc(collection(db, "progress"), {
         habitId: this.selectedHabit.habitId,
-        progress: 0,
+        progress: this.addProgress,
         timestamp: this.setTimestamp,
         onTime: this.onTime
       });
 
       habitRef.then((docRef) => {
+        this.loading = false; // End loading
         this.docId = docRef.id;
+        if (this.addProgress === this.selectedHabit.dailyGoal) {
+          this.$toast.success({
+            message: 'Congratulations! You have completed this habit!',
+            duration: 2500
+          });
+        } else if (this.addProgress > this.selectedHabit.progress) {
+          this.$toast.info({
+            message: 'Habit progress increased! Keep it up!',
+            duration: 2500
+          });
+        }
+        this.selectedHabit.progress = this.addProgress;
+      }).catch((error) => {
+        this.loading = false; // End loading on error
+        console.error(error);
+        this.$toast.error({
+          message: 'Error creating progress entry. Please try again.',
+          duration: 2000
+        });
       });
     },
     updateProgress() {
       if (this.docId) {
+        this.loading = true; // Start loading
         try{
           const docRef = doc(db, 'progress', this.docId);
           updateDoc(docRef, {
             progress: this.addProgress,
             timestamp: this.setTimestamp,
             onTime: this.onTime
+          }).then(() => {
+            this.loading = false; // End loading
+            if (this.addProgress === this.selectedHabit.dailyGoal) {
+              this.$toast.success({
+                message: 'Congratulations! You have completed this habit!',
+                duration: 2500
+              });
+            } else if (this.addProgress > this.selectedHabit.progress) {
+              this.$toast.info({
+                message: 'Habit progress increased! Keep it up!',
+                duration: 2500
+              });
+            }
+            this.selectedHabit.progress = this.addProgress;
+          }).catch(error => {
+            this.loading = false; // End loading on error
+            console.error(error);
           });
-
-        if (this.addProgress === this.selectedHabit.dailyGoal) {
-          this.$toast.success({
-            message: 'Congratulations! You have completed this habit!',
-            duration: 2000
-          });
-
-          setTimeout(() => {
-            this.$router.push('/');
-          }, 300);
-          
-        } else if (this.addProgress > this.selectedHabit.progress) {
-          this.$toast.info({
-            message: 'Habit progress increased! Keep it up!',
-            duration: 2000
-          });
-        }
-        this.selectedHabit.progress = this.addProgress;
         } catch(error) {
           console.log(error);
         }
+      } else {
+        this.createProgress();
       }
     },
     confirmProgress() {
@@ -305,3 +339,21 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.loader {
+  border: 3px solid #4b5563; /* Light gray */
+  border-top: 3px solid transparent; /* Set this to transparent, so the inline color shows */
+  border-radius: 50%;
+  width: 24px; /* Keep this equal to height */
+  height: 24px; /* Keep this equal to width */
+  animation: spin 1s linear infinite;
+  box-sizing: border-box; /* Ensures border is included in width/height */
+  display: inline-block; /* Ensures proper inline behavior */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
