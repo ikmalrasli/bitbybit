@@ -15,7 +15,7 @@
         <h2 class="p-2 font-semibold w-3/4">{{ mainText }}</h2>
         <div class="w-1/4">
           <RadialProgressbar
-            :progress="overallProgress"
+            :progress="Number(overallProgress)"
             :radius="40"
             :text="String(displayValue)"
             color="text-violet-400"
@@ -86,9 +86,22 @@
         <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
       </div>
     </div>
-    <div v-else class="flex justify-center items-center h-64"> <!-- Spinner when fetched is false -->
+    <!--<div v-else class="flex justify-center items-center h-64">
       <div class="spinner"></div>
+    </div>-->
+    <!-- Skeleton Loader -->
+    <div v-else class="space-y-4 p-4">
+      <!-- Main Text Skeleton -->
+      <div class="w-full h-8 bg-gray-200 rounded-md animate-pulse"></div>
+      
+      <!-- Habit Item Skeletons -->
+      <div v-for="n in 3" :key="n" class="w-full p-4 bg-gray-200 border rounded-lg flex flex-row items-center animate-pulse">
+        <div class="h-6 w-6 bg-gray-300 rounded-full"></div>
+        <div class="ml-4 w-3/4 h-6 bg-gray-300 rounded-md"></div>
+        <div class="ml-auto w-1/4 h-6 bg-gray-300 rounded-md"></div>
+      </div>
     </div>
+
   </div>
 </template>
 
@@ -97,13 +110,16 @@ import RadialProgressbar from '../../components/RadialProgressbar.vue';
 import { query, collection, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { mapState } from 'vuex';
+import { useStatStore } from '../../store/statStore.js';
 
 export default {
   components: {
     RadialProgressbar
   },
   data() {
+    const statStore = useStatStore();
     return {
+      statStore,
       sortType: 'alphabetical',
       currentMonth: new Date().getMonth(),
       currentYear: new Date().getFullYear(),
@@ -116,9 +132,9 @@ export default {
       showGrade: true,
       fetched: false,
       isDropdownOpen: false,
-      sortNameAsc: false,       // Track direction for name
-      sortProgressAsc: true,   // Track direction for progress
-      sortColorAsc: true,      // Track direction for color
+      sortNameAsc: false,
+      sortProgressAsc: true,
+      sortColorAsc: true,
       currentSort: 'name',
     }
   },
@@ -142,6 +158,10 @@ export default {
     },
   },
   methods: {
+    updateState() {
+      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
+      this.fetchHabitsMonth();
+    },
     previousMonth() {
       if (this.currentMonth === 0) {
           this.currentMonth = 11;
@@ -149,6 +169,8 @@ export default {
       } else {
           this.currentMonth--;
       }
+      this.updateState();
+      this.$router.push('/stats');
     },
     nextMonth() {
       if (this.currentMonth === this.todayMonth && this.currentYear === this.todayYear) {
@@ -160,6 +182,8 @@ export default {
       } else {
         this.currentMonth++;
       }
+      this.updateState();
+      this.$router.push('/stats');
     },
     toggleSort() {
       if (this.sortType === 'alphabetical') {
@@ -212,16 +236,18 @@ export default {
       return 'F'; // For progress less than 20%
     },
     async fetchHabitsMonth() {
-      try {
-        this.fetched = false;
-        this.habitsMonth = await this.getMonthStats();
-        this.overallProgress = Number(this.calcOverallProgress(this.habitsMonth));
+      const cachedHabits = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
+      if (cachedHabits) {
+        this.habitsMonth = cachedHabits;
+        this.overallProgress = this.calcOverallProgress(cachedHabits);
         this.fetched = true;
-        this.currentSort = 'name';           // Set the indicator to 'name'
-        this.sortNameAsc = false;             // Ensure sorting is ascending
-        this.habitsMonth.sort((a, b) => a.name.localeCompare(b.name)); // Sort by name in ascending order
-      } catch (error) {
-        console.error("Error fetching habits:", error);
+      } else {
+        this.fetched = false;
+        const fetchedHabits = await this.getMonthStats();
+        this.habitsMonth = fetchedHabits;
+        this.overallProgress = this.calcOverallProgress(fetchedHabits);
+        this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
+        this.fetched = true;
       }
     },
     async getMonthStats() {
@@ -286,7 +312,7 @@ export default {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const progressDate = new Date(data.timestamp.toDate());
-        const dayKey = progressDate.toISOString().split("T")[0]; // Extract the day in YYYY-MM-DD format
+        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
 
         // Only keep the latest document for each day
         if (!dailyProgressMap[dayKey]) {
@@ -312,7 +338,9 @@ export default {
 
       return goals ? (progress * 100 / goals).toFixed(0) : 0;
     },
-    async openDetail(habit) {
+    openDetail(habit) {
+      this.statStore.selectStat(habit);
+
       this.$router.push({
         name: 'detail-stats',
         params: { habitId: habit.habitId, timestamp: this.currentMonthYear }
@@ -390,6 +418,7 @@ export default {
   mounted() {
     this.updateMainText();
     this.fetchHabitsMonth();
+    this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
   }
 }
 </script>
@@ -397,10 +426,10 @@ export default {
 <style scoped>
 .spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #818cf8; /* Change color as needed */
+  border-left-color: #a78bfa; /* Change color as needed */
   border-radius: 50%;
-  width: 40px; /* Spinner size */
-  height: 40px; /* Spinner size */
+  width: 28px; /* Spinner size */
+  height: 28px; /* Spinner size */
   animation: spin 1s linear infinite;
 }
 
@@ -410,6 +439,21 @@ export default {
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* Skeleton Loading Animation */
+.animate-pulse {
+  @apply bg-gray-200 rounded-md;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
   }
 }
 </style>
