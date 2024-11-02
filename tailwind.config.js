@@ -9,18 +9,26 @@ export default {
   },
   plugins: [],
   safelist: [
-    {pattern: /^bg-(red|green|blue|yellow|pink|violet)-400$/},
-    {pattern: /^bg-(red|green|blue|yellow|pink|violet)-500$/,
+    {pattern: /^bg-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
+    {pattern: /^bg-(red|green|blue|yellow|pink|violet|emerald|orange)-400$/},
+    {pattern: /^bg-(red|green|blue|yellow|pink|violet|emerald|orange)-400$/,
       variants: ['hover', 'active'],
     },
-    {pattern: /^border-(red|green|blue|yellow|pink|violet)-500$/},
-    {pattern: /^border-(red|green|blue|yellow|pink|violet)-500$/,
+    {pattern: /^bg-(red|green|blue|yellow|pink|violet|emerald|orange)-500$/,
+      variants: ['hover', 'active'],
+    },
+    {pattern: /^border-(red|green|blue|yellow|pink|violet|emerald|orange)-500$/},
+    {pattern: /^border-(red|green|blue|yellow|pink|violet|emerald|orange)-500$/,
       variants: ['focus']
     },
-    {pattern: /^ring-(red|green|blue|yellow|pink|violet)-500$/,
+    {pattern: /^ring-(red|green|blue|yellow|pink|violet|emerald|orange)-500$/,
       variants: ['focus', 'focus-within']
     },
-    {pattern: /^text-(red|green|blue|yellow|pink|violet)-400$/},
-    {pattern: /^accent-(red|green|blue|yellow|pink|violet)-400$/},
+    {pattern: /^text-(red|green|blue|yellow|pink|violet|emerald|orange)-400$/},
+    {pattern: /^accent-(red|green|blue|yellow|pink|violet|emerald|orange)-400$/},
+    {pattern: /^fill-(red|green|blue|yellow|pink|violet|emerald|orange)-400$/},
+    {pattern: /^text-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
+    {pattern: /^accent-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
+    {pattern: /^fill-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
   ]
 }
