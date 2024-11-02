@@ -5,7 +5,7 @@ import { db } from '../firebase'; // Import your Firestore instance
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 
-const loadTimeout = 250;
+const loadTimeout = 1000;
 
 export default createStore({
   plugins: [
@@ -100,6 +100,7 @@ export default createStore({
           } else {
             commit('CLEAR_USER');
             commit('setLoading', false);
+            console.log('fetchUser set loading to false');
           }
           resolve(user);
         });
@@ -122,15 +123,16 @@ export default createStore({
             querySnapshot.forEach((doc) => {
               habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
-
-              this.dispatch('fetchWeekProgress')
             });
+
+            this.dispatch('fetchWeekProgress')
 
             if (querySnapshot.empty) {
               console.log('No habits found');
               setTimeout(() => {
                 commit('setLoading', false);
               }, loadTimeout);
+              console.log('fetchHabits set loading to false');
             }
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
@@ -188,11 +190,12 @@ export default createStore({
                 
                 return acc;
               }, []);
-              
+            
               commit('SET_WEEK_PROGRESS', outputArray);
-              this.dispatch('getDayHabits', this.state.selectedDay);
             });
-    
+
+            this.dispatch('getDayHabits', this.state.selectedDay);
+
             if (querySnapshot.empty) {
               setTimeout(() => {
                 commit('setLoading', false);
@@ -203,7 +206,7 @@ export default createStore({
           console.error("Error fetching latest progress:", error);
         }
       }
-    },    
+    },
     async getDayHabits({ commit, state }, day) {
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
@@ -227,7 +230,7 @@ export default createStore({
     getSelectedDay: (state) => state.selectedDay,
     isAuthenticated: (state) => state.isAuthenticated,
     user: (state) => state.user,
-    habits: (state) => state.habits,
+    getHabits: (state) => state.habits,
     weekHabits: (state) => state.weekHabits,
     allSunnahs: state => state.allSunnahs,
     selectedSunnah: state => state.selectedSunnah
