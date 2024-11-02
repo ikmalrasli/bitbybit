@@ -32,7 +32,7 @@ export function getTotalProgressDay(day, weekProgress, habits) {
     const endDay = new Date(day).setHours(23, 59, 59, 999);
     
     const dayOfWeek = getDayOfWeek(day);
-    const filteredHabits = combinedDayHabits.filter(habit => habit.repeat[dayOfWeek]);
+    const filteredHabits = combinedDayHabits.filter(habit => habit.repeat && habit.repeat[dayOfWeek]);
     const startHabits = filteredHabits.filter(habit => {
       const termStart = habit.termStart.toDate().setHours(0, 0, 0, 0); // Normalize termStart
       return termStart <= endDay;
