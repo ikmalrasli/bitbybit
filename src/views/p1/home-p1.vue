@@ -2,10 +2,13 @@
   <div class="w-full flex flex-row px-4 py-2">
     <div class="flex-auto">
       <!-- if no habits-->
-      <div v-if="uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mb-4 text-gray-700">
+      <div v-if="uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
-        <p class="text-center">Tap the
-          <span class="material-icons">add</span>
+        <p class="text-center">
+          Tap the
+          <span class="inline-flex items-center mx-1">
+            <span class="material-icons text-base">add</span>
+          </span>
           button
         </p>
       </div>
