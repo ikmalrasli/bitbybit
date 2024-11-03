@@ -3,7 +3,7 @@
     <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar"
       :class="!isMobile ? 'h-auto' : ''" />
 
-    <div v-if="!isMobile || !isDetailView" :class="contentClass"
+    <div v-if="!isTablet || !isDetailView" :class="contentClass"
       class="flex-1 flex flex-col h-full border-l border-r">
 
       <!--Title Bar-->
@@ -24,7 +24,7 @@
     </div>
 
     <!--Right Router View-->
-    <div v-if="!isMobile || isDetailView" class="flex-1 h-full">
+    <div v-if="!isTablet || isDetailView" class="flex-1 h-full" :class="rightClass">
       <router-view class="w-full" name="right" />
     </div>
 
@@ -49,6 +49,7 @@ export default {
     return {
       showSidebar: false,
       isMobile: false,
+      isTablet: false
     };
   },
   computed: {
@@ -73,6 +74,9 @@ export default {
     contentClass() {
       return this.isMobile ? "px-1" : "ml-56"; // On desktop, add margin for the sidebar
     },
+    rightClass() {
+      return !this.isMobile && this.isTablet ? "ml-56" : "px-1"; // On desktop, add margin for the sidebar
+    },
   },
   methods: {
     toggleSidebar() {
@@ -80,6 +84,7 @@ export default {
     },
     checkMobile() {
       this.isMobile = window.innerWidth < 768;
+      this.isTablet = window.innerWidth < 896;
     },
     handleDateSelected(date) {
       // Define the logic for what should happen when a date is selected.
