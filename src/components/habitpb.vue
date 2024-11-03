@@ -1,8 +1,8 @@
 <template>
-  <div class="progress h-16 bg-white border rounded-lg shadow-sm py-2 px-4 hover:bg-gray-50 active:bg-gray-100">
-    <div class="flex justify-between items-center" style="min-height: 26px;">
+  <div class="progress min-h-16 bg-white border rounded-lg shadow-sm py-2 px-4 hover:bg-gray-50 active:bg-gray-100">
+    <div class="flex justify-between items-center gap-2" style="min-height: 26px;">
       <!-- Task title -->
-      <span class="truncate max-w-xs whitespace-nowrap overflow-hidden">{{ text }}</span>
+      <span class="overflow-hidden">{{ text }}</span>
 
       <!-- Container for either the check icon or timesdone -->
       <div class="flex items-center">
