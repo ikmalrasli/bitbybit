@@ -9,11 +9,11 @@
         @click="nextMonth">chevron_right</button>
     </header>
 
-    <div v-if="fetched" class="overflow-y-auto h-full">
+    <div v-if="fetched" class="overflow-y-auto h-full pb-6">
       <div v-if="habitsMonth.length !== 0">
         <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-28">
           <h2 class="p-2 font-semibold w-3/4">{{ mainText }}</h2>
-          <div class="w-1/4">
+          <div class="w-1/4 h-full">
             <RadialProgressbar
               :progress="Number(overallProgress)"
               :radius="40"
@@ -266,10 +266,12 @@ export default {
           let totalGoals = this.getDailyGoalsInMonth(habit);
           let totalProgress = await this.getProgressInMonth(habit);
 
-          if ( totalProgress > totalGoals) {
-            totalProgress = totalGoals
+          if (totalProgress > totalGoals) {
+            totalProgress = totalGoals;
           }
-          const progressPercent = Number((totalProgress * 100 / totalGoals).toFixed(0));
+
+          const progressPercent = totalGoals > 0 ? Number((totalProgress * 100 / totalGoals).toFixed(0)) : 0;
+          
           return { ...habit, totalGoals, totalProgress, progressPercent };
         })
       );
@@ -293,50 +295,44 @@ export default {
       }
       return dayCounts * habit.dailyGoal;
     },
-    getProgressInMonth(habit) {
-      return new Promise((resolve) => {
-        let totalProgress = 0;
+    async getProgressInMonth(habit) {
+      let totalProgress = 0;
 
-        // Define the start and end of the month
-        const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
+      // Define the start and end of the month
+      const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
+      const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
 
-        // Query all progress documents for this habit within the month
-        const q = query(
-          collection(db, "progress"),
-          where("timestamp", ">=", startOfMonth),
-          where("timestamp", "<=", endOfMonth),
-          where("habitId", "==", habit.habitId),
-          orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
-        );
+      // Query all progress documents for this habit within the month
+      const q = query(
+        collection(db, "progress"),
+        where("timestamp", ">=", startOfMonth),
+        where("timestamp", "<=", endOfMonth),
+        where("habitId", "==", habit.habitId),
+        orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
+      );
 
-        // Set up a map to store the latest progress per day
-        const dailyProgressMap = {};
+      // Fetch all documents in the range
+      const querySnapshot = await getDocs(q);
 
-        // Listen for real-time updates and process documents
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          // Clear the map on each snapshot
-          Object.keys(dailyProgressMap).forEach(key => delete dailyProgressMap[key]);
+      // Process documents to get the latest entry per day
+      const dailyProgressMap = {};
 
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const progressDate = new Date(data.timestamp.toDate());
-            const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const progressDate = new Date(data.timestamp.toDate());
+        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
 
-            // Only keep the latest document for each day
-            if (!dailyProgressMap[dayKey]) {
-              dailyProgressMap[dayKey] = Number(data.progress); // Save the first (latest) document per day
-            }
-          });
 
-          // Calculate the total progress
-          totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
-
-          // Resolve the promise with the calculated total progress and unsubscribe
-          resolve(totalProgress);
-          unsubscribe(); // Unsubscribe to avoid multiple triggers if you only need a single calculation
-        });
+        // Only keep the latest document for each day
+        if (!dailyProgressMap[dayKey]) {
+          dailyProgressMap[dayKey] = Number(data.progress); // Save the first (latest) document per day
+        }
       });
+      //console.log(habit.name+':',dailyProgressMap)
+      // Sum up the daily progress values
+      totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
+
+      return totalProgress;
     },
     calcOverallProgress(habits) {
       let goals = 0;
