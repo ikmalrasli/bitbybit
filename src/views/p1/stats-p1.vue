@@ -59,30 +59,32 @@
           </div>
         </div>
 
-        <div class="space-y-1">
-          <div
-            v-for="habit in habitsMonth"
-            :key="habit.id">
-            <div class="w-full min-h-18 p-4 bg-white border rounded-lg flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
-            @click="openDetail(habit)">
-              <div class="flex flex-row items-center">
-                <div class="h-3 w-3 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
-                  <svg class="h-full w-full" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" />
-                  </svg>
+        <transition name="slide-fade">
+          <div v-if="setHabitsMonth" class="space-y-1">
+            <div
+              v-for="habit in habitsMonth"
+              :key="habit.id">
+              <div class="w-full min-h-18 p-4 bg-white border rounded-lg flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
+              @click="openDetail(habit)">
+                <div class="flex flex-row items-center">
+                  <div class="h-3 w-3 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
+                    <svg class="h-full w-full" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" />
+                    </svg>
+                  </div>
+                  <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
                 </div>
-                <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
-              </div>
-              <div class="flex flex-row items-center">
-                <span class="material-icons p-1" 
-                      :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'">pie_chart</span>
-                <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
-                <span class="material-icons">chevron_right</span>
-              </div>
+                <div class="flex flex-row items-center">
+                  <span class="material-icons p-1" 
+                        :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'">pie_chart</span>
+                  <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
+                  <span class="material-icons">chevron_right</span>
+                </div>
 
+              </div>
             </div>
           </div>
-        </div>
+        </transition>
       </div>
       <div v-else>
         <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
@@ -90,17 +92,17 @@
     </div>
     <!-- Skeleton Animation -->
     <div v-else>
-      <div class="w-full p-4 bg-gray-200 border rounded-lg flex flex-row items-center h-28 animate-pulse">
+      <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-28 animate-pulse">
         <div class="w-3/4 space-y-2 p-2">
-          <div class="h-6 bg-gray-300 rounded-md w-full"></div>
-          <div class="h-6 bg-gray-300 rounded-md w-3/4"></div>
+          <div class="h-6 bg-gray-200 rounded-md w-full"></div>
+          <div class="h-6 bg-gray-200 rounded-md w-3/4"></div>
         </div>
         <div class="w-1/4">
           <RadialProgressbar
             :progress="100"
             :radius="40"
             :text="''"
-            color="text-gray-300"
+            color="text-gray-200"
           />
         </div>
       </div>
@@ -154,6 +156,7 @@ export default {
       sortProgressAsc: true,
       sortColorAsc: true,
       currentSort: 'name',
+      setHabitsMonth: false,
     }
   },
   computed: {
@@ -251,10 +254,14 @@ export default {
     },
     async fetchHabitsMonth() {
       this.fetched = false;
+      this.setHabitsMonth = false;
       const fetchedHabits = await this.getMonthStats();
       this.habitsMonth = fetchedHabits;
       this.overallProgress = this.calcOverallProgress(fetchedHabits);
       this.fetched = true;
+      setTimeout(() => {
+        this.setHabitsMonth = true;
+      }, 50)
     },
     async getMonthStats() {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
@@ -453,7 +460,7 @@ export default {
 
 /* Skeleton Loading Animation */
 .animate-pulse {
-  @apply bg-gray-200 rounded-md;
+  @apply rounded-md;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -464,5 +471,23 @@ export default {
   50% {
     opacity: 0.4;
   }
+}
+
+/* Transition for slide-fade */
+.slide-fade-enter-active, .slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-fade-enter-from, .slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+/* Transition for expand-collapse */
+.expand-collapse-enter-active, .expand-collapse-leave-active {
+  transition: all 0.3s ease;
+}
+.expand-collapse-enter, .expand-collapse-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>
