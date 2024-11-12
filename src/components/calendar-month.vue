@@ -32,6 +32,7 @@
             :text="String(day.day)"
             :textcolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
             :textsize="36"
+            :strokeWidth="5"
             color="text-violet-400"
           />
           <div class="fill-violet-400 h-1 w-1 md:h-2 md:w-2"

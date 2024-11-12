@@ -8,7 +8,11 @@ const props = defineProps({
   },
   color: {
     type: String,
-    default: 'text-primary'
+    default: 'text-violet-400'
+  },
+  bgcolor:{
+    type: String,
+    default: 'text-gray-200'
   },
   radius: {
     type: Number,
@@ -29,10 +33,18 @@ const props = defineProps({
   textsize: {
     type: Number,
     default: 32
+  },
+  textclass: {
+    type: String,
+    default: ''
+  },
+  strokeWidth: {
+    type: Number,
+    default: 10
   }
 });
 
-const strokeWidth = 10;
+const strokeWidth = props.strokeWidth;
 const clampedProgress = computed(() => Math.min(100, Math.max(0, props.progress)));
 const circumference = computed(() => Number((2 * Math.PI * props.radius).toFixed(1)));
 const strokeDashOffset = computed(() => circumference.value - (circumference.value * clampedProgress.value) / 100);
@@ -48,7 +60,8 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
     >
       <circle
         v-if="props.show"
-        class="text-gray-200 stroke-current"
+        class="stroke-current"
+        :class="props.bgcolor"
         :stroke-width="strokeWidth"
         :cx="viewBoxSize / 2"
         :cy="viewBoxSize / 2"
@@ -73,6 +86,7 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
         :x="viewBoxSize / 2"
         :y="viewBoxSize / 2"
         :font-size="textsize"
+        :class="props.textclass"
         text-anchor="middle"
         alignment-baseline="middle"
         :style="{ fill: textcolor }"

@@ -19,21 +19,24 @@
       >
         <div 
           :class="[ 
-            'rounded-xl border-2 bg-white', 
-            this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 border-2' : 'border-slate-200',
+            'rounded-full p-1 pb-2', 
+            this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 bg-violet-400' : 'border-slate-200 bg-white',
             day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default border-gray-50 bg-gray-50',
           ]"
         >
           <div class="flex flex-col items-center">
-            <span class="min-w-8 text-center text-xs sm:text-sm"
-            :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-violet-400 font-semibold' : null]">{{ day.name }}</span>
+            <span class="min-w-8 text-center font-semibold text-xs sm:text-sm"
+            :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : '', day.dateobj < new Date().setHours(23, 59, 59, 999) ? 'text-black' : 'text-gray-400']">{{ day.name }}</span>
             <RadialProgressbar
               :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
               :progress="habitsProgress(day.dateobj)"
               :radius="40"
               :text="String(day.date)"
-              class="pt-2 pb-1"
-              color="text-violet-400"
+              :strokeWidth="5"
+              :textcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? '#ffffff' : '#000000'"
+              :bgcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white opacity-25' : 'text-black opacity-10'"
+              class="pt-2"
+              :color="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : 'text-violet-400'"
             />
           </div>
         </div>
@@ -87,7 +90,7 @@ export default {
     ...mapActions(['updateSelectedDay']),
     
     generateWeekDays(week) {
-      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
       const today = new Date();
       const currentDayOfWeek = today.getDay();
 
@@ -119,6 +122,7 @@ export default {
       const selectedDate = new Date(day.dateobj);
       this.updateSelectedDay(selectedDate);
       this.$store.dispatch('getDayHabits', selectedDate, true);
+      this.$store.dispatch('getDayMemos', selectedDate)
       this.$router.push('/');
     },
 
@@ -131,12 +135,15 @@ export default {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek'); // Generate days for last week
       // Set the selected day to Saturday
-      const lastSaturday = this.days.find(day => day.name === 'Sat');
+      const today = new Date();
+      const currentDayOfWeek = today.getDay();
+      const lastSat = new Date(today);
+      lastSat.setDate(today.getDate() - currentDayOfWeek - 1);
+      const lastSaturday = this.days.find(day => day.date === lastSat.getDate());
       if (lastSaturday) {
         this.selectDay(lastSaturday);
       }
     },
-
     showThisWeek() {
       this.currentWeek = 'thisWeek';
       this.days = this.generateWeekDays('thisWeek'); // Generate days for this week
@@ -146,9 +153,6 @@ export default {
         this.selectDay(today);
       }
     },
-  },
-  mounted() {
-    this.showThisWeek();
   },
 };
 </script>
