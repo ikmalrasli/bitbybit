@@ -1,6 +1,7 @@
 <template>
     <div class="p-4 w-full min-h-screen flex items-center justify-center">
       <div class="bg-white p-8 border rounded-lg shadow-lg w-full max-w-md">
+        <h1 class="text-center font-bold text-3xl text-violet-400 pb-2">BitByBit</h1>
         <h2 class="text-2xl font-bold mb-6 text-gray-700 text-center">Forgot Password</h2>
         <form @submit.prevent="handleForgotPassword">
           <div class="mb-6">
