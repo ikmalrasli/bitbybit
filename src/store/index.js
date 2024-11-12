@@ -2,8 +2,9 @@ import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '../firebase'; // Import your Firestore instance
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
+import { data } from 'autoprefixer';
 
 const loadTimeout = 1000;
 
@@ -21,10 +22,13 @@ export default createStore({
     weekProgress: [],
     weekHabits: [],
     dayHabits: [],
+    dayMemos: [],
     selectedHabit: [],
     allSunnahs: [],
     loading: true,
-    selectedSunnah: null
+    selectedSunnah: null,
+    selectionMode: false,
+    selectedHabits: [],
   },
   mutations: {
     setSelectedSunnah(state, sunnah) {
@@ -61,9 +65,74 @@ export default createStore({
     },
     SET_SUNNAHS(state, sunnahs) {
       state.allSunnahs = sunnahs;
+    },
+    SET_DAY_MEMOS(state, memos) {
+      state.dayMemos = memos;
+    },
+    toggleSelectionMode(state) {
+      state.selectionMode = !state.selectionMode;
+      if (!state.selectionMode) state.selectedHabits = []; // Clear selection when exiting selection mode
+    },
+    selectHabit(state, habitId) {
+      if (state.selectedHabits.includes(habitId)) {
+        state.selectedHabits = state.selectedHabits.filter(id => id !== habitId); // Deselect habit
+      } else {
+        state.selectedHabits.push(habitId); // Select habit
+      }
+    },
+    markHabitsCompleted(state) {
+      let setTimestamp = new Date();
+      let onTime = true;
+      if (state.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
+        setTimestamp = new Date(state.selectedDay);
+        setTimestamp.setHours(23, 59, 59, 999);
+        onTime = false;
+      }
+
+      state.selectedHabits.forEach(habitId => {
+        const habit = state.dayHabits.find(h => h.habitId === habitId);
+        if (habit.progressId !== '') {
+          const docRef = doc(db, 'progress', habit.progressId);
+          updateDoc(docRef, {
+            progress: habit.dailyGoal,
+            timestamp: setTimestamp,
+            onTime: onTime
+        }).catch((error) => {
+            console.error(error);
+            this.$toast.error({
+              message: 'Error creating progress entry. Please try again.',
+              duration: 2000
+            });
+          });
+        } else {
+          const habitRef = addDoc(collection(db, "progress"), {
+            habitId: habit.habitId,
+            progress: habit.dailyGoal,
+            timestamp: setTimestamp,
+            onTime: onTime
+          }).catch((error) => {
+            console.error(error);
+            this.$toast.error({
+              message: 'Error creating progress entry. Please try again.',
+              duration: 2000
+            });
+          })
+        }
+      });
+      state.selectedHabits = []; // Clear selection after marking as completed
+      state.selectionMode = false; // Exit selection mode
     }
   },
   actions: {
+    toggleSelectionMode({ commit }) {
+      commit('toggleSelectionMode');
+    },
+    selectHabit({ commit }, habitId) {
+      commit('selectHabit', habitId);
+    },
+    markHabitsCompleted({ commit }) {
+      commit('markHabitsCompleted');
+    },
     updateLoading({ commit }, loading) {
       commit('setLoading', loading);
     },
@@ -136,7 +205,7 @@ export default createStore({
             }
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
-          });          
+          });      
         }
       } catch(error) {
         console.error('try failed at fetchHabits:', error);
@@ -214,6 +283,38 @@ export default createStore({
         commit('setLoading', false);
       }, loadTimeout);
       this.dispatch('fetchSunnahs');
+      this.dispatch('getDayMemos', day);
+    },
+    getDayMemos({ commit, state}, day) {
+      // Create separate Date objects for start and end of day
+      const startOfDay = new Date(day);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(day);
+      endOfDay.setHours(23, 59, 59, 999);
+      const userId = state.user.uid;
+      
+      // Query Firestore for habits belonging to the authenticated user
+      const q = query(
+        collection(db, 'memos'),
+        where('userId', '==', userId),
+        where('timestamp', '>=', startOfDay),
+        where('timestamp', '<=', endOfDay),
+        orderBy('memo', 'asc')
+      );
+      const memos = [];
+    
+      // Set up a real-time listener
+      onSnapshot(q, (querySnapshot) => {
+        memos.length = 0; // Clear array to avoid duplicates on re-renders
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          memos.push({ ...data, memoId: doc.id });
+        });
+        commit('SET_DAY_MEMOS', memos);
+      }, (error) => {
+        console.error('Error fetching real-time memos:', error);
+      });
     },
     fetchSunnahs({ commit }) {
       const sunnahs = [];

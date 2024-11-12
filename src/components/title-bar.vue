@@ -1,18 +1,39 @@
 <template>
   <div class="w-full flex justify-between items-center bg-white px-4 py-2 h-14">
     <!-- Sidebar Toggle Button for Mobile -->
-    <span @click="toggleSidebar" class="material-icons cursor-pointer md:invisible ">
+    <span v-if="!this.selectionMode" @click="toggleSidebar" class="material-icons cursor-pointer md:invisible ">
       menu
     </span>
+    <span v-else @click="toggleSidebar" class="font-bold text-xl text-gray-700">
+      Select Habits
+    </span>
     <!-- Title (Centered) -->
-    <div class="text-center font-bold text-xl">
+    <div v-if="!this.selectionMode" class="text-center font-bold text-xl">
       {{ displayTitle }}
     </div>
-    <button v-if="showAdd()" @click="openAddPage" class="cursor-pointer material-icons">
-      add
-    </button>
-    <button v-else-if="showWeekMonth()" class="cursor-pointer material-icons font-normal">
-      calendar_view_week
+    <!-- Add Button (Dropdown add menu) -->
+    <div v-if="showAdd() && !this.selectionMode" class="relative">
+      <!-- Dropdown Toggle Button -->
+      <button @click="toggleDropdown" class="material-icons rounded-full active:bg-gray-200">more_horiz</button>
+
+      <!-- Dropdown Menu -->
+      <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
+        <ul class="py-1 text-gray-700">
+          <li @click="selectHabits" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
+            <span class="material-icons">check_circle</span>
+            <span class="pl-4 w-full">Select habits</span>
+          </li>
+          <li @click="sortBy" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
+            <span class="material-icons">sort</span>
+            <span class="pl-4 w-full">Sort by</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <button v-else-if="showAdd() && this.selectionMode" 
+    class="cursor-pointer font-bold text-gray-700"
+    @click="closeSelectionMode">
+      Done
     </button>
     <button v-else class="material-icons invisible">add</button>
   </div>
@@ -20,15 +41,28 @@
 
 <script>
 import { mapGetters } from 'vuex';
+import { mapState } from 'vuex';
+import { useDialogStore } from '../store/dialogStore';
 
 export default {
+  data() {
+    return {
+      dialogStore: useDialogStore(),
+      isDropdownOpen: false,
+    };
+  },
   computed: {
     ...mapGetters(['getSelectedDay']), // Map the Vuex getter
+    ...mapState(['selectionMode']),
+    closeSelectionMode() {
+      this.$store.commit('toggleSelectionMode');
+    },
     displayTitle() {
       if (this.$route.name === "home" ||  
       this.$route.name === "add-habit" ||
       this.$route.name === "detail-habit" ||
-      this.$route.name === "edit-habit") {
+      this.$route.name === "edit-habit" ||
+      this.$route.name === "add-memo") {
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
@@ -60,10 +94,19 @@ export default {
       if (this.$route.name === "stats" ||
       this.$route.name === "detail-stats"
       ) {
-        return "Stats"
+        return "Performance"
       }
 
-      return this.$route.meta.title; // Otherwise, use the meta title
+      if (
+      this.$route.name === "settings" ||  
+      this.$route.name === "account" ||
+      this.$route.name === "about" ||
+      this.$route.name === "news"
+      ) {
+        return "Settings"
+      }
+
+      return this.$route.meta.title; 
     }
   },
   methods: {
@@ -74,12 +117,45 @@ export default {
       return this.$route.name === "home" || 
       this.$route.name === "detail-habit";
     },
-    openAddPage() {
-      this.$store.commit('setSelectedSunnah', null);
-      this.$router.push('/add-habit');
+    toggleDropdown(event) {
+      event.stopPropagation(); // Prevent the outside click listener from being triggered
+      this.isDropdownOpen = !this.isDropdownOpen;
+
+      // If the dropdown is open, add the click listener to detect clicks outside
+      if (this.isDropdownOpen) {
+        document.addEventListener('click', this.handleClickOutside);
+      } else {
+        document.removeEventListener('click', this.handleClickOutside);
+      }
+    },
+    handleClickOutside(event) {
+      const dropdown = this.$el.querySelector('.absolute');
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.isDropdownOpen = false;  // Close dropdown
+        document.removeEventListener('click', this.handleClickOutside); // Remove the event listener
+      }
+    },
+    selectHabits() {
+      this.$store.dispatch('toggleSelectionMode');
+      this.isDropdownOpen = false;
+      document.removeEventListener('click', this.handleClickOutside);
+    },
+    sortBy() {
+      this.$toast.info({
+            message: 'Sort by feature not implemented yet!',
+            duration: 2500
+          });
+      this.isDropdownOpen = false;
+      document.removeEventListener('click', this.handleClickOutside);
     },
     showWeekMonth() {
       return this.$route.name === "stats";
+    },
+    toggleWeekMonth() {
+      this.$toast.info({
+            message: 'Feature not implemented yet!',
+            duration: 2000
+          });
     },
   }
 };
