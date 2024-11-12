@@ -17,8 +17,9 @@
         <calendarRow @date-selected="handleDateSelected" />
       </div>
 
-      <!--Main Router View-->
-      <div class="flex-grow overflow-y-auto scrollbar-hide">
+      <!--Center Router View-->
+      <div class="relative flex-grow overflow-y-auto scrollbar-hide">
+        <fab v-if="this.$route.name === 'home'"/>
         <router-view />
       </div>
     </div>
@@ -29,6 +30,8 @@
     </div>
 
     <Toast />
+    <Dialog></Dialog>
+    <addMemoDialog></addMemoDialog>
   </div>
 </template>
 
@@ -37,13 +40,19 @@ import TitleBar from "../components/title-bar.vue";
 import Sidebar from "../components/nav-bar.vue";
 import calendarRow from "../components/calendar-row.vue";
 import Toast from "../components/toast-noti.vue";
+import Dialog from "../components/confirm-dialog.vue";
+import addMemoDialog from "../components/add-memo-dialog.vue";
+import fab from "../components/fab.vue";
 
 export default {
   components: {
     calendarRow,
     TitleBar,
     Sidebar,
-    Toast
+    Toast,
+    Dialog,
+    addMemoDialog,
+    fab
   },
   data() {
     return {
@@ -58,17 +67,22 @@ export default {
         this.$route.name === 'home' ||
         this.$route.name === 'add-habit' ||
         this.$route.name === 'edit-habit' ||
-        this.$route.name === 'detail-habit'
+        this.$route.name === 'detail-habit' ||
+        this.$route.name === 'add-memo'
       );
     },
     isDetailView() {
       return (
         this.$route.name === 'add-habit' ||
+        this.$route.name === 'add-memo' ||
         this.$route.name === 'edit-habit' ||
         this.$route.name === 'detail-habit' ||
         this.$route.name === 'detail-sunnah' ||
         this.$route.name === 'add-sunnah' ||
-        this.$route.name === 'detail-stats'
+        this.$route.name === 'detail-stats' ||
+        this.$route.name === "account" ||
+        this.$route.name === "about" ||
+        this.$route.name === "news"
       );
     },
     contentClass() {
