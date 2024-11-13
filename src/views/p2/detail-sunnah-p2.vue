@@ -2,13 +2,14 @@
   <div class="w-full h-full flex flex-col flex">
     <div v-if="sunnah" class="w-full h-full flex flex-col bg-white">
       <!-- Header -->
-      <header class="bg-white p-4 flex flex-row relative">
+      <header class="bg-white p-4 flex flex-row">
         <button @click="goBack" class="material-icons">chevron_left</button>
-        <h1 class="text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 truncate w-full max-w-xs text-center">{{sunnah.name}}</h1>
+        <h1 class="text-lg text-black font-bold truncate w-full text-center">
+          {{sunnah.name}}</h1>
       </header>
 
       <!-- Content -->
-      <p class="mt-2 p-4 overflow-y-auto h-full" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
+      <p class="p-4 overflow-y-auto h-full" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
 
       <!-- Create Button -->
       <div class="sticky bottom-0 p-4">

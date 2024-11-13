@@ -1,37 +1,50 @@
 <template>
-  <div class="flex relative justify-center w-full h-dvh">
-    <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar"
-      :class="!isMobile ? 'h-auto' : ''" />
+  <div class="flex relative justify-center w-full h-dvh flex-col">
+    <div class="flex justify-center w-full flex-grow">
+      <!-- left column -->
+      <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
 
-    <div v-if="!isTablet || !isDetailView" :class="contentClass"
-      class="flex-1 flex flex-col h-full border-l border-r">
+      <!-- center column -->
+      <div v-if="!isTablet || !isDetailView" :class="[isMobile ? 'px-1' : 'ml-56']"
+        class="flex-1 flex flex-col h-full border-l border-r">
 
-      <!--Title Bar-->
-      <div>
-        <TitleBar @toggle-sidebar="toggleSidebar" />
-      </div>
+        <!--Title Bar-->
+        <div>
+          <TitleBar @toggle-sidebar="toggleSidebar" />
+        </div>
 
-      <!--Calendar Row-->
-      <div v-if="showCalendarRow"
-        class="flex-shrink-0 justify-start h-auto mb-2"> <!-- Set flexible height -->
-        <calendarRow @date-selected="handleDateSelected" />
-      </div>
+        <!--Calendar Row-->
+        <div v-if="showCalendarRow"
+          class="flex-shrink-0 justify-start h-auto mb-2"> <!-- Set flexible height -->
+          <calendarRow @date-selected="handleDateSelected" />
+        </div>
 
-      <!--Center Router View-->
-      <div class="relative flex-grow overflow-y-auto scrollbar-hide">
+
+        <!--Center Router View-->
+        <div class="relative flex-grow overflow-y-auto scrollbar-hide">
+          <router-view />
+        </div>
+
         <fab v-if="this.$route.name === 'home'"/>
-        <router-view />
+        <!-- <bottom-nav-bar v-if="isMobile"></bottom-nav-bar> -->
       </div>
-    </div>
 
-    <!--Right Router View-->
-    <div v-if="!isTablet || isDetailView" class="flex-1 h-full" :class="rightClass">
-      <router-view class="w-full" name="right" />
+      <!-- right column -->
+      <div v-if="!isTablet || isDetailView" class="flex-1 h-full" :class="[!isMobile && isTablet ? 'ml-56' : 'px-1']">
+        <router-view class="w-full" name="right" />
+      </div>
+
     </div>
+    
+    
 
     <Toast />
     <Dialog></Dialog>
     <addMemoDialog></addMemoDialog>
+    <sortHabitsDialog></sortHabitsDialog>
+    <!-- Mobile Bottom Navigation Bar -->
+    <!-- <BottomNavBar /> -->
+    
   </div>
 </template>
 
@@ -42,16 +55,20 @@ import calendarRow from "../components/calendar-row.vue";
 import Toast from "../components/toast-noti.vue";
 import Dialog from "../components/confirm-dialog.vue";
 import addMemoDialog from "../components/add-memo-dialog.vue";
+import sortHabitsDialog from "../components/sort-habits-dialog.vue";
 import fab from "../components/fab.vue";
+import BottomNavBar from "../components/BottomNavBar.vue";
 
 export default {
   components: {
+    BottomNavBar,
     calendarRow,
     TitleBar,
     Sidebar,
     Toast,
     Dialog,
     addMemoDialog,
+    sortHabitsDialog,
     fab
   },
   data() {
@@ -84,12 +101,6 @@ export default {
         this.$route.name === "about" ||
         this.$route.name === "news"
       );
-    },
-    contentClass() {
-      return this.isMobile ? "px-1" : "ml-56"; // On desktop, add margin for the sidebar
-    },
-    rightClass() {
-      return !this.isMobile && this.isTablet ? "ml-56" : "px-1"; // On desktop, add margin for the sidebar
     },
   },
   methods: {

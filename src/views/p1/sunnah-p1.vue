@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full px-4 py-2">
+  <div class="w-full px-4 py-2 space-y-4">
     <!-- Daily Sunnah (Collapsible Section) -->
     <div>
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Daily')">
@@ -9,19 +9,21 @@
       </div>
 
       <!-- Daily Tasks List -->
-      <div v-show="showDaily" class="py-4 transition-all duration-300 ease-in-out space-y-1">
-        <div
-          v-for="sunnah in dailySunnahs"
-          :key="sunnah.id"
-        >
-          <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
-            <div class="flex justify-between">
-              <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
-              <span class="material-icons">chevron_right</span>
+      <transition name="slide-fade">
+        <div v-show="showDaily" class="py-4 transition-all duration-300 ease-in-out space-y-1">
+          <div
+            v-for="sunnah in dailySunnahs"
+            :key="sunnah.id"
+          >
+            <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
+              <div class="flex justify-between">
+                <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
+                <span class="material-icons">chevron_right</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </transition>
     </div>
 
     <!-- Weekly Sunnah (Collapsible Section) -->
@@ -33,20 +35,21 @@
       </div>
 
       <!-- Weekly Tasks List -->
-      <div v-show="showWeekly" class="mb-4 py-4 transition-all duration-300 ease-in-out space-y-1">
-        <div
-          v-for="sunnah in weeklySunnahs"
-          :key="sunnah.sunnahId"
-          class="mb-2"
-        >
-          <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
-            <div class="flex justify-between">
-              <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
-              <span class="material-icons">chevron_right</span>
+      <transition name="slide-fade">
+        <div v-show="showWeekly" class="mb-4 py-4 transition-all duration-300 ease-in-out space-y-1">
+          <div
+            v-for="sunnah in weeklySunnahs"
+            :key="sunnah.sunnahId"
+          >
+            <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
+              <div class="flex justify-between">
+                <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
+                <span class="material-icons">chevron_right</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </transition>
     </div>
   </div>
 </template>

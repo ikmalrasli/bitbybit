@@ -148,16 +148,17 @@
           </div>
 
           <!-- Term -->
-          <div class="flex space-x-2">
-            <div class="w-1/2">
-              <label for="term-start" class="text-center block text-sm font-medium text-gray-700">Start</label>
-              <input v-model="formData.termStart" type="date" id="term-start" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+          <div class="grid grid-cols-2 gap-2 w-full">
+            <div class="flex flex-col">
+              <label for="term-start" class="block text-sm font-medium text-gray-700">Start Date</label>
+              <input v-model="formData.termStart" type="date" id="term-start" class="bg-white text-black mt-1 w-full p-2 border border-gray-300 rounded-md text-center" />
             </div>
-            <div class="w-1/2">
-              <label for="term-end" class="text-center block text-sm font-medium text-gray-700">End</label>
-              <input v-model="formData.termEnd" type="date" id="term-end" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Leave empty for no end" />
+            <div class="flex flex-col">
+              <label for="term-end" class="block text-sm font-medium text-gray-700">End Date<span class="text-s ml-2 text-gray-400">(Optional)</span></label>
+              <input v-model="formData.termEnd" type="date" id="term-end" class="bg-white text-black mt-1 w-full p-2 border border-gray-300 rounded-md text-center" />
             </div>
           </div>
+
         </form>
       </div>
 
@@ -285,7 +286,7 @@ export default {
     },
     setReminder() {
       this.$toast.info({
-        message: 'Reminder feature not implemented yet!',
+        message: 'Feature not available.',
         duration: 2000
       });
     },
@@ -364,10 +365,14 @@ export default {
           });
           
           this.$toast.info({
-            message: "Habit updated successfully!",
+            message: "Habit updated!",
             duration: 2000
           });
         } catch (error) {
+          this.$toast.error({
+            message: "Error. Please try again.",
+            duration: 2000
+          });
           console.error("Error updating habit:", error);
         } finally {
           this.isLoading = false; // Reset loading state
@@ -405,7 +410,7 @@ export default {
         });
 
         this.$toast.success({
-          message: "Habit created successfully!",
+          message: "Habit created!",
           duration: 2000
         });
         
@@ -413,7 +418,7 @@ export default {
         console.error("Error creating habit:", error);
         
         this.$toast.error({
-          message: "Error creating habit: " + error.message,
+          message: "Error. Please try again.",
           duration: 2000
         });
       } finally {

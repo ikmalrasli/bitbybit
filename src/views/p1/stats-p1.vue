@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full px-4">
+  <div class="h-full w-full px-4">
     <!-- Header -->
     <header class="bg-white pt-2 pb-4 px-4 flex flex-row relative justify-between">
       <button class="material-icons rounded-full active:bg-gray-200" @click="previousMonth">chevron_left</button>
@@ -9,10 +9,12 @@
         @click="nextMonth">chevron_right</button>
     </header>
 
-    <div v-if="fetched" class="overflow-y-auto h-full pb-6">
-      <div v-if="habitsMonth.length !== 0">
-        <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-28">
-          <h2 class="p-2 font-semibold w-3/4">{{ mainText }}</h2>
+    <div v-if="fetched" class="h-full pb-6">
+      <div v-if="habitsMonth.length !== 0" class="overflow-hidden">
+
+        <!-- Fixed Overall Progress -->
+        <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-24 md:h-28 shadow-sm">
+          <h2 class="p-2 font-semibold w-3/4 leading-tight">{{ mainText }}</h2>
           <div class="w-1/4 h-full">
             <RadialProgressbar
               :progress="Number(overallProgress)"
@@ -59,12 +61,13 @@
           </div>
         </div>
 
+        <div class="flex-auto overflow-auto">
         <transition name="slide-fade">
           <div v-if="setHabitsMonth" class="space-y-1">
             <div
               v-for="habit in habitsMonth"
               :key="habit.id">
-              <div class="w-full min-h-18 p-4 bg-white border rounded-lg flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
+              <div class="w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
               @click="openDetail(habit)">
                 <div class="flex flex-row items-center">
                   <div class="h-3 w-3 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
@@ -85,6 +88,8 @@
             </div>
           </div>
         </transition>
+        </div>
+
       </div>
       <div v-else>
         <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
@@ -92,12 +97,12 @@
     </div>
     <!-- Skeleton Animation -->
     <div v-else>
-      <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-28 animate-pulse">
+      <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-24 md:h-28 animate-pulse">
         <div class="w-3/4 space-y-2 p-2">
           <div class="h-6 bg-gray-200 rounded-md w-full"></div>
           <div class="h-6 bg-gray-200 rounded-md w-3/4"></div>
         </div>
-        <div class="w-1/4">
+        <div class="w-1/4 h-full">
           <RadialProgressbar
             :progress="100"
             :radius="40"
@@ -152,7 +157,7 @@ export default {
       showGrade: true,
       fetched: false,
       isDropdownOpen: false,
-      sortNameAsc: false,
+      sortNameAsc: true,
       sortProgressAsc: true,
       sortColorAsc: true,
       currentSort: 'name',

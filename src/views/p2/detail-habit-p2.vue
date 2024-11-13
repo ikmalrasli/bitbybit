@@ -1,10 +1,10 @@
 <template>
-  <div class="w-full h-full flex flex-col bg-white border-r">
+  <div class="w-full h-full flex flex-col bg-white">
     <!-- Header -->
     <header class="bg-white p-4 flex flex-row relative justify-between">
       <button @click="goBack" class="material-icons rounded-full active:bg-gray-200">chevron_left</button>
       <h1 
-      class="text-xl text-black font-bold truncate max-w-xs whitespace-nowrap overflow-hidden">
+      class="px-4 text-xl text-black font-bold truncate max-w-xs whitespace-nowrap overflow-hidden">
       {{ selectedHabit?.name || 'Habit Details' }}</h1>
 
       <!-- More Options Button (Dropdown Toggle) -->
@@ -28,9 +28,10 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-y-auto px-4">
+    <div class="flex-1 overflow-y-auto px-4 space-y-2 pb-4 scrollbar-hide"
+    :class="[isImgFullscreen ? 'overflow-hidden' : '']">
       <!-- Progress Card -->
-      <div class="w-full p-8 mb-4 text-gray-700 bg-white border rounded-lg text-center">
+      <div class="w-full p-8 text-gray-700 bg-white border rounded-lg text-center">
         <h2 class="flex-auto text-xl block mb-2">Progress</h2>
         <h1 class="flex-auto text-5xl">{{ addProgress }}</h1>
         <h2 class="flex-auto text-xl mb-2">/ {{ selectedHabit?.dailyGoal }}</h2>
@@ -71,17 +72,37 @@
       </div>
 
       <!-- Timeline Card -->
-      <div class="w-full p-4 mb-4 text-gray-700 bg-white border rounded-lg">
-        <h2 class="text-xl text-center block mb-2">Habit Started: {{ selectedHabit?.termStart.toDate().toLocaleDateString() }}</h2>
+      <div class="w-full justify-between flex flex-row p-4 px-8 text-gray-700 bg-white border rounded-lg">
+      <span>Term start: {{ selectedHabit?.termStart.toDate().toLocaleDateString() }}</span>
+      <span>Term end: {{ selectedHabit?.termEnd ? selectedHabit?.termEnd.toDate().toLocaleDateString() : 'No end' }}</span>
         
       </div>
 
       <!-- Notes and Image -->
-      <div v-if="selectedHabit?.imageUrl || selectedHabit?.notes" class="w-full p-4 mb-4 text-gray-700 bg-white border rounded-lg">
+      <div v-if="selectedHabit?.imageUrl || selectedHabit?.notes" class="w-full p-4 text-gray-700 bg-white border rounded-lg">
         <h2 class="text-xl text-center block mb-2">Notes</h2>
         <p v-if="selectedHabit?.notes" class="text-lg px-4 py-2" style="white-space: pre-wrap;">{{ selectedHabit?.notes }}</p>
+        
         <div v-if="selectedHabit?.imageUrl">
-          <img :src="selectedHabit.imageUrl" alt="Uploaded Image" class="object-cover rounded-md" />
+          <img @click="openImgFullscreen" :src="selectedHabit.imageUrl" alt="Uploaded Image" 
+          class="object-cover rounded-md cursor-pointer" />
+          
+          <!-- Full-Screen Image Modal -->
+          <div v-if="isImgFullscreen" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          @click.self="closeImgFullscreen">
+            <img :src="selectedHabit.imageUrl" alt="Full-Screen Image" 
+            class="object-contain max-h-full max-w-full"
+            :style="{ transform: `scale(${imageScale})` }" />
+
+            <!-- Zoom Controls -->
+            <div class="flex mt-4 space-x-4 absolute top-4 right-4">
+              <button @click="zoomIn" class="text-white material-icons">zoom_in</button>
+              <button @click="zoomOut" class="text-white material-icons">zoom_out</button>
+              <button @click="closeImgFullscreen" class=" text-white material-icons">close</button>
+            </div>
+            
+            
+          </div>
         </div>
       </div>
 
@@ -94,6 +115,7 @@ import { mapState } from 'vuex';
 import { db } from "../../firebase"; // Firestore instance
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
+import { useDialogStore } from '../../store/dialogStore';
 
 export default {
   data() {
@@ -103,7 +125,10 @@ export default {
       docId: '',
       setTimestamp: new Date(),
       onTime: true,
-      loading: false
+      loading: false,
+      dialogStore: useDialogStore(),
+      isImgFullscreen: false,
+      imageScale: 1,
     };
   },
   computed: {
@@ -114,6 +139,21 @@ export default {
     }
   },
   methods: {
+    openImgFullscreen() {
+      this.isImgFullscreen = true;
+      this.imageScale = 1;
+    },
+    closeImgFullscreen() {
+      this.isImgFullscreen = false;
+    },
+    zoomIn() {
+      this.imageScale += 0.1; // Increase scale by 0.1 on each click
+    },
+    zoomOut() {
+      if (this.imageScale > 0.1) {
+        this.imageScale -= 0.1; // Decrease scale by 0.1, preventing negative or zero scale
+      }
+    },
     // Back and Dropdown Functions
     toggleDropdown(event) {
       event.stopPropagation(); // Prevent the outside click listener from being triggered
@@ -229,13 +269,16 @@ export default {
         this.docId = docRef.id;
         if (this.addProgress === this.selectedHabit.dailyGoal) {
           this.$toast.success({
-            message: 'Congratulations! You have completed this habit!',
-            duration: 2500
+            message: 'Habit completed!',
+            duration: 2000
           });
+          setTimeout(() => {
+            this.$router.push('/'), 1000;
+          })
         } else if (this.addProgress > this.selectedHabit.progress) {
           this.$toast.info({
-            message: 'Habit progress increased! Keep it up!',
-            duration: 2500
+            message: 'Habit progress increased!',
+            duration: 2000
           });
         }
         this.selectedHabit.progress = this.addProgress;
@@ -243,7 +286,7 @@ export default {
         this.loading = false; // End loading on error
         console.error(error);
         this.$toast.error({
-          message: 'Error creating progress entry. Please try again.',
+          message: 'Error. Please try again.',
           duration: 2000
         });
       });
@@ -261,12 +304,15 @@ export default {
             this.loading = false; // End loading
             if (this.addProgress === this.selectedHabit.dailyGoal) {
               this.$toast.success({
-                message: 'Congratulations! You have completed this habit!',
+                message: 'Habit completed!',
                 duration: 2500
               });
+              setTimeout(() => {
+                this.$router.push('/'), 1000;
+              })
             } else if (this.addProgress > this.selectedHabit.progress) {
               this.$toast.info({
-                message: 'Habit progress increased! Keep it up!',
+                message: 'Habit progress increased!',
                 duration: 2500
               });
             }
@@ -297,35 +343,48 @@ export default {
     },
     deleteHabit() {
       //confirmation to delete habit
-      if (confirm('Are you sure you want to delete this habit?')) {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (user){
-          //delete all progress from firestore with the habit id
-          const q = query(
-            collection(db, 'progress'),
-            where('habitId', '==', this.selectedHabit.habitId)
-          );
-          getDocs(q).then((querySnapshot) => {
-            querySnapshot.forEach((doc) => {
-              deleteDoc(doc.ref);
+      this.dialogStore.openDialog(
+        'Delete Habit',
+        'Are you sure you want to delete this habit?',
+        'default',
+        () => {
+          try{
+            const auth = getAuth();
+            const user = auth.currentUser;
+            if (user){
+              //delete all progress from firestore with the habit id
+              const q = query(
+                collection(db, 'progress'),
+                where('habitId', '==', this.selectedHabit.habitId)
+              );
+              getDocs(q).then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                  deleteDoc(doc.ref);
+                });
+              });
+
+              //delete habit from firestore
+              const docRef = doc(db, "habits", this.selectedHabit.habitId);
+              deleteDoc(docRef);
+              this.$toast.info({
+                message: 'Habit deleted successfully!',
+                duration: 2000
+              });
+
+              this.$store.dispatch('fetchHabits');
+              setTimeout(() => {
+                this.$router.push('/');
+              }, 300);
+            }
+          } catch(error) {
+            console.log(error);
+            this.$toast.error({
+              message: 'Error deleting habit. Please try again.',
+              duration: 2000
             });
-          });
-
-          //delete habit from firestore
-          const docRef = doc(db, "habits", this.selectedHabit.habitId);
-          deleteDoc(docRef);
-          this.$toast.info({
-            message: 'Habit deleted successfully!',
-            duration: 2000
-          });
-
-          this.$store.dispatch('fetchHabits');
-          setTimeout(() => {
-            this.$router.push('/');
-          }, 300);
-        }
-      }
+          }
+        }, 'Delete', 'text-red-400'
+      );
     },
   },
   watch: {

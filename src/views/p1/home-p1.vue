@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full flex flex-row px-4 py-2">
+  <div class=" w-full flex flex-row px-4 pb-24">
     <div class="flex-auto">
       <!-- if no habits-->
       <div v-if="uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
@@ -39,7 +39,10 @@
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
                   :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'"
                   class="cursor-pointer"
-                  @click="openDetail(habit)"
+                  :selectionMode="$store.state.selectionMode"
+                  :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
+                  @toggleSelect="$store.dispatch('selectHabit', habit.habitId)"
+                  @openDetail="openDetail(habit)"
                 />
               </div>
             </div>
@@ -76,6 +79,47 @@
             </div>
           </transition>
         </div>
+
+        <!-- Memos (expand/collapse) -->
+        <div v-if="dayMemos.length !== 0">
+          <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Memos')">
+            <div class="flex items-center">
+              <span class="font-semibold text-black">Memos</span>
+            </div>
+            <hr class="flex-grow border-t border-gray-300 mx-4" />
+            <div class="flex items-center">
+              <span v-if="showMemos" class="material-icons">keyboard_arrow_up</span>
+              <span v-else class="material-icons">keyboard_arrow_down</span>
+            </div>
+          </div>
+          
+          
+          <!-- Memos List with Transition -->
+          <transition name="slide-fade">
+            <div v-if="showMemos" class="py-4 space-y-1">
+              <div v-for="(memo, index) in dayMemos" :key="index">
+                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm overflow-x-auto space-y-1"
+                     @click="toggleDeleteButton(index)">
+                  <div class="flex w-full p-2 flex-row justify-between">
+                    <!-- Memo content -->
+                    <span>{{ memo.memo }}</span>
+                    <!-- Delete button -->
+                    <button v-if="showDeleteButton[index]" 
+                            class="rounded-lg text-red-300 material-icons"
+                            @click.stop="deleteMemo(memo.memoId, index)">
+                      delete
+                    </button>
+                  </div>
+
+                  <div class="flex w-full justify-end">
+                  <span class="text-xs text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">{{ memoCategory(memo?.category) }}</span>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </transition>          
+        </div>
       </div>
     </div>
   </div>
@@ -83,22 +127,28 @@
 
 <script>
 import { mapState } from 'vuex';
+import { deleteDoc, doc } from "firebase/firestore";
+import { db } from "../../firebase"; // import your Firestore instance
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
+import fab from "../../components/fab.vue";
 
 export default {
   components: {
     calendarRow,
     HomeProgress,
+    fab
   },
   data() {
     return {
       showUncompleted: true,
       showCompleted: true,
+      showMemos: true,
+      showDeleteButton: {}
     };
   },
   computed: {
-    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay']),
+    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay', 'dayMemos']),
     completedHabits() {
       const completed = this.dayHabits.filter(habit => 
         habit.progress >= habit.dailyGoal)
@@ -112,11 +162,40 @@ export default {
     }
   },
   methods: {
+    memoCategory(category) {
+      if (category === 'feeling') {
+        return 'How I feel today'
+      } else if (category === 'gratitude') {
+        return 'Words of gratitude'
+      } else if (category === 'deeds') {
+        return 'Good deeds today'
+      } else if (category === 'highlight') {
+        return 'Hightlight of the day'
+      } else {
+        return 'Other'
+      }
+    },
+    toggleDeleteButton(index) {
+      // Directly toggle the value in the showDeleteButton object
+      this.showDeleteButton[index] = !this.showDeleteButton[index];
+    },
+    async deleteMemo(memoId, index) {
+      this.showDeleteButton[index] = !this.showDeleteButton[index];
+      try {
+        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
+        await deleteDoc(memoRef);
+        this.$store.dispatch('getDayMemos', this.selectedDay); // Refetch memos after deletion if needed
+      } catch (error) {
+        console.error("Error deleting memo:", error);
+      }
+    },
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
       } else if (section === 'Completed') {
         this.showCompleted = !this.showCompleted;
+      } else if (section === 'Memos') {
+        this.showMemos = !this.showMemos;
       }
     },
     handleDateSelected(date) {
