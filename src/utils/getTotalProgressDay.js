@@ -39,7 +39,7 @@ export function getTotalProgressDay(day, weekProgress, habits) {
     });
     const endHabits = startHabits.filter(habit =>
       habit.termEnd === null || habit.termEnd.toDate() >= endDay
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    );
   
     let progress = 0;
     let totalDailyGoal = 0;

@@ -34,10 +34,16 @@ export const useDialogStore = defineStore('dialog', () => {
     dialogType.value = type;
   }
 
+  function openSortHabitsDialog(type = 'sort-habits') {
+    isVisible.value = true;
+    dialogType.value = type;
+  }
+
   function confirmAction() {
     if (confirmCallback.value) confirmCallback.value();
     closeDialog();
   }
 
-  return { isVisible, title, content, dialogType, confirmText, confirmTextClass, openDialog, closeDialog, confirmAction, openAddMemoDialog };
+  return { isVisible, title, content, dialogType, confirmText, confirmTextClass, 
+    openDialog, closeDialog, confirmAction, openAddMemoDialog, openSortHabitsDialog };
 });

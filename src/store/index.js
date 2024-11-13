@@ -11,7 +11,7 @@ const loadTimeout = 1000;
 export default createStore({
   plugins: [
     createPersistedState({
-    paths: ['user', 'isAuthenticated']  // Include user and isAuthenticated
+    paths: ['user', 'isAuthenticated', 'sortType']  // Include user and isAuthenticated
   })
   ],
   state: {
@@ -29,6 +29,7 @@ export default createStore({
     selectedSunnah: null,
     selectionMode: false,
     selectedHabits: [],
+    sortType: 'name',
   },
   mutations: {
     setSelectedSunnah(state, sunnah) {
@@ -47,6 +48,17 @@ export default createStore({
     CLEAR_USER(state) {
       state.user = null;
       state.isAuthenticated = false;
+      state.habits = [];
+      state.weekProgress = [];
+      state.weekHabits = [];
+      state.dayHabits = [];
+      state.dayMemos = [];
+      state.selectedHabit = [];
+      state.allSunnahs = [];
+      state.selectedSunnah = null;
+      state.selectionMode = false;
+      state.selectedHabits = [];
+      state.sortType = 'name';
     },
     SET_HABITS(state, habits) {
       state.habits = habits;
@@ -80,7 +92,7 @@ export default createStore({
         state.selectedHabits.push(habitId); // Select habit
       }
     },
-    markHabitsCompleted(state) {
+    markHabitsCompleted(state, toast) {
       let setTimestamp = new Date();
       let onTime = true;
       if (state.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
@@ -97,11 +109,18 @@ export default createStore({
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
             onTime: onTime
-        }).catch((error) => {
+        }).then(() => {
+          console.log('Habits completed!');
+          toast.success({
+            message: 'Habits completed!',
+            duration: 1000
+          });
+        })
+        .catch((error) => {
             console.error(error);
-            this.$toast.error({
-              message: 'Error creating progress entry. Please try again.',
-              duration: 2000
+            toast.error({
+              message: 'Error. Please try again.',
+              duration: 1000
             });
           });
         } else {
@@ -110,28 +129,77 @@ export default createStore({
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
             onTime: onTime
+          }).then(() => {
+            console.log('Habits completed!');
+            toast.success({
+              message: 'Habits completed!',
+              duration: 1000
+            });
           }).catch((error) => {
             console.error(error);
-            this.$toast.error({
-              message: 'Error creating progress entry. Please try again.',
-              duration: 2000
+            toast.error({
+              message: 'Error. Please try again.',
+              duration: 1000
             });
           })
         }
       });
       state.selectedHabits = []; // Clear selection after marking as completed
       state.selectionMode = false; // Exit selection mode
-    }
+    },
+    setSortType(state, type) {
+      state.sortType = type
+    },
+    sortHabits(state) {
+      if (state.sortType === 'name'){
+        state.habits.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (state.sortType === 'color'){
+        const colorOrder = {
+          "red-300": 0,
+          "orange-300": 1,
+          "yellow-300": 2,
+          "emerald-300": 3,
+          "blue-300": 4,
+          "pink-300": 5,
+          "violet-400": 6
+        };
+    
+        // Sort by color first, then alphabetically by name within the same color
+        state.habits.sort((a, b) => {
+          const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
+          const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
+    
+          // First, compare color order
+          if (colorA !== colorB) {
+            return colorA - colorB;
+          }
+          
+          // If colors are the same, sort alphabetically by name
+          return a.name.localeCompare(b.name);
+        });
+      } else if (state.sortType === 'custom') {
+        state.habits.sort((a, b) => (a.index ?? state.habits.length) - (b.index ?? state.habits.length));
+      }
+    },
   },
   actions: {
+    setSortType({ commit }, type) {
+      commit('setSortType', type);
+    },
+    sortHabits({ commit }) {
+      commit('sortHabits');
+    },
     toggleSelectionMode({ commit }) {
       commit('toggleSelectionMode');
+    },
+    setHabits({ commit }, habits) {
+      commit('SET_HABITS', habits);
     },
     selectHabit({ commit }, habitId) {
       commit('selectHabit', habitId);
     },
-    markHabitsCompleted({ commit }) {
-      commit('markHabitsCompleted');
+    markHabitsCompleted({ commit }, toast) {
+      commit('markHabitsCompleted', toast);
     },
     updateLoading({ commit }, loading) {
       commit('setLoading', loading);
@@ -156,6 +224,7 @@ export default createStore({
       try {
         await signOut(auth);
         commit('CLEAR_USER');
+
       } catch (error) {
         throw error;
       }
@@ -193,7 +262,7 @@ export default createStore({
               habits.push({ habitId: doc.id, ...doc.data() });
               commit('SET_HABITS', habits);
             });
-
+            commit('sortHabits', state.sortType);
             this.dispatch('fetchWeekProgress')
 
             if (querySnapshot.empty) {
