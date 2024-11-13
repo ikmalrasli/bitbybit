@@ -6,10 +6,10 @@ const toastStore = useToastStore();
 </script>
 
 <template>
-  <transition name="fade" mode="out-in">
+  <transition name="toast-slide" mode="out-in">
     <div
       v-if="toastStore.toasts.length"
-      class="fixed bottom-0 center md:right-0 w-full md:w-1/3 mb-8 md:mb-2 px-2 mx-auto"
+      class="z-30 fixed top-0 center md:right-0 mt-2 md:mt-2 mb-6 md:mb-2 px-2 mx-auto"
     >
       <transition-group name="list" tag="ul" class="flex flex-col gap-2">
         <li
@@ -17,7 +17,7 @@ const toastStore = useToastStore();
           :key="toast.id"
           v-show="toast.isVisible"
           :class="toastClass(toast.type)" 
-          class="z-10 p-4 shadow-md rounded-lg flex items-center justify-between min-w-[300px] transition-all duration-200"
+          class="z-50 p-2 shadow-sm rounded-full flex items-center justify-between min-w-64 transition-all duration-200"
         >
           <div class="flex items-center gap-2">
             <!-- Material Icons based on the type -->
@@ -56,10 +56,36 @@ function toastClass(type) {
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 3s;
+/* Transition for Toasts sliding in and out */
+.toast-slide-enter-active, .toast-slide-leave-active {
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.fade-enter, .fade-leave-to {
+
+/* Entry transition */
+.toast-slide-enter-from, .toast-slide-leave-to {
   opacity: 0;
 }
+
+/* Mobile version (slides in from the top, slides out to the top) */
+@media (max-width: 768px) {
+  .toast-slide-enter-from, .toast-slide-leave-to {
+    transform: translateY(-100%);
+  }
+
+  .toast-slide-enter-to, .toast-slide-leave-active {
+    transform: translateY(0);
+  }
+}
+
+/* Desktop version (slides in from the right, slides out to the right) */
+@media (min-width: 768px) {
+  .toast-slide-enter-from, .toast-slide-leave-to {
+    transform: translateX(100%);
+  }
+
+  .toast-slide-enter-to, .toast-slide-leave-active {
+    transform: translateX(0);
+  }
+}
 </style>
+

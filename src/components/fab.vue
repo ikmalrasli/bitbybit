@@ -79,7 +79,7 @@ export default {
       this.isExpanded = false;
     },
     markAsCompleted() {
-      this.$store.dispatch('markHabitsCompleted'); // Your Vuex action for marking as completed
+      this.$store.dispatch('markHabitsCompleted',  this.$toast); // Your Vuex action for marking as completed
       this.isExpanded = false;
     }
   },

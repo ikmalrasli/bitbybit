@@ -4,7 +4,7 @@ import { ref } from 'vue';
 export const useToastStore = defineStore('toast', () => {
   const toasts = ref([]);
 
-  const MAX_TOASTS = 3;
+  const MAX_TOASTS = 1;
 
   const showToast = ({ message, icon, type, duration = 3000 } 
     = { message: 'Default message', icon: '', type: 'info', duration: 3000 }) => {
