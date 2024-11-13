@@ -31,6 +31,7 @@
               :text="String(day.day)"
               :textcolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
               :textsize="36"
+              :strokeWidth="5"
               :color="statStore.textColor"
             />
             <div class="h-1 w-1 md:h-2 md:w-2" :class="[{ 'invisible': !day.isToday }, fillClass]">
@@ -82,7 +83,7 @@
       </div>
       <div class="flex flex-col items-center justify-center">
         <div class="flex flex-row space-x-1">
-          <span class="material-icons" :class="statStore.textColor">local_fire_department</span>
+          <span class="material-icons" :class="statStore.textColor">whatshot</span>
           <span>{{ streak }}d</span>
         </div>
       </div>
@@ -144,6 +145,9 @@ export default {
     },
     dailyGoal() {
       return this.statStore.selectedStat.dailyGoal;
+    },
+    termStart() {
+      return this.statStore.selectedStat.termStart;
     }
   },
   methods: {
@@ -262,6 +266,7 @@ export default {
           isCurrentMonth: false,
           isToday: false,
           progress: 0,
+          dateobj: new Date(this.currentYear, this.currentMonth, prevMonthDays - i),
         });
       }
 
@@ -272,6 +277,7 @@ export default {
           isCurrentMonth: true,
           isToday: i === this.today && this.currentMonth === this.todayMonth && this.currentYear === this.todayYear,
           progress: 0,
+          dateobj: new Date(this.currentYear, this.currentMonth, i),
         });
 
       }
@@ -284,6 +290,7 @@ export default {
           isCurrentMonth: false,
           isToday: false,
           progress: 0,
+          dateobj: new Date(this.currentYear, this.currentMonth + 1, i),
         });
       }
 

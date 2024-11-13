@@ -11,13 +11,13 @@
     <div v-if="!this.selectionMode" class="text-center font-bold text-xl">
       {{ displayTitle }}
     </div>
-    <!-- Add Button (Dropdown add menu) -->
-    <div v-if="showAdd() && !this.selectionMode" class="relative">
+    <!-- Menu Button -->
+    <div v-if="showMenu() && !this.selectionMode" class="relative">
       <!-- Dropdown Toggle Button -->
       <button @click="toggleDropdown" class="material-icons rounded-full active:bg-gray-200">more_horiz</button>
 
       <!-- Dropdown Menu -->
-      <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
+      <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-44 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
         <ul class="py-1 text-gray-700">
           <li @click="selectHabits" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
             <span class="material-icons">check_circle</span>
@@ -30,7 +30,7 @@
         </ul>
       </div>
     </div>
-    <button v-else-if="showAdd() && this.selectionMode" 
+    <button v-else-if="showMenu() && this.selectionMode" 
     class="cursor-pointer font-bold text-gray-700"
     @click="closeSelectionMode">
       Done
@@ -113,7 +113,7 @@ export default {
     toggleSidebar() {
       this.$emit("toggle-sidebar");
     },
-    showAdd() {
+    showMenu() {
       return this.$route.name === "home" || 
       this.$route.name === "detail-habit";
     },
@@ -141,10 +141,7 @@ export default {
       document.removeEventListener('click', this.handleClickOutside);
     },
     sortBy() {
-      this.$toast.info({
-            message: 'Sort by feature not implemented yet!',
-            duration: 2500
-          });
+      this.dialogStore.openSortHabitsDialog();
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);
     },

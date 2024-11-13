@@ -10,7 +10,7 @@
     </button>
 
     <!-- Days display -->
-    <div class="flex flex-row gap-0.5 flex-grow">
+    <div class="flex flex-row flex-grow">
       <div
         v-for="day in days"
         :key="day.date"
