@@ -1,20 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import store from '../store';  // Import the Vuex store
+import store from '../store'
 import MainLayout from '../views/main-layout.vue'
 import Home from '../views/p1/home-p1.vue'
 import Calendar from '../views/p1/calendar-p1.vue'
 import Sunnahs from '../views/p1/sunnah-p1.vue'
 import Stats from '../views/p1/stats-p1.vue'
+import Settings from '../views/p1/settings-p1.vue'
 import Test from '../views/p1/test-p1.vue'
-import Test2 from '../views/p2/test-p2.vue'
 import AddHabit from '../views/p2/add-habits-p2.vue'
 import DetailHabit from '../views/p2/detail-habit-p2.vue'
 import DetailSunnah from '../views/p2/detail-sunnah-p2.vue'
 import DetailStats from '../views/p2/detail-stats-p2.vue'
+import About from '../views/p2/settings-about-p2.vue'
+import News from '../views/p2/settings-news-p2.vue'
+import AccountSettings from '../views/p2/settings-account-p2.vue'
 import Login from '../views/auth/login-page.vue'
 import Register from '../views/auth/register-page.vue'
 import ForgotPassword from '../views/auth/forgot-page.vue'
-import AddSunnahs from '../views/add-sunnahs-admin.vue'
+import AddSunnahs from '../views/admin-sunnahs.vue'
+import AddNews from '../views/admin-news.vue'
 
 const routes = [
   {
@@ -47,7 +51,7 @@ const routes = [
         props: {
           right: (route) => ({ 
             habitId: route.params.habitId, 
-            timestamp: route.params.timestamp})  // Pass habitData to the right view
+            timestamp: route.params.timestamp})
         },
         meta: { requiresAuth: true }
       },
@@ -59,7 +63,7 @@ const routes = [
           right: AddHabit
         },
         props: {
-          right: (route) => ({ habitId: route.params.habitId })  // Pass habitData to the right view
+          right: (route) => ({ habitId: route.params.habitId })
         },
         meta: { requiresAuth: true }
       },
@@ -83,7 +87,7 @@ const routes = [
           right: DetailSunnah
         },
         props: {
-          right: (route) => ({ sunnahId: route.params.sunnahId })  // Pass habitData to the right view
+          right: (route) => ({ sunnahId: route.params.sunnahId })
         },
         meta: { requiresAuth: true }
       },
@@ -95,7 +99,7 @@ const routes = [
           right: AddHabit
         },
         props: {
-          right: (route) => ({ sunnahId: route.params.sunnahId })  // Pass habitData to the right view
+          right: (route) => ({ sunnahId: route.params.sunnahId })
         },
         meta: { requiresAuth: true }
       },
@@ -115,7 +119,39 @@ const routes = [
         props: {
           right: (route) => ({ 
             habitId: route.params.habitId, 
-            timestamp: route.params.timestamp})  // Pass habitData to the right view
+            timestamp: route.params.timestamp})
+        },
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'settings',
+        component: Settings,
+        meta: { title: 'Settings', requiresAuth: true },
+      },
+      {
+        path: 'account',
+        name: 'account',
+        components: {
+          default: Settings,
+          right: AccountSettings
+        },
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'about',
+        name: 'about',
+        components: {
+          default: Settings,
+          right: About
+        },
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'news',
+        name: 'news',
+        components: {
+          default: Settings,
+          right: News
         },
         meta: { requiresAuth: true }
       },
@@ -145,10 +181,16 @@ const routes = [
     meta: { title: 'Forgot Password' }
   },
   {
-    path: '/admin/add-sunnahs',
-    name: 'add-sunnahs-admin',
+    path: '/admin/sunnahs',
+    name: 'admin-sunnahs',
     component: AddSunnahs,
     meta: { title: 'Add Sunnahs' }
+  },
+  {
+    path: '/admin/news',
+    name: 'admin-news',
+    component: AddNews,
+    meta: { title: 'Add News' }
   }
 ];
 
