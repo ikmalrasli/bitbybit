@@ -66,8 +66,23 @@ export default {
     ...mapActions(['login']), // Map Vuex actions
     async handleLogin() {
       try {
-        await this.login({ email: this.email, password: this.password });
+        // Perform email-password login
+        const user = await this.login({ email: this.email, password: this.password });
+
+        // Process the logged-in user
+        this.$store.dispatch('updateLoading', true);
+        // Commit the user to Vuex store
+        this.$store.commit('SET_USER', user)
+        this.$store.dispatch('fetchUser').then((user) => {
+          if (user) {
+            this.$store.dispatch('fetchHabits');
+          } else {
+            this.$store.dispatch('updateLoading', false);
+          }
+        });
+
         this.$router.push("/home"); // Redirect after successful login
+
       } catch (error) {
         console.error("Login error:", error);
         alert(error.message); // Display error message to the user
@@ -93,21 +108,20 @@ export default {
           nickname: displayName, // Use the Google display name as the nickname
           uid: uid
         });
-
+        this.$store.dispatch('updateLoading', true);
         // Commit the user to Vuex store
-        this.$store.commit('SET_USER', user);
-
-        // Redirect after successful login
-        this.$router.push("/")
-
+        this.$store.commit('SET_USER', user)
         this.$store.dispatch('fetchUser').then((user) => {
-          this.$store.dispatch('updateLoading', true);
           if (user) {
             this.$store.dispatch('fetchHabits');
           } else {
             this.$store.dispatch('updateLoading', false);
           }
         });
+
+        // Redirect after successful login
+        this.$router.push("/")
+        
       } catch (error) {
         console.error("Google login error:", error);
         alert(error.message); // Display error message to the user
