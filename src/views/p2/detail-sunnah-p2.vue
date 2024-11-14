@@ -1,27 +1,22 @@
 <template>
-  <div class="w-full h-full flex flex-col flex">
-    <div v-if="sunnah" class="w-full h-full flex flex-col bg-white">
-      <!-- Header -->
-      <header class="bg-white p-4 flex flex-row">
-        <button @click="goBack" class="material-icons">chevron_left</button>
-        <h1 class="text-lg text-black font-bold truncate w-full text-center">
-          {{sunnah.name}}</h1>
-      </header>
+  <div v-if="sunnah" class="w-full h-full flex flex-col relative overflow-hidden">
+    <!-- Header -->
+    <header class="h-14 bg-white p-4 flex flex-row flex-shrink-0">
+      <button @click="goBack" class="material-icons">chevron_left</button>
+      <h1 class="text-lg text-black font-bold truncate w-full text-center">
+        {{sunnah.name}}</h1>
+    </header>
+    
+    <!-- Content -->
+    <p class="h-96 flex-grow p-4 pb-20 scrollbar-hide overflow-y-auto" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
 
-      <!-- Content -->
-      <p class="p-4 overflow-y-auto h-full" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
-
-      <!-- Create Button -->
-      <div class="sticky bottom-0 p-4">
-        <button v-if="sunnah" @click="addToHabits" class="w-full bg-violet-400 text-white font-bold py-3 rounded-lg shadow-lg">
-          Add to habits 
-        </button>
-      </div>
+    <!-- Create Button -->
+    <div class="h-14 px-4 py-1 flex-shrink-0 absolute bottom-0 w-full">
+      <button @click="addToHabits" 
+      class="w-full bg-violet-400 text-white font-bold py-3 rounded-full shadow-lg">
+        Add to habits
+      </button>
     </div>
-    <div v-else>
-      <p>Loading...</p>
-    </div>
-
     
   </div>
 </template>
