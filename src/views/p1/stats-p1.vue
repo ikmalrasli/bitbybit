@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full px-4">
+  <div class="w-full px-4 flex-grow">
     <!-- Header -->
     <header class="bg-white pt-2 pb-4 px-4 flex flex-row relative justify-between">
       <button class="material-icons rounded-full active:bg-gray-200" @click="previousMonth">chevron_left</button>
@@ -9,8 +9,8 @@
         @click="nextMonth">chevron_right</button>
     </header>
 
-    <div v-if="fetched" class="h-full pb-6">
-      <div v-if="habitsMonth.length !== 0" class="overflow-hidden">
+    <div v-if="fetched" class="flex-grow pb-6">
+      <div v-if="habitsMonth.length !== 0">
 
         <!-- Fixed Overall Progress -->
         <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-24 md:h-28 shadow-sm">
@@ -61,7 +61,7 @@
           </div>
         </div>
 
-        <div class="flex-auto overflow-auto">
+        <div class="overflow-auto">
         <transition name="slide-fade">
           <div v-if="setHabitsMonth" class="space-y-1">
             <div
@@ -132,7 +132,7 @@
 
 <script>
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
-import { query, collection, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
+import { query, collection, where, getDocs, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { mapState } from 'vuex';
 import { useStatStore } from '../../store/statStore.js';
@@ -271,7 +271,10 @@ export default {
     async getMonthStats() {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
       
-      const validHabits = this.habits.filter(habit => habit.termStart.toDate() <= endOfMonth);
+      const validHabits = this.habits.filter(habit => {
+        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
+        return termStart <= endOfMonth
+      });
 
       return await Promise.all(
         validHabits.map(async (habit) => {
@@ -298,10 +301,11 @@ export default {
       for (let day = 1; day <= endDate; day++) {
         const date = new Date(this.currentYear, this.currentMonth, day);
         const dayOfWeek = date.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
-
+        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
+        const termEnd = habit.termEnd ? new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate() : null;
         if (habit.repeat && habit.repeat[dayOfWeek] &&
-            habit.termStart.toDate().setHours(0, 0, 0, 0) <= date &&
-            (habit.termEnd == null || habit.termEnd.toDate() > date)) {
+            termStart.setHours(0, 0, 0, 0) <= date &&
+            (habit.termEnd == null || termEnd > date)) {
           dayCounts++;
         }
       }

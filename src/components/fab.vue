@@ -5,7 +5,7 @@
     @click="toggleExpand"
   ></div>
   
-  <div class="fixed bottom-6 right-6 flex flex-col items-end gap-2 z-20">
+  <div class="absolute bottom-2 right-2 flex flex-col items-end gap-2 z-20">
     <transition-group name="fade">
       <!-- Add Habit Button -->
       <button

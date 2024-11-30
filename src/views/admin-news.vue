@@ -1,7 +1,6 @@
 <template>
     <div
-    class="p-4 fixed inset-0 z-50 bg-gray-600 bg-opacity-50 flex items-center justify-center"
-    @click.self="closeDialog">
+    class="p-4 fixed inset-0 z-50 bg-gray-600 bg-opacity-50 flex items-center justify-center">
       <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-lg font-semibold text-gray-700">Add News</h2>

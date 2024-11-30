@@ -9,7 +9,7 @@
     </header>
 
     <!-- News Cards -->
-    <div class="p-4 space-y-4 overflow-y-auto">
+    <div class="flex-grow h-96 scrollbar-hide p-4 space-y-4 overflow-y-auto">
       <div
         v-for="(news, index) in newsList"
         :key="index"

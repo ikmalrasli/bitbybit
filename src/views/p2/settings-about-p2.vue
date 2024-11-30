@@ -8,14 +8,12 @@
       </h1>
     </header>
 
-    <!-- Developer Info -->
-    <div class="px-4">
+    <!-- Content -->
+    <div class="flex-grow h-96 scrollbar-hide overflow-y-auto p-4 space-y-6">
+      <div>
         <h1 class="text-md text-gray-800 font-semibold text-right">هَٰذَا مِن فَضْلِ رَبِّي</h1>
         <h1 class="text-md text-gray-500 font-semibold text-right italic">This is by the Grace of my Lord</h1>
-    </div>
-
-    <!-- Content -->
-    <div class="p-4 space-y-6">
+      </div>
       
       <!-- Developer Info -->
       <div>

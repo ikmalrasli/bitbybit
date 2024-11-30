@@ -1,41 +1,67 @@
 <template>
-  <div class="w-full flex justify-between items-center bg-white px-4 py-2 h-14">
-    <!-- Sidebar Toggle Button for Mobile -->
-    <span v-if="!this.selectionMode" @click="toggleSidebar" class="material-icons cursor-pointer md:invisible ">
-      menu
-    </span>
-    <span v-else @click="toggleSidebar" class="font-bold text-xl text-gray-700">
+  <div class="w-full flex items-center bg-white px-4 py-2 h-14 relative">
+    <!-- Select Habits Title -->
+    <span
+      v-if="selectionMode"
+      @click="toggleSidebar"
+      class="absolute left-1/2 transform -translate-x-1/2 font-bold text-xl text-center"
+    >
       Select Habits
     </span>
-    <!-- Title (Centered) -->
-    <div v-if="!this.selectionMode" class="text-center font-bold text-xl">
+
+    <!-- Centered Title -->
+    <div
+      v-if="!selectionMode"
+      class="absolute left-1/2 transform -translate-x-1/2 font-bold text-xl text-center"
+    >
       {{ displayTitle }}
     </div>
-    <!-- Menu Button -->
-    <div v-if="showMenu() && !this.selectionMode" class="relative">
-      <!-- Dropdown Toggle Button -->
-      <button @click="toggleDropdown" class="material-icons rounded-full active:bg-gray-200">more_horiz</button>
 
-      <!-- Dropdown Menu -->
-      <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-2 w-44 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
-        <ul class="py-1 text-gray-700">
-          <li @click="selectHabits" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
-            <span class="material-icons">check_circle</span>
-            <span class="pl-4 w-full">Select habits</span>
-          </li>
-          <li @click="sortBy" class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
-            <span class="material-icons">sort</span>
-            <span class="pl-4 w-full">Sort by</span>
-          </li>
-        </ul>
+    <!-- Right-aligned Menu Button -->
+    <div class="ml-auto" v-if="showMenu()">
+      <div v-if="!selectionMode" class="relative">
+        <!-- Dropdown Toggle Button -->
+        <button
+          @click="toggleDropdown"
+          class="material-icons rounded-full active:bg-gray-200"
+        >
+          more_horiz
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div
+          v-if="isDropdownOpen"
+          class="absolute right-0 z-10 mt-2 w-44 bg-white rounded-md shadow-lg border border-gray-200"
+          @click.stop
+        >
+          <ul class="py-1 text-gray-700">
+            <li
+              @click="selectHabits"
+              class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
+            >
+              <span class="material-icons">check_circle</span>
+              <span class="pl-4 w-full">Select habits</span>
+            </li>
+            <li
+              @click="sortBy"
+              class="grid grid-cols-[auto,1fr] items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
+            >
+              <span class="material-icons">sort</span>
+              <span class="pl-4 w-full">Sort by</span>
+            </li>
+          </ul>
+        </div>
       </div>
+
+      <!-- Done Button in Selection Mode -->
+      <button
+        v-else
+        class="cursor-pointer font-bold text-gray-700"
+        @click="closeSelectionMode"
+      >
+        Done
+      </button>
     </div>
-    <button v-else-if="showMenu() && this.selectionMode" 
-    class="cursor-pointer font-bold text-gray-700"
-    @click="closeSelectionMode">
-      Done
-    </button>
-    <button v-else class="material-icons invisible">add</button>
   </div>
 </template>
 

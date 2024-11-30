@@ -1,14 +1,15 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-full h-full flex flex-col bg-white">
+    <div class="w-full h-full flex flex-col bg-white relative">
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">
-        <button @click="goBack" class="material-icons">chevron_left</button>
-        <h1 class="text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">{{ formData.name === '' ? title : formData.name }}</h1>
+        <button @click="goBack" class="material-icons z-10">chevron_left</button>
+        <h1 class="w-full text-center truncate text-lg text-black font-bold absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          {{ formData.name === '' ? title : formData.name }}</h1>
       </header>
 
       <!-- Form Content -->
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-grow h-96 overflow-y-auto scrollbar-hide p-4">
         <form @submit.prevent="createEntry" class="space-y-4">
           <!-- Name and color picker-->
           <div class="flex space-x-4 items-center">
@@ -158,15 +159,14 @@
               <input v-model="formData.termEnd" type="date" id="term-end" class="bg-white text-black mt-1 w-full p-2 border border-gray-300 rounded-md text-center" />
             </div>
           </div>
-
         </form>
       </div>
 
       <!-- Floating Create Button -->
-      <div class="sticky bottom-0 p-4">
+      <div class="px-4 py-2 flex-shrink-0 absolute bottom-0 w-full">
         <button 
           @click="createEntry" 
-          class="min-h-12 w-full text-white font-bold py-3 rounded-lg shadow-lg disabled:bg-gray-300"
+          class="w-full bg-violet-400 text-white font-bold py-3 rounded-full shadow-lg disabled:bg-gray-300"
           :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
           :disabled="formData.name === ''"
         >
@@ -250,7 +250,7 @@ export default {
       }
       return this.isLoading ? this.loadingText : 'Create'; // Toggle text based on loading state
     },
-    ...mapState(["selectedHabit"]),
+    ...mapState(["selectedHabit", "firstFetchHabits"]),
   },
   methods: {
     toggleColorPicker() {
@@ -363,6 +363,12 @@ export default {
             imageUrl: imageUrl || this.formData.imageUrl,
             color: this.formData.color,
           });
+
+          if (this.firstFetchHabits===false){
+            console.log('here')
+            this.$store.dispatch('fetchHabits');
+            this.$store.commit('setFirstFetchHabits', true);
+          }
           
           this.$toast.info({
             message: "Habit updated!",
@@ -408,6 +414,11 @@ export default {
           imageUrl: imageUrl || this.formData.imageUrl,
           color: this.formData.color,
         });
+
+        if (this.firstFetchHabits===false){
+          this.$store.dispatch('fetchHabits');
+          this.$store.commit('setFirstFetchHabits', true);
+        }
 
         this.$toast.success({
           message: "Habit created!",

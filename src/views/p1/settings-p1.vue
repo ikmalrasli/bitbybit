@@ -1,5 +1,5 @@
 <template>
-<div class="w-full h-full flex flex-col flex p-4 space-y-8">
+<div class="w-full h-full flex flex-col flex-grow flex p-4 space-y-8">
   <div class="space-y-0.5">
     <router-link
       v-for="link in links" 
