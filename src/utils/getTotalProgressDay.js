@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 function getDayOfWeek(date) {
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   return days[new Date(date).getDay()];  // getDay() returns 0 for Sunday, 6 for Saturday
@@ -11,7 +13,7 @@ export function getTotalProgressDay(day, weekProgress, habits) {
     dayEnd.setHours(23, 59, 59, 999);
   
     weekProgress.forEach(habit => {
-      const habitTimestamp = habit.timestamp ? habit.timestamp.toDate() : null;
+      const habitTimestamp = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
   
       if (habitTimestamp && habitTimestamp >= dayStart && habitTimestamp <= dayEnd) {
         dayProgress.push(habit);
@@ -34,18 +36,28 @@ export function getTotalProgressDay(day, weekProgress, habits) {
     const dayOfWeek = getDayOfWeek(day);
     const filteredHabits = combinedDayHabits.filter(habit => habit.repeat && habit.repeat[dayOfWeek]);
     const startHabits = filteredHabits.filter(habit => {
-      const termStart = habit.termStart.toDate().setHours(0, 0, 0, 0); // Normalize termStart
+
+      // if (habit.termStart.toDate() === null) {
+      //   const termStart = habit.termStart.toDate().setHours(0, 0, 0, 0); // Normalize termStart
+      //   return termStart <= endDay;
+      // } else {
+      const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate().setHours(0, 0, 0, 0);
       return termStart <= endDay;
+      // }
     });
-    const endHabits = startHabits.filter(habit =>
-      habit.termEnd === null || habit.termEnd.toDate() >= endDay
-    );
+    const endHabits = startHabits.filter(habit => {
+      if (habit.termEnd !== null) {
+        const termEnd = new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate().setHours(23, 59, 59, 999);
+        return termEnd >= endDay
+      }
+      return habit.termEnd === null
+    });
   
     let progress = 0;
     let totalDailyGoal = 0;
   
     endHabits.forEach(habit => {
-      const habitDate = habit.timestamp ? habit.timestamp.toDate() : null;
+      const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
       if (habitDate && habitDate <= endDay && habitDate >= startDay) {
         progress += Number(habit.progress);
       }

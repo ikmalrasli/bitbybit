@@ -11,10 +11,12 @@ const loadTimeout = 1000;
 export default createStore({
   plugins: [
     createPersistedState({
-    paths: ['user', 'isAuthenticated', 'sortType']  // Include user and isAuthenticated
+    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'week', 'weekProgress']  // Include user and isAuthenticated
   })
   ],
   state: {
+    firstFetchHabits: false,
+    firstFetchWeekProgress: false,
     selectedDay: new Date(),
     user: null,
     isAuthenticated: false,
@@ -26,17 +28,27 @@ export default createStore({
     selectedHabit: [],
     allSunnahs: [],
     loading: true,
+    loadingHome: true,
     selectedSunnah: null,
     selectionMode: false,
     selectedHabits: [],
     sortType: 'name',
   },
   mutations: {
+    setFirstFetchHabits(state, firstFetchHabits) {
+      state.firstFetchHabits = firstFetchHabits;
+    },
+    setFirstFetchWeekProgress(state, firstFetchProgress) {
+      state.firstFetchProgress = firstFetchProgress;
+    },
     setSelectedSunnah(state, sunnah) {
       state.selectedSunnah = sunnah;
     },
     setLoading(state, loading) {
       state.loading = loading;
+    },
+    setLoadingHome(state, loadingHome) {
+      state.loadingHome = loadingHome;
     },
     setSelectedDay(state, day) {
       state.selectedDay = day;
@@ -204,6 +216,9 @@ export default createStore({
     updateLoading({ commit }, loading) {
       commit('setLoading', loading);
     },
+    updateLoadingHome({ commit }, loadingHome) {
+      commit('setLoadingHome', loadingHome);
+    },
     updateSelectedDay({ commit }, day) {
       commit('setSelectedDay', day);
     },
@@ -235,6 +250,8 @@ export default createStore({
         onAuthStateChanged(auth, (user) => {
           if (user) {
             commit('SET_USER', user);
+            commit('setLoading', false);
+            console.log('fetchUser done');
           } else {
             commit('CLEAR_USER');
             commit('setLoading', false);
@@ -264,6 +281,8 @@ export default createStore({
             });
             commit('sortHabits', state.sortType);
             this.dispatch('fetchWeekProgress')
+            
+            console.log('fetchHabits done');
 
             if (querySnapshot.empty) {
               console.log('No habits found');
@@ -271,9 +290,16 @@ export default createStore({
                 commit('setLoading', false);
               }, loadTimeout);
               console.log('fetchHabits set loading to false');
+            } else {
+              setTimeout(() => {
+                commit('setLoadingHome', false);
+              }, loadTimeout);
             }
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
+            if (error.code === 'resource-exhausted') {
+              alert('Sorry! Database daily limit reached. Please try again later.');
+            }
           });      
         }
       } catch(error) {
@@ -290,7 +316,7 @@ export default createStore({
       const startOfWeek = new Date(today);
       startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
       startOfWeek.setHours(0, 0, 0, 0);
-    
+      
       for (const index in state.habits) {
         const habit = state.habits[index]; // Access habit by index
         try {
@@ -328,16 +354,18 @@ export default createStore({
                 
                 return acc;
               }, []);
-            
+              
               commit('SET_WEEK_PROGRESS', outputArray);
             });
-
+            // console.log('fetchWeekProgress done');
             this.dispatch('getDayHabits', this.state.selectedDay);
 
             if (querySnapshot.empty) {
               setTimeout(() => {
                 commit('setLoading', false);
               }, loadTimeout);
+            } else {
+              commit('setLoadingHome', false);
             }
           });
         } catch (error) {
@@ -348,10 +376,11 @@ export default createStore({
     async getDayHabits({ commit, state }, day) {
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
+      // console.log('getDayHabits done (no query)');
       setTimeout(() => {
         commit('setLoading', false);
       }, loadTimeout);
-      this.dispatch('fetchSunnahs');
+      commit('setLoadingHome', false);
       this.dispatch('getDayMemos', day);
     },
     getDayMemos({ commit, state}, day) {
