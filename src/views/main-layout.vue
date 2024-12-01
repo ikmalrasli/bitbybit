@@ -1,13 +1,14 @@
 <template>
-  <div class="flex relative justify-center w-full h-dvh flex-col">
-    <div class="flex justify-center w-full flex-grow">
+  <div class="flex relative justify-center w-full h-dvh flex-col overflow-hidden">
+    
+    <div class="flex justify-center w-full flex-grow flex-row relative">
+      <Toast />
       <!-- left column -->
-      <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full"/>
+      <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full" />
 
       <!-- center column -->
-      <div v-if="!isTablet || !isDetailView" :class="[isMobile ? 'px-1' : 'ml-56']"
-        class="flex-1 flex flex-col h-full border-l border-r">
-
+      <div v-if="!isTablet || !isDetailView"
+        class="flex-1 flex flex-col h-full md:border-l md:border-r">
         <!--Title Bar-->
         <div>
           <TitleBar @toggle-sidebar="toggleSidebar" />
@@ -15,49 +16,47 @@
 
         <!--Calendar Row-->
         <div v-if="showCalendarRow"
-          class="flex-shrink-0 justify-start h-auto mb-2"> <!-- Set flexible height -->
+          class="flex-shrink-0 justify-start mb-2">
           <calendarRow @date-selected="handleDateSelected" />
         </div>
 
-
         <!--Center Router View-->
-        <div class="relative flex-grow overflow-y-auto scrollbar-hide">
-          <router-view />
-        </div>
-
-        <fab v-if="this.$route.name === 'home'"/>
-        <!-- <bottom-nav-bar v-if="isMobile"></bottom-nav-bar> -->
+        <router-view class="h-96 overflow-y-auto scrollbar-hide" />
+        
       </div>
 
       <!-- right column -->
-      <div v-if="!isTablet || isDetailView" class="flex-1 h-full" :class="[!isMobile && isTablet ? 'ml-56' : 'px-1']">
-        <router-view class="w-full" name="right" />
+      <div v-if="!isTablet || isDetailView" 
+      class="flex-1 flex h-full"
+      :class="[!isMobile && isTablet ? 'ml-56' : '']">
+        <router-view class="h-full w-full" name="right" />
       </div>
 
+      <!-- fab -->
+      <fab v-if="$route.name === 'home'" />
     </div>
-    
-    
 
-    <Toast />
-    <Dialog></Dialog>
-    <addMemoDialog></addMemoDialog>
-    <sortHabitsDialog></sortHabitsDialog>
-    <!-- Mobile Bottom Navigation Bar -->
-    <!-- <BottomNavBar /> -->
     
+    <Dialog/>
+    <addMemoDialog />
+    <sortHabitsDialog />
+    <viewMemoDialog />
+    <!-- Mobile Bottom Navigation Bar -->
+    <BottomNavBar v-if="isMobile" />
   </div>
 </template>
 
 <script>
 import TitleBar from "../components/title-bar.vue";
-import Sidebar from "../components/nav-bar.vue";
+import Sidebar from "../components/side-bar.vue";
 import calendarRow from "../components/calendar-row.vue";
 import Toast from "../components/toast-noti.vue";
 import Dialog from "../components/confirm-dialog.vue";
 import addMemoDialog from "../components/add-memo-dialog.vue";
+import viewMemoDialog from "../components/view-memo-dialog.vue";
 import sortHabitsDialog from "../components/sort-habits-dialog.vue";
 import fab from "../components/fab.vue";
-import BottomNavBar from "../components/BottomNavBar.vue";
+import BottomNavBar from "../components/bottom-nav-bar.vue";
 
 export default {
   components: {
@@ -69,6 +68,7 @@ export default {
     Dialog,
     addMemoDialog,
     sortHabitsDialog,
+    viewMemoDialog,
     fab
   },
   data() {

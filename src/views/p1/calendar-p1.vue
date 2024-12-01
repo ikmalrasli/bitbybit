@@ -28,7 +28,7 @@
     </div>
 
     <!-- monthly section -->
-    <CalendarMonth class="flex-grow w-full border" />
+    <CalendarMonth class="w-full border" />
   </div>
 </template>
 

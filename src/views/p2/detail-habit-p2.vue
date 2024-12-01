@@ -28,7 +28,7 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-y-auto px-4 space-y-2 pb-4 scrollbar-hide"
+    <div class="h-96 flex-grow overflow-y-auto px-4 space-y-2 pb-4 scrollbar-hide"
     :class="[isImgFullscreen ? 'overflow-hidden' : '']">
       <!-- Progress Card -->
       <div class="w-full p-8 text-gray-700 bg-white border rounded-lg text-center">
@@ -72,16 +72,24 @@
       </div>
 
       <!-- Timeline Card -->
-      <div class="w-full justify-between flex flex-row p-4 px-8 text-gray-700 bg-white border rounded-lg">
-      <span>Term start: {{ selectedHabit?.termStart.toDate().toLocaleDateString() }}</span>
-      <span>Term end: {{ selectedHabit?.termEnd ? selectedHabit?.termEnd.toDate().toLocaleDateString() : 'No end' }}</span>
-        
+      <div class="w-full justify-between flex flex-col p-4 px-4 text-gray-700 bg-white border rounded-lg">
+        <h2 class="text-lg text-center block mb-2">Term</h2>
+        <div class="flex flex-row justify-between space-x-2 items-center">
+          <span class="min-w-24 text-center text-sm text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">
+            {{ habitTermStart.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+          </span>
+          <hr class="flex-grow border-t mx-2"
+          :class="selectedHabit.color ? `border-${selectedHabit.color.default}` : 'border-violet-400'" />
+          <span class="min-w-24 text-center text-sm text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">
+            {{ selectedHabit?.termEnd ? habitTermEnd.toLocaleDateString() : 'No end' }}
+          </span>
+        </div>
       </div>
 
       <!-- Notes and Image -->
       <div v-if="selectedHabit?.imageUrl || selectedHabit?.notes" class="w-full p-4 text-gray-700 bg-white border rounded-lg">
-        <h2 class="text-xl text-center block mb-2">Notes</h2>
-        <p v-if="selectedHabit?.notes" class="text-lg px-4 py-2" style="white-space: pre-wrap;">{{ selectedHabit?.notes }}</p>
+        <h2 class="text-lg text-center block mb-2">Notes</h2>
+        <p v-if="selectedHabit?.notes" class="py-2" style="white-space: pre-wrap;">{{ selectedHabit?.notes }}</p>
         
         <div v-if="selectedHabit?.imageUrl">
           <img @click="openImgFullscreen" :src="selectedHabit.imageUrl" alt="Uploaded Image" 
@@ -132,10 +140,16 @@ export default {
     };
   },
   computed: {
-    ...mapState(['selectedHabit', 'selectedDay']),
+    ...mapState(['selectedHabit', 'selectedDay', 'firstFetchWeekProgress']),
     selectedHabit() {
       this.addProgress = this.$store.state.selectedHabit.progress;
       return this.$store.state.selectedHabit;
+    },
+    habitTermStart() {
+      return new Timestamp(this.selectedHabit.termStart.seconds, this.selectedHabit.termStart.nanoseconds).toDate()
+    },
+    habitTermEnd() {
+      return new Timestamp(this.selectedHabit.termEnd.seconds, this.selectedHabit.termEnd.nanoseconds).toDate()
     }
   },
   methods: {
@@ -225,6 +239,11 @@ export default {
         this.addProgress = 0;
         this.$store.state.selectedHabit.progress = 0;
         this.docId = null;
+
+        if (this.firstFetchWeekProgress===false){
+          this.$store.dispatch('fetchWeekProgress');
+          this.$store.commit('setFirstFetchWeekProgress', true);
+        }
       } catch (error) {
         this.$toast.error({
           message: 'Error resetting progress. Please try again.',
@@ -267,6 +286,12 @@ export default {
       habitRef.then((docRef) => {
         this.loading = false; // End loading
         this.docId = docRef.id;
+
+        if (this.firstFetchWeekProgress===false){
+          this.$store.dispatch('fetchWeekProgress');
+          this.$store.commit('setFirstFetchWeekProgress', true);
+        }
+
         if (this.addProgress === this.selectedHabit.dailyGoal) {
           this.$toast.success({
             message: 'Habit completed!',
@@ -302,6 +327,12 @@ export default {
             onTime: this.onTime
           }).then(() => {
             this.loading = false; // End loading
+
+            if (this.firstFetchWeekProgress===false){
+              this.$store.dispatch('fetchWeekProgress');
+              this.$store.commit('setFirstFetchWeekProgress', true);
+            }
+            
             if (this.addProgress === this.selectedHabit.dailyGoal) {
               this.$toast.success({
                 message: 'Habit completed!',
@@ -366,6 +397,7 @@ export default {
               //delete habit from firestore
               const docRef = doc(db, "habits", this.selectedHabit.habitId);
               deleteDoc(docRef);
+              
               this.$toast.info({
                 message: 'Habit deleted successfully!',
                 duration: 2000

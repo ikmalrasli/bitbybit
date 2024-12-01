@@ -13,17 +13,18 @@
     </div>
 
     <!-- Calendar Days -->
-    <div class="grid grid-cols-7 text-center gap-x-1">
+    <div class="grid grid-cols-7 text-center gap-1">
       <div
         v-for="(day, index) in calendarDays"
         :key="index"
         :class="[ 
           day.isToday ? 'text-purple-500' : '', 
-          'relative', 'p-2', 'rounded-full', 
+          'relative', 'rounded-full', 
           'transition-colors duration-300' 
         ]"
       >
-        <div class="flex flex-col items-center">
+        <div class="flex flex-col items-center p-1 rounded-lg"
+        :class="{ 'border':day.isCurrentMonth }">
           <!-- Show RadialProgressBar for current month and days up to today -->
           <RadialProgressbar
             :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
@@ -114,6 +115,7 @@ export default {
           progressArray.push({ ...data, progressId: doc.id });
         });
         this.processProgressData(progressArray);
+        
       });
     },
     processProgressData(progressArray) {

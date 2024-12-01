@@ -11,9 +11,9 @@
     <p class="h-96 flex-grow p-4 pb-20 scrollbar-hide overflow-y-auto" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
 
     <!-- Create Button -->
-    <div class="h-14 px-4 py-1 flex-shrink-0 absolute bottom-0 w-full">
+    <div class="px-4 py-2 flex-shrink-0 absolute bottom-0 w-full">
       <button @click="addToHabits" 
-      class="w-full bg-violet-400 text-white font-bold py-3 rounded-full shadow-lg">
+      class="w-full bg-violet-400 text-white font-bold py-3 rounded-full shadow-lg hover:bg-violet-500">
         Add to habits
       </button>
     </div>

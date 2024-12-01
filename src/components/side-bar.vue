@@ -1,41 +1,23 @@
 <template>
-  <div>
-    <!-- Overlay for mobile mode -->
-    <div 
-      v-if="showSidebar" 
-      class="absolute inset-0 z-30 bg-black opacity-50 md:hidden" 
-      @click="toggleSidebar"
-    ></div>
-
-    <!-- Sidebar -->
-    <div
-      :class="[
-        'absolute top-0 left-0 h-full z-40 md:z-0 transition-transform duration-300 bg-white justify-between',
-        showSidebar ? 'translate-x-0 w-3/4' : '-translate-x-full',
-        'md:translate-x-0 md:w-56'
-      ]"
-    >
-      <div class="flex flex-row justify-between items-center p-4">
-        <div class="font-bold text-xl text-violet-400">BitByBit</div>
-      </div>
-      <nav class="flex flex-col">
-        <router-link
-          v-for="link in links" 
-          :key="link.name" 
-          :to="link.path"
-          class="flex items-center p-2 pl-8"
-          :class="
-            isLinkActive(link.path) ? 'text-white font-semibold bg-violet-400 hover:bg-violet-500': 'hover:bg-gray-100'
-          "
-        >
-          <span class="mr-2 material-icons"
-          :class="
-            isLinkActive(link.path) ? 'text-white': ''
-          ">{{ link.icon }}</span> 
-          <span>{{ link.name }}</span>
-        </router-link>
-      </nav>
-    </div>
+  <div class="w-56 h-full bg-white hidden md:block">
+    <div class="p-4 font-bold text-xl text-violet-400">BitByBit</div>
+    <nav class="flex flex-col">
+      <router-link
+        v-for="link in links" 
+        :key="link.name" 
+        :to="link.path"
+        class="flex items-center p-2 pl-8"
+        :class="
+          isLinkActive(link.path) ? 'text-white font-semibold bg-violet-400 hover:bg-violet-500': 'hover:bg-gray-100'
+        "
+      >
+        <span class="mr-2 material-icons-round"
+        :class="
+          isLinkActive(link.path) ? 'text-white': ''
+        ">{{ link.icon }}</span> 
+        <span>{{ link.name }}</span>
+      </router-link>
+    </nav>
   </div>
 </template>
 

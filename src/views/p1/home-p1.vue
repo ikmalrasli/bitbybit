@@ -1,8 +1,10 @@
 <template>
-  <div class=" w-full flex flex-row px-4 pb-24">
-    <div class="flex-auto">
+  <div class=" w-full flex flex-row flex-grow px-4">
+    <div class="flex-auto justify-center relative">
+      <div v-if="loadingHome" class="spinner absolute top-1/2 left-1/2"></div>
+
       <!-- if no habits-->
-      <div v-if="uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
+      <div v-if="!loadingHome && uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
         <p class="text-center">
           Tap the
@@ -13,8 +15,9 @@
         </p>
       </div>
 
+      <!-- Habits exist-->
       <!-- Collapsible Section -->
-      <div class="mt-1 space-y-4">
+      <div class="mt-1 space-y-4 pb-24">
         <!-- Uncompleted habits (expand/collapse) -->
         <div v-if="uncompletedHabits.length !== 0">
           <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
@@ -98,11 +101,11 @@
           <transition name="slide-fade">
             <div v-if="showMemos" class="py-4 space-y-1">
               <div v-for="(memo, index) in dayMemos" :key="index">
-                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm overflow-x-auto space-y-1"
-                     @click="toggleDeleteButton(index)">
+                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm overflow-x-auto space-y-1 cursor-pointer hover:bg-gray-50"
+                     @click="viewMemo(memo)">
                   <div class="flex w-full p-2 flex-row justify-between">
                     <!-- Memo content -->
-                    <span>{{ memo.memo }}</span>
+                    <span style="white-space: pre-wrap; font-size: 16px;">{{ memo.memo }}</span>
                     <!-- Delete button -->
                     <button v-if="showDeleteButton[index]" 
                             class="rounded-lg text-red-300 material-icons"
@@ -132,6 +135,7 @@ import { db } from "../../firebase"; // import your Firestore instance
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
+import { useDialogStore } from '../../store/dialogStore';
 
 export default {
   components: {
@@ -144,11 +148,12 @@ export default {
       showUncompleted: true,
       showCompleted: true,
       showMemos: true,
-      showDeleteButton: {}
+      showDeleteButton: {},
+      dialogStore: useDialogStore(),
     };
   },
   computed: {
-    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay', 'dayMemos']),
+    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay', 'dayMemos', 'loadingHome']),
     completedHabits() {
       const completed = this.dayHabits.filter(habit => 
         habit.progress >= habit.dailyGoal)
@@ -178,6 +183,9 @@ export default {
     toggleDeleteButton(index) {
       // Directly toggle the value in the showDeleteButton object
       this.showDeleteButton[index] = !this.showDeleteButton[index];
+    },
+    viewMemo(memoContent) {
+      this.dialogStore.openViewMemoDialog(memoContent);
     },
     async deleteMemo(memoId, index) {
       this.showDeleteButton[index] = !this.showDeleteButton[index];
@@ -239,5 +247,23 @@ export default {
 .expand-collapse-enter, .expand-collapse-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #a78bfa; /* Change color as needed */
+  border-radius: 50%;
+  width: 32px; /* Spinner size */
+  height: 32px; /* Spinner size */
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

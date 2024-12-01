@@ -1,9 +1,10 @@
 <template>
-  <div class="w-full px-4 py-2 space-y-4">
+  <div class="flex-grow w-full px-4 py-2 space-y-4">
     <!-- Daily Sunnah (Collapsible Section) -->
     <div>
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Daily')">
         <span class="font-semibold text-black">Daily</span>
+        <hr class="flex-grow border-t border-gray-300 mx-4" />
         <span v-if="showDaily" class="material-icons">keyboard_arrow_up</span>
         <span v-else class="material-icons">keyboard_arrow_down</span>
       </div>
@@ -30,6 +31,7 @@
     <div>
       <div class="flex justify-between items-center cursor-pointer" @click="toggleSection('Weekly')">
         <span class="font-semibold text-black">Weekly</span>
+        <hr class="flex-grow border-t border-gray-300 mx-4" />
         <span v-if="showWeekly" class="material-icons">keyboard_arrow_up</span>
         <span v-else class="material-icons">keyboard_arrow_down</span>
       </div>
@@ -121,8 +123,11 @@ export default {
         name: 'detail-sunnah',
         params: { sunnahId: sunnah.sunnahId }
       });
-    }
+    },
   },
+  mounted() {
+    this.$store.dispatch('fetchSunnahs');
+  }
 };
 </script>
 
