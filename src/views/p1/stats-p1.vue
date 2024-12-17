@@ -1,19 +1,23 @@
 <template>
-  <div class="w-full px-4 flex-grow">
+  <div class="w-full flex flex-col flex-grow">
     <!-- Header -->
-    <header class="bg-white pt-2 pb-4 px-4 flex flex-row relative justify-between">
+    <header class="bg-white pt-1 pb-2 px-4 flex flex-row justify-between sticky top-0 z-20">
       <button class="material-icons rounded-full active:bg-gray-200" @click="previousMonth">chevron_left</button>
       <h1 class="text-xl text-black font-semibold">{{ currentMonthName }} {{ currentYear }}</h1>
-      <button class="material-icons rounded-full active:bg-gray-200 disabled:text-gray-400"
+      <button
+        class="material-icons rounded-full active:bg-gray-200 disabled:text-gray-400"
         :disabled="currentMonth == todayMonth && currentYear == todayYear"
-        @click="nextMonth">chevron_right</button>
+        @click="nextMonth"
+      >
+        chevron_right
+      </button>
     </header>
 
-    <div v-if="fetched" class="flex-grow pb-6">
-      <div v-if="habitsMonth.length !== 0">
-
-        <!-- Fixed Overall Progress -->
-        <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-24 md:h-28 shadow-sm">
+    <!-- Content Section -->
+    <div class="flex-grow flex flex-col overflow-hidden px-4">
+      <!-- Fixed Overall Progress -->
+      <div class="w-full p-2 bg-white border rounded-lg flex items-center h-24 md:h-28 shadow-sm sticky z-10">
+        <template v-if="fetched">
           <h2 class="p-2 font-semibold w-3/4 leading-tight">{{ mainText }}</h2>
           <div class="w-1/4 h-full">
             <RadialProgressbar
@@ -25,105 +29,103 @@
               @click="toggleGrade"
             />
           </div>
-        </div>
-
-      
-        <div class="p-4 flex items-center justify-between">
-          <span class="font-semibold text-black">More info</span>
-          <hr class="flex-grow border-t border-gray-300 mx-4" />
-
-          <!-- More Options Button (Dropdown Toggle) -->
-          <div class="relative">
-            <!-- Dropdown Toggle Button -->
-             <div class="space-x-1 flex items-center cursor-pointer" @click="toggleDropdown">
-              <span class="material-icons rounded-full">sort</span>
-              <span class="font-semibold">Sort</span>
-             </div>
-
-            <!-- Dropdown Menu -->
-            <div v-if="isDropdownOpen" class="absolute right-0 z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200" @click.stop>
-              <ul class="py-1 text-gray-700">
-                <li @click="sortName" class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
-                  <span>Name</span>
-                  <span v-if="currentSort === 'name'" class="material-icons">{{ sortNameAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
-                </li>
-                <li @click="sortProgress" class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
-                  <span>Progress</span>
-                  <span v-if="currentSort === 'progress'" class="material-icons">{{ sortProgressAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
-                </li>
-                <li @click="sortColor" class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
-                  <span>Color</span>
-                  <span v-if="currentSort === 'color'" class="material-icons">{{ sortColorAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
-                </li>
-              </ul>
-            </div>
-
+        </template>
+        <template v-else>
+          <!-- Skeleton Loader -->
+          <div class="flex items-center w-full animate-pulse">
+            <div class="w-3/4 h-6 bg-gray-200 rounded-md"></div>
+            <div class="w-16 h-16 bg-gray-200 rounded-full ml-4"></div>
           </div>
-        </div>
+        </template>
+      </div>
 
-        <div class="overflow-auto">
-        <transition name="slide-fade">
-          <div v-if="setHabitsMonth" class="space-y-1">
+      <!-- More Options Button (Dropdown Toggle) -->
+      <div class="relative flex flex-row items-center p-2">
+        <span class="font-semibold text-black">More info</span>
+        <hr class="flex-grow border-t border-gray-300 mx-4" />
+        <div class="space-x-1 flex items-center cursor-pointer" @click="toggleDropdown">
+          <span class="material-icons rounded-full">sort</span>
+          <span class="font-semibold">Sort</span>
+        </div>
+        <div
+          v-if="isDropdownOpen"
+          class="absolute right-0 z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+          style="position: absolute; top: 100%;"
+          @click.stop
+        >
+          <ul class="py-1 text-gray-700">
+            <li
+              @click="sortName"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
+            >
+              <span>Name</span>
+              <span
+                v-if="currentSort === 'name'"
+                class="material-icons"
+              >{{ sortNameAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+            </li>
+            <li
+              @click="sortProgress"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
+            >
+              <span>Progress</span>
+              <span
+                v-if="currentSort === 'progress'"
+                class="material-icons"
+              >{{ sortProgressAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+            </li>
+            <li
+              @click="sortColor"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
+            >
+              <span>Color</span>
+              <span
+                v-if="currentSort === 'color'"
+                class="material-icons"
+              >{{ sortColorAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Scrollable Habits List -->
+      <div class="flex-grow overflow-y-auto md:overflow-y-scroll pb-2" style="scrollbar-width: thin;">
+        <div v-if="fetched && habitsMonth.length !== 0" class="space-y-1">
+          <div v-if="showHabitsList" class="flex flex-col space-y-1">
             <div
               v-for="habit in habitsMonth"
-              :key="habit.id">
-              <div class="w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
-              @click="openDetail(habit)">
-                <div class="flex flex-row items-center">
-                  <div class="h-3 w-3 md:h-4 md:w-4" :class="habit.color ?`fill-${habit.color.default}`: 'fill-violet-400'">
-                    <svg class="h-full w-full" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="40" />
-                    </svg>
-                  </div>
-                  <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
+              :key="habit.id"
+              class="w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
+              @click="openDetail(habit)"
+            >
+              <div class="flex flex-row items-center">
+                <div
+                  class="h-3 w-3 md:h-4 md:w-4"
+                  :class="habit.color ? `fill-${habit.color.default}` : 'fill-violet-400'"
+                >
+                  <svg class="h-full w-full" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" />
+                  </svg>
                 </div>
-                <div class="flex flex-row items-center">
-                  <span class="material-icons p-1" 
-                        :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'">pie_chart</span>
-                  <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
-                  <span class="material-icons">chevron_right</span>
-                </div>
-
+                <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
+              </div>
+              <div class="flex flex-row items-center">
+                <span
+                  class="material-icons p-1"
+                  :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'"
+                >pie_chart</span>
+                <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
+                <span class="material-icons">chevron_right</span>
               </div>
             </div>
           </div>
-        </transition>
         </div>
-
-      </div>
-      <div v-else>
-        <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
-      </div>
-    </div>
-    <!-- Skeleton Animation -->
-    <div v-else>
-      <div class="w-full p-4 bg-white border rounded-lg flex flex-row items-center h-24 md:h-28 animate-pulse">
-        <div class="w-3/4 space-y-2 p-2">
-          <div class="h-6 bg-gray-200 rounded-md w-full"></div>
-          <div class="h-6 bg-gray-200 rounded-md w-3/4"></div>
+        <div v-else-if="fetched">
+          <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
         </div>
-        <div class="w-1/4 h-full">
-          <RadialProgressbar
-            :progress="100"
-            :radius="40"
-            :text="''"
-            color="text-gray-200"
-          />
-        </div>
-      </div>
-
-      <div class="p-4 flex items-center justify-between">
-        <span class="font-semibold text-black">More info</span>
-        <hr class="flex-grow border-t border-gray-300 mx-4" />
-
-        <!-- More Options Button (Dropdown Toggle) -->
-        <div class="relative">
-          <!-- Dropdown Toggle Button -->
-            <div class="space-x-1 flex items-center cursor-pointer" @click="toggleDropdown">
-            <span class="material-icons rounded-full">sort</span>
-            <span class="font-semibold">Sort</span>
-            </div>
-
+        <div v-else class="w-full h-full flex justify-center items-center">
+          <!-- Skeleton Loader -->
+          <div class="spinner"></div>
         </div>
       </div>
     </div>
@@ -153,7 +155,6 @@ export default {
       todayYear: new Date().getFullYear(),
       mainText: '',
       overallProgress: 0,
-      habitsMonth: [],
       showGrade: true,
       fetched: false,
       isDropdownOpen: false,
@@ -161,7 +162,7 @@ export default {
       sortProgressAsc: true,
       sortColorAsc: true,
       currentSort: 'name',
-      setHabitsMonth: false,
+      showHabitsList: false,
     }
   },
   computed: {
@@ -182,8 +183,15 @@ export default {
       }
       return this.overallProgress; // Otherwise, show progress
     },
+    habitsMonth(){
+      return this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
+    },
   },
   methods: {
+    clicked(){
+      //console log habits cache from statStore
+      console.log(this.statStore.habitsCache)
+    },
     previousMonth() {
       if (this.currentMonth === 0) {
           this.currentMonth = 11;
@@ -259,13 +267,14 @@ export default {
     },
     async fetchHabitsMonth() {
       this.fetched = false;
-      this.setHabitsMonth = false;
+      this.showHabitsList = false;
       const fetchedHabits = await this.getMonthStats();
-      this.habitsMonth = fetchedHabits;
+      //this.habitsMonth = fetchedHabits;
+      this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
       this.overallProgress = this.calcOverallProgress(fetchedHabits);
       this.fetched = true;
       setTimeout(() => {
-        this.setHabitsMonth = true;
+        this.showHabitsList = true;
       }, 50)
     },
     async getMonthStats() {
@@ -433,17 +442,30 @@ export default {
   },
   watch: {
     currentMonthYear(newVal, oldVal) {
-      this.updateMainText();
-      this.fetchHabitsMonth();
+      if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
+        this.fetchHabitsMonth();
+        this.statStore.resetProgressUpdated();
+      } else {
+        this.overallProgress = this.calcOverallProgress(this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear));
+      }
     },
     overallProgress(newVal) {
       this.updateMainText();
-    }
+    },
   },
   mounted() {
-    this.updateMainText();
-    this.fetchHabitsMonth();
     this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
+    
+    if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
+      this.fetchHabitsMonth();
+      this.statStore.resetProgressUpdated();
+    }else{
+      //this.habitsMonth = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
+      this.overallProgress = this.calcOverallProgress(this.habitsMonth);
+      this.updateMainText();
+      this.fetched = true;
+      this.showHabitsList = true;
+    }
   }
 }
 </script>
