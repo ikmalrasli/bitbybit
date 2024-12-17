@@ -9,7 +9,7 @@ const toastStore = useToastStore();
   <transition name="toast-slide" mode="out-in">
     <div
       v-if="toastStore.toasts.length"
-      class="z-30 fixed top-0 mx-auto md:right-0 mt-2 mb-6 md:mt-2 md:mb-2 px-2"
+      class="z-50 fixed top-0 mx-auto md:right-0 mt-2 mb-6 md:mt-2 md:mb-2 px-2"
     >
       <transition-group name="list" tag="ul" class="flex flex-col gap-2">
         <li
