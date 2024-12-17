@@ -1,10 +1,8 @@
 <template>
   <div class=" w-full flex flex-row flex-grow px-4">
-    <div class="flex-auto justify-center relative">
-      <div v-if="loadingHome" class="spinner absolute top-1/2 left-1/2"></div>
-
+    <div class="flex-auto justify-center ">
       <!-- if no habits-->
-      <div v-if="!loadingHome && uncompletedHabits.length === 0 && completedHabits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
+      <div v-if="habits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
         <p class="text-center">
           Tap the
@@ -17,7 +15,7 @@
 
       <!-- Habits exist-->
       <!-- Collapsible Section -->
-      <div class="mt-1 space-y-4 pb-24">
+      <div class="mt-1 space-y-4 pb-16">
         <!-- Uncompleted habits (expand/collapse) -->
         <div v-if="uncompletedHabits.length !== 0">
           <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Uncompleted')">
@@ -44,6 +42,7 @@
                   class="cursor-pointer"
                   :selectionMode="$store.state.selectionMode"
                   :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
+                  :bgColor="habit===$store.state.selectedHabit ? 'bg-gray-50' : ''"
                   @toggleSelect="$store.dispatch('selectHabit', habit.habitId)"
                   @openDetail="openDetail(habit)"
                 />
@@ -101,24 +100,16 @@
           <transition name="slide-fade">
             <div v-if="showMemos" class="py-4 space-y-1">
               <div v-for="(memo, index) in dayMemos" :key="index">
-                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm overflow-x-auto space-y-1 cursor-pointer hover:bg-gray-50"
-                     @click="viewMemo(memo)">
+                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm space-y-1 cursor-pointer hover:bg-gray-50"
+                    @click="viewMemo(memo)">
                   <div class="flex w-full p-2 flex-row justify-between">
                     <!-- Memo content -->
-                    <span style="white-space: pre-wrap; font-size: 16px;">{{ memo.memo }}</span>
-                    <!-- Delete button -->
-                    <button v-if="showDeleteButton[index]" 
-                            class="rounded-lg text-red-300 material-icons"
-                            @click.stop="deleteMemo(memo.memoId, index)">
-                      delete
-                    </button>
+                    <span class="truncate-text">{{ memo.memo }}</span>
                   </div>
-
                   <div class="flex w-full justify-end">
-                  <span class="text-xs text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">{{ memoCategory(memo?.category) }}</span>
+                    <span class="text-xs text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">{{ memoCategory(memo?.category) }}</span>
                   </div>
                 </div>
-                
               </div>
             </div>
           </transition>          
@@ -164,7 +155,8 @@ export default {
       const uncompleted = this.dayHabits.filter(habit => 
         habit.progress < habit.dailyGoal)
       return uncompleted
-    }
+    },
+  
   },
   methods: {
     memoCategory(category) {
@@ -209,6 +201,7 @@ export default {
     handleDateSelected(date) {
       this.$store.dispatch('updateSelectedDay', date); // Update the selected day in Vuex
       this.$store.dispatch('getDayHabits', date); // Fetch day-specific progress for the selected date
+      this.$store.dispatch('getDayMemos', date);
     },
     formatDate(date){
       const year = date.getFullYear();
@@ -258,6 +251,16 @@ export default {
   animation: spin 1s linear infinite;
 }
 
+.truncate-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre-wrap; /* Allow wrapping */
+  font-size: 16px;
+}
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -266,4 +269,6 @@ export default {
     transform: rotate(360deg);
   }
 }
+
+
 </style>

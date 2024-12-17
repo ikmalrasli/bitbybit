@@ -1,5 +1,6 @@
 <template>
-  <div class="progress min-h-16 bg-white border rounded-lg shadow-sm py-2 px-4 hover:bg-gray-50 active:bg-gray-100"
+  <div class="progress min-h-16 border rounded-lg shadow-sm py-2 px-4 hover:bg-gray-50 active:bg-gray-100"
+  :class="bgColor"
   @click="selectionMode ? $emit('toggleSelect') : $emit('openDetail')">
 
     <div class="flex flex-row items-center">
@@ -52,6 +53,8 @@
 </template>
 
 <script setup>
+import { bg } from 'vuetify/locale';
+
 // Define component props
 const props = defineProps({
   color: {
@@ -77,6 +80,10 @@ const props = defineProps({
   isSelected: { 
     type: Boolean, 
     default: false 
+  },
+  bgColor: {
+    type: String,
+    default: 'bg-white'
   }
 });
 </script>
