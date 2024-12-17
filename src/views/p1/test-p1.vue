@@ -26,11 +26,25 @@
     <button @click="sendEmail" class="m-2 bg-pink-300 text-white font-bold p-2 rounded-lg shadow-lg active:bg-pink-400">
       Send Feedback
     </button>
+
+    <button @click="updateProgressStat" class="m-2 bg-emerald-300 text-white font-bold p-2 rounded-lg shadow-lg active:bg-pink-400">
+      set update progress
+    </button>
+
+    <button @click="fetchH" class="m-2 bg-orange-300 text-white font-bold p-2 rounded-lg shadow-lg active:bg-pink-400">
+      fetch habits
+    </button>
+
+    <button @click="fetchWP" class="m-2 bg-orange-300 text-white font-bold p-2 rounded-lg shadow-lg active:bg-pink-400">
+      fetch progress
+    </button>
+
   </div>
 </template>
 
 <script>
 import { useDialogStore } from '../../store/dialogStore';
+import { useStatStore } from '../../store/statStore.js';
 import habitPb from '../../components/habitpb.vue';
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
 import fab from '../../components/fab.vue';
@@ -43,6 +57,7 @@ export default {
   },
   data() {
     return {
+      statStore: useStatStore(),
       dialogStore: useDialogStore(),
       username: this.$store.state.user.displayName,
       color: { default: "bg-blue-400", active: "bg-blue-500" },
@@ -92,6 +107,19 @@ export default {
       const subject = encodeURIComponent("BitByBit User Feedback");
       const body = encodeURIComponent("Hi, here is my feedback/suggestion:");
       window.location.href = `mailto:ikmalrasli@gmail.com?subject=${subject}&body=${body}`;
+    },
+    updateProgressStat() {
+      this.statStore.setProgressUpdated();
+    },
+    handleAddLink(link) {
+      console.log("YouTube link added:", link);
+      // Handle adding the link to your app's state or database
+    },
+    fetchH() {
+      this.$store.dispatch('fetchHabits2');
+    },
+    fetchWP() {
+      this.$store.dispatch('fetchWeekProgress2');
     },
   },
 };
