@@ -25,3 +25,4 @@ dist-ssr
 
 /src/firebase.js
 .firebase/hosting.ZGlzdA.cache
+src/fetchweeklogic_reference.txt
