@@ -28,7 +28,7 @@
       <!-- right column -->
       <div v-if="!isTablet || isDetailView" 
       class="flex-1 flex h-full"
-      :class="[!isMobile && isTablet ? 'ml-56' : '']">
+      >
         <router-view class="h-full w-full" name="right" />
       </div>
 
@@ -36,11 +36,12 @@
       <fab v-if="$route.name === 'home'" />
     </div>
 
-    
+    <!-- Dialogs -->
     <Dialog/>
     <addMemoDialog />
     <sortHabitsDialog />
     <viewMemoDialog />
+    
     <!-- Mobile Bottom Navigation Bar -->
     <BottomNavBar v-if="isMobile" />
   </div>
@@ -51,10 +52,10 @@ import TitleBar from "../components/title-bar.vue";
 import Sidebar from "../components/side-bar.vue";
 import calendarRow from "../components/calendar-row.vue";
 import Toast from "../components/toast-noti.vue";
-import Dialog from "../components/confirm-dialog.vue";
-import addMemoDialog from "../components/add-memo-dialog.vue";
-import viewMemoDialog from "../components/view-memo-dialog.vue";
-import sortHabitsDialog from "../components/sort-habits-dialog.vue";
+import Dialog from "../components/dialogs/confirm-dialog.vue";
+import addMemoDialog from "../components/dialogs/add-memo-dialog.vue";
+import viewMemoDialog from "../components/dialogs/view-memo-dialog.vue";
+import sortHabitsDialog from "../components/dialogs/sort-habits-dialog.vue";
 import fab from "../components/fab.vue";
 import BottomNavBar from "../components/bottom-nav-bar.vue";
 
@@ -69,7 +70,7 @@ export default {
     addMemoDialog,
     sortHabitsDialog,
     viewMemoDialog,
-    fab
+    fab,
   },
   data() {
     return {

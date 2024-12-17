@@ -28,7 +28,7 @@
                 id="memo"
                 v-model="formData.content"
                 ref="notesTextarea"
-                class="bg-white text-black block w-full p-2 border border-gray-300 rounded-md min-h-24 resize-none overflow-y-auto "
+                class="leading-tight bg-white text-black block w-full p-2 border border-gray-300 rounded-md min-h-24 resize-none overflow-y-auto "
                 @input="adjustTextareaHeight"
               ></textarea>
             </div>

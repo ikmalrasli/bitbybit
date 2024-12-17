@@ -81,7 +81,7 @@ export default {
           }
         });
 
-        this.$router.push("/home"); // Redirect after successful login
+        this.$router.push("/"); // Redirect after successful login
 
       } catch (error) {
         console.error("Login error:", error);
