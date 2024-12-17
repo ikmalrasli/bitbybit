@@ -1,5 +1,6 @@
 <template>
-  <div class="w-full h-full flex flex-row">
+  <div class="w-full h-full flex flex-row"
+  @click="startLoadingDots">
     <div class="w-full h-full flex flex-col bg-white relative">
       <!-- Header -->
       <header class="bg-white p-4 flex flex-row relative">
@@ -8,8 +9,9 @@
           {{ formData.name === '' ? title : formData.name }}</h1>
       </header>
 
+      
       <!-- Form Content -->
-      <div class="flex-grow h-96 overflow-y-auto scrollbar-hide p-4">
+      <div class="flex-grow h-96 overflow-y-auto scrollbar-hide p-4 pb-20">
         <form @submit.prevent="createEntry" class="space-y-4">
           <!-- Name and color picker-->
           <div class="flex space-x-4 items-center">
@@ -110,13 +112,13 @@
           </div>
 
           <!-- Notes -->
-          <div>
+          <div class="flex flex-col space-y-2">
             <label for="notes" class="text-left block text-sm font-medium text-gray-700">Notes</label>
             <textarea
               v-model="formData.notes"
               id="notes"
               ref="notesTextarea"
-              class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16 resize-none overflow-y-auto "
+              class="leading-tight bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-24 resize-none overflow-y-auto "
               :class="[
                 'focus:ring-1 focus-within:' + `ring-${formData.color.active}`, 
                 'focus-within:' + `border-${formData.color.active}`
@@ -124,28 +126,113 @@
               placeholder="Optional"
               @input="adjustTextareaHeight"
             ></textarea>
-          </div>
 
-          <!-- Image Upload Button -->
-          <div class="mt-2 flex justify-end gap-2">
-            <div v-if="formData.imageUrl" class="flex items-center border rounded-md content-center text-sm">
-              <img :src="imagePreviewUrl" alt="Selected Image" class="h-10 w-10 object-cover rounded-md" />
-              <span class="ml-2">{{ formatFileName(formData.imageUrl) }}</span>
-              <button @click="removeImage" class="ml-2 text-black text-sm">
+            <!-- Selected Media Preview -->
+            <!-- <div v-if="formData.imageUrl" class="flex items-center border rounded-md content-center justify-between text-sm">
+              <div class="flex items-center">
+                <img :src="imagePreviewUrl" alt="Selected Image" class="h-10 w-10 object-cover rounded-md" />
+                <span class="ml-2">{{ formatFileName(formData.imageUrl) }}</span>
+              </div>
+              
+              <button @click="removeImage" class="m-2 text-black text-sm">
+                <span class="material-icons">close</span>
+              </button>
+            </div> -->
+
+            <draggable 
+              v-model="selectedPhotos" 
+              itemKey="id" 
+              class="grid grid-cols-4 md:grid-cols-5 gap-2"
+              :animation="200"
+              :ghost-class="'bg-gray-200'"
+            >
+              <template #item="{ element, index }">
+                <div class="relative bg-gray-100 rounded-md overflow-hidden border">
+                  <img 
+                  :src="element.url ? element.url: element" 
+                  :alt="`Photo ${index + 1}`" 
+                  class="w-full object-cover"
+                  style="aspect-ratio: 1 / 1;" />
+                  <button 
+                    @click="removePhoto(index)" 
+                    class="absolute top-1 right-1 h-5 w-5 bg-opacity-50 bg-gray-700 text-white rounded-full"
+                  >
+                    <span class="material-icons text-sm">close</span>
+                  </button>
+                </div>
+              </template>
+            </draggable>
+
+            <!-- Selected Youtube Urls Preview -->
+            <div v-for="(video, index) in formData.youtubeUrls" :key="index" 
+            class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+
+              <div class="flex items-center">
+                <i class="fa-brands fa-youtube text-xl mx-2" style="color: #ff0000;"></i>
+                <a :href="video.url" target="_blank" 
+                class="ml-2 hover:underline">
+                  <span class="block truncate">{{ formatURLTitle(video.title) }}</span>
+                  <span class="block text-xs">{{ formatURLTitle(video.channel) }}</span>
+                </a>
+              </div>
+              
+              <button type="button" @click="removeYoutubeUrl(index)" class="text-black text-sm">
                 <span class="material-icons">close</span>
               </button>
             </div>
 
-            <input type="file" @change="onFileSelected" ref="fileInput" class="hidden" />
-            <button 
-              type="button" 
-              @click="triggerFileInput" 
-              class="bg-gray-300 text-gray-700 p-2 rounded-full h-10 w-10 flex justify-center items-center transition-colors duration-200"
-              :class="{'bg-gray-300': !formData.imageUrl}" 
-              :style="{ backgroundColor: formData.imageUrl ? formData.color : '#e5e7eb' }"
-            >
-              <span class="material-icons" :class="{'text-white': formData.imageUrl, 'text-gray-700': !formData.imageUrl}" >image</span>
-            </button>
+            <!-- Selected Spotify Urls Preview -->
+            <div v-for="(track, index) in formData.spotifyUrls" :key="index" 
+            class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+
+              <div class="flex items-center">
+                <i class="fa-brands fa-spotify text-xl mx-2" style="color: #1DB954;"></i>
+                <a :href="track.url" target="_blank" 
+                class="ml-2 truncate hover:underline">
+                  <span class="block">{{ formatURLTitle(track.title) }}</span>
+                  <span class="block text-xs">{{ track.artist }}</span>
+                </a>
+              </div>
+              
+              <button type="button" @click="removeYoutubeUrl(index)" class="text-black text-sm">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <!-- Media Buttons -->
+            <input type="file" id="photo-input" ref="photoInput" multiple 
+            accept="image/*" @change="handlePhotoSelect" class="hidden" />
+
+            <div class="flex space-x-2 justify-end">
+              <button 
+                type="button" 
+                @click="triggerPhotoInput"
+                class="w-14 space-x-1 text-white p-2 px-4 rounded-full h-10 flex justify-center items-center transition-colors duration-200"
+                :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
+              >
+                <i class="fa-solid fa-image text-xl"></i>
+              </button>
+
+              <button 
+                type="button" 
+                @click="openYoutubeDialog"
+                class="w-14 space-x-1 p-2 px-4 rounded-full 
+                h-10 flex justify-center items-center"
+                style="background-color: #ff0000;"
+              >
+                <i class="fa-brands fa-youtube text-xl" style="color: #ffffff;"></i>
+              </button>
+
+              <button 
+                type="button" 
+                @click="openSpotifyDialog"
+                class="w-14 space-x-1 p-2 px-4 rounded-full 
+                h-10 flex justify-center items-center bg-gray-700"
+              >
+                <i class="fa-brands fa-spotify text-xl" style="color: #1ed760;"></i>
+              </button>
+            </div>
+
           </div>
 
           <!-- Term -->
@@ -166,25 +253,39 @@
       <div class="px-4 py-2 flex-shrink-0 absolute bottom-0 w-full">
         <button 
           @click="createEntry" 
-          class="w-full bg-violet-400 text-white font-bold py-3 rounded-full shadow-lg disabled:bg-gray-300"
+          class="w-full text-white font-bold py-3 rounded-full shadow-lg disabled:bg-gray-300 disabled:text-gray-700 disabled:font-normal transition-colors duration-200"
           :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
           :disabled="formData.name === ''"
         >
           {{ buttonText }}
         </button>
       </div>
+      
+      <!-- Dialogs -->
+      <youtubeDialog @add-link="handleYoutubeLink" />
+      <spotifyDialog @add-link="handleSpotifyLink" /> 
     </div>
   </div>  
 </template>
 
 <script>
 import { db } from "../../firebase"; // Firestore instance
-import { collection, addDoc, updateDoc, doc } from "firebase/firestore"; // Firestore methods
+import { collection, addDoc, updateDoc, doc, Timestamp } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
 import { mapState } from "vuex";
+import { useDialogStore } from '../../store/dialogStore';
+import spotifyDialog from "../../components/dialogs/spotify-dialog.vue";
+import youtubeDialog from "../../components/dialogs/youtube-dialog.vue";
+import draggable from 'vuedraggable';
+
 
 export default {
+  components: {
+    youtubeDialog,
+    spotifyDialog,
+    draggable
+  },
   data() {
     return {
       title: "Add Habits",
@@ -197,6 +298,8 @@ export default {
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: null,
         imageUrl: "",
+        youtubeUrls: [],
+        spotifyUrls: [],
         color: { default: "violet-400", active: "violet-500" }
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
@@ -214,6 +317,8 @@ export default {
         { default: "pink-300", active: "pink-400" },
       ],
       showColorPicker: false,
+      dialogStore: useDialogStore(),
+      selectedPhotos: [],
     };
   },
   mounted() {
@@ -228,17 +333,29 @@ export default {
       this.formData.dailyGoal = this.selectedHabit.dailyGoal;
       this.formData.repeatDays = this.selectedHabit.repeat;
       this.formData.notes = this.selectedHabit.notes;
-      this.formData.termStart = this.selectedHabit.termStart ? this.selectedHabit.termStart.toDate().toISOString().split("T")[0] : '';
-      this.formData.termEnd = this.selectedHabit.termEnd ? this.selectedHabit.termEnd.toDate().toISOString().split("T")[0] : '';
+      this.formData.termStart = this.selectedHabit.termStart ? new Timestamp(this.selectedHabit.termStart.seconds, this.selectedHabit.termStart.nanoseconds).toDate().toISOString().split("T")[0] : '';
+      this.formData.termEnd = this.selectedHabit.termEnd ? new Timestamp(this.selectedHabit.termEnd.seconds, this.selectedHabit.termEnd.nanoseconds).toDate().toISOString().split("T")[0] : '';
 
       if (!this.selectedHabit.imageUrl) {
         this.selectedHabit.imageUrl = '';
       }
       this.formData.imageUrl = this.selectedHabit.imageUrl;
       this.imagePreviewUrl = this.selectedHabit.imageUrl;
+
+      
+
       this.formData.reminder = this.selectedHabit.reminder;
       if (this.selectedHabit.color) {
         this.formData.color = { default: this.selectedHabit.color.default, active: this.selectedHabit.color.active };
+      }
+      if (this.selectedHabit.youtubeUrls) {
+        this.formData.youtubeUrls = this.selectedHabit.youtubeUrls;
+      }
+      if (this.selectedHabit.spotifyUrls) {
+        this.formData.spotifyUrls = this.selectedHabit.spotifyUrls;
+      }
+      if (this.selectedHabit.imageUrls) {
+        this.selectedPhotos = this.selectedHabit.imageUrls;
       }
       
     }
@@ -290,18 +407,79 @@ export default {
         duration: 2000
       });
     },
-    triggerFileInput() {
-      this.$refs.fileInput.click(); // Trigger the hidden file input click
+    decodeHtmlEntities(text) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = text;
+      return txt.value;
     },
-    onFileSelected(event) {
-      this.selectedFile = event.target.files[0];
-      if (this.selectedFile) {
-        this.formData.imageUrl = this.selectedFile.name; // Show the selected file name
-        this.imagePreviewUrl = URL.createObjectURL(this.selectedFile); // Create a preview URL
+    removeYoutubeUrl(index) {
+      this.formData.youtubeUrls.splice(index, 1);
+    },
+    openYoutubeLink(video){
+      let link = '';
+      if (!video.id.videoId){
+        link = `https://www.youtube.com/watch?v=${video.id}`
+      } else {
+        link = `https://www.youtube.com/watch?v=${video.id.videoId}`
+      }
+      return link
+    },
+    handleYoutubeLink(link) {
+      if (link) {
+        this.formData.youtubeUrls.push({ 
+          title: this.decodeHtmlEntities(link.snippet.title), 
+          channel:this.decodeHtmlEntities(link.snippet.channelTitle), 
+          url: this.openYoutubeLink(link) 
+        });
+      } else {
+        console.error("No link received from Youtube dialog.");
       }
     },
+    handleSpotifyLink(link) {
+      if (link) {
+        this.formData.spotifyUrls.push({
+          title: link.name,
+          artist: link.artists[0].name,
+          url: link.external_urls.spotify
+        });
+      } else {
+        console.error("No link received from Spotify dialog.");
+      }
+    },
+    triggerPhotoInput() {
+      this.$refs.photoInput.click(); // Trigger the hidden file input click
+    },
+    handlePhotoSelect(event) {
+      const files = Array.from(event.target.files);
+      const newPhotos = files.map(file => ({
+        id: Date.now() + Math.random(),
+        file,
+        url: URL.createObjectURL(file)
+      }));
+      this.selectedPhotos = [...this.selectedPhotos, ...newPhotos];
+      this.selectedFile = true;
+    },
+    removePhoto(index) {
+      URL.revokeObjectURL(this.selectedPhotos[index].url);
+      this.selectedPhotos.splice(index, 1);
+    },
+    // onFileSelected(event) {
+    //   this.selectedFile = event.target.files[0];
+    //   if (this.selectedFile) {
+    //     this.formData.imageUrl = this.selectedFile.name; // Show the selected file name
+    //     this.imagePreviewUrl = URL.createObjectURL(this.selectedFile); // Create a preview URL
+    //   }
+    // },
+    formatURLTitle(title) {
+      const maxLength = 35; // Maximum length before truncating
+      if (title.length > maxLength) {
+        return `${title.substring(0, maxLength)}...`; // Truncate and append ellipsis
+      }
+      
+      return title; // Return original file name if it's within limit
+    },
     formatFileName(fileName) {
-      const maxLength = 10; // Maximum length before truncating
+      const maxLength = 25; // Maximum length before truncating
       const extension = fileName.split('.').pop(); // Get file extension
       const baseName = fileName.substring(0, fileName.length - extension.length - 1); // Get base name without extension
       
@@ -322,6 +500,7 @@ export default {
       this.imagePreviewUrl = ""; // Clear the preview URL
       this.selectedFile = null; // Clear the selected file
     },
+    //uploadimage
     async uploadImage() {
       if (!this.selectedFile) return ""; // Return empty string if no file selected
 
@@ -344,110 +523,138 @@ export default {
         );
       });
     },
+    async uploadPhotos() {
+      if (!this.selectedPhotos || this.selectedPhotos.length === 0) return [];
+
+      // Create a new array with placeholders for correct order
+      const urls = new Array(this.selectedPhotos.length).fill(null);
+
+      // Upload valid files and place their URLs in the correct index
+      const uploadPromises = this.selectedPhotos.map(async (photo, index) => {
+        if (photo.file instanceof File) {
+          const storage = getStorage();
+          const storageRef = ref(storage, `habit_img/${this.$store.state.user.uid}/${this.formData.name}/${index}_${photo.file.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, photo.file);
+
+          return new Promise((resolve, reject) => {
+            uploadTask.on(
+              "state_changed",
+              null,
+              (error) => {
+                console.error("Error uploading photo:", error);
+                reject("Failed to upload photo.");
+              },
+              async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                urls[index] = downloadURL; // Place URL in correct index
+                resolve(downloadURL);
+              }
+            );
+          });
+        } else if (typeof photo === "string") {
+          urls[index] = photo; // Preserve existing URL in correct index
+        }
+      });
+
+      await Promise.all(uploadPromises);
+
+      // Filter out null values and return the ordered URLs
+      return urls.filter(url => url !== null);
+    },
+    openYoutubeDialog(){
+      this.dialogStore.openYoutubeDialog();
+    },
+    openSpotifyDialog(){
+      this.dialogStore.openSpotifyDialog();
+    },
     async createEntry() {
-      //edit habit section
-      if (this.$route.name === 'edit-habit') {
-        try {
-          this.isLoading = true;
-          this.startLoadingDots();
-          const imageUrl = await this.uploadImage();
-          // console.log('imageUrl', '('+imageUrl+')', 'this.formData.imageUrl', this.formData.imageUrl);
-          await updateDoc(doc(db, "habits", this.selectedHabit.habitId), {
-            name: this.formData.name,
-            dailyGoal: this.formData.dailyGoal,
-            repeat: this.formData.repeatDays,
-            notes: this.formData.notes,
-            termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
-            termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
-            reminder: this.formData.reminder,
-            imageUrl: imageUrl || this.formData.imageUrl,
-            color: this.formData.color,
-          });
-
-          if (this.firstFetchHabits===false){
-            console.log('here')
-            this.$store.dispatch('fetchHabits');
-            this.$store.commit('setFirstFetchHabits', true);
-          }
-          
-          this.$toast.info({
-            message: "Habit updated!",
-            duration: 2000
-          });
-        } catch (error) {
-          this.$toast.error({
-            message: "Error. Please try again.",
-            duration: 2000
-          });
-          console.error("Error updating habit:", error);
-        } finally {
-          this.isLoading = false; // Reset loading state
-          this.loadingText = 'Apply'; // Reset button text
-          this.goBack();
-        }
-        return
-      }
-
-      //create habit section
       try {
-        const auth = getAuth();
-        const user = auth.currentUser;
+        this.isLoading = true;
+        this.startLoadingDots();
 
-        if (!user) {
-          throw new Error("User not authenticated. Please log in.");
-        }
-
-        // Upload the image if one is selected and get the download URL
         const imageUrl = await this.uploadImage();
-
-        // Step 1: Add the habit to the "habits" collection with userId and image URL
-        const habitRef = await addDoc(collection(db, "habits"), {
-          userId: user.uid,
+        const photoUrls = await this.uploadPhotos();
+        const habitData = {
           name: this.formData.name,
           dailyGoal: this.formData.dailyGoal,
-          reminder: this.formData.reminder,
+          repeat: this.formData.repeatDays,
           notes: this.formData.notes,
           termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
           termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
-          createdAt: new Date(),
-          repeat: this.formData.repeatDays,
+          reminder: this.formData.reminder,
           imageUrl: imageUrl || this.formData.imageUrl,
           color: this.formData.color,
+          imageUrls: photoUrls || this.selectedPhotos,
+          youtubeUrls: this.formData.youtubeUrls,
+          spotifyUrls: this.formData.spotifyUrls
+        };
+
+        if (this.$route.name === 'edit-habit') {
+          await this.updateHabit(habitData);
+        } else {
+          await this.createHabit(habitData);
+        }
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.resetLoadingState();
+        this.goBack();
+      }
+    },
+    async updateHabit(habitData) {
+      try {
+        await updateDoc(doc(db, "habits", this.selectedHabit.habitId), habitData);
+
+        if (!this.firstFetchHabits) {
+          this.$store.dispatch('fetchHabits');
+          this.$store.commit('setFirstFetchHabits', true);
+        }
+
+        this.$toast.info({
+          message: "Habit updated!",
+          duration: 2000,
+        });
+      } catch (error) {
+        throw new Error("Error updating habit: " + error.message);
+      }
+    },
+    async createHabit(habitData) {
+      try {
+        const user = getAuth().currentUser;
+        if (!user || this.formData.name === '') throw new Error("Invalid user or empty habit name.");
+
+        await addDoc(collection(db, "habits"), {
+          ...habitData,
+          userId: user.uid,
+          createdAt: new Date(),
         });
 
-        if (this.firstFetchHabits===false){
+        if (!this.firstFetchHabits) {
           this.$store.dispatch('fetchHabits');
           this.$store.commit('setFirstFetchHabits', true);
         }
 
         this.$toast.success({
           message: "Habit created!",
-          duration: 2000
+          duration: 2000,
         });
-        
       } catch (error) {
-        console.error("Error creating habit:", error);
-        
-        this.$toast.error({
-          message: "Error. Please try again.",
-          duration: 2000
-        });
-      } finally {
-        this.isLoading = false; // Reset loading state
-        this.loadingText = 'Create'; // Reset button text
-        this.goBack();
+        throw new Error("Error creating habit: " + error.message);
       }
     },
+    handleError(error) {
+      console.error(error);
+      this.$toast.error({
+        message: "Error. Please try again.",
+        duration: 2000,
+      });
+    },
+    resetLoadingState() {
+      this.isLoading = false;
+      this.loadingText = this.$route.name === 'edit-habit' ? 'Apply' : 'Create';
+    },
     startLoadingDots() {
-      let dotCount = 1;
-      const loadingInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4; // Loop between 0 and 3
-        this.loadingText = '.'.repeat(dotCount); // Update loading text with dots
-
-        if (!this.isLoading) {
-          clearInterval(loadingInterval); // Stop interval if not loading
-        }
-      }, 250); // Update every 250 ms
+      this.loadingText='...';
     },
   },
 };
@@ -467,4 +674,22 @@ export default {
   margin: 0;
 }
 
+.youtube-icon {
+  color: #FF0000; /* YouTube red */
+  position: relative; /* Needed for the pseudo-element positioning */
+  font-size: 50px; /* Adjust the size as needed */
+}
+
+.youtube-icon::before {
+  content: "\f167"; /* Font Awesome Unicode for YouTube */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  -webkit-mask: radial-gradient(circle at center, transparent 55%, #000 56%);
+  mask: radial-gradient(circle at center, transparent 55%, #000 56%);
+  mix-blend-mode: lighten;
+}
 </style>
