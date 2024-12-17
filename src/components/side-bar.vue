@@ -11,10 +11,8 @@
           isLinkActive(link.path) ? 'text-white font-semibold bg-violet-400 hover:bg-violet-500': 'hover:bg-gray-100'
         "
       >
-        <span class="mr-2 material-icons-round"
-        :class="
-          isLinkActive(link.path) ? 'text-white': ''
-        ">{{ link.icon }}</span> 
+        <!--<span class="mr-2 material-icons-round">{{ link.icon }}</span>-->
+        <i class="text-xl w-6 mr-2" :class="link.fa_icon"></i>
         <span>{{ link.name }}</span>
       </router-link>
     </nav>
@@ -33,11 +31,11 @@ export default {
   data() {
     return {
       links: [
-        { name: "Home", icon: "home", path: "/" },
-        { name: "Calendar", icon: "calendar_today", path: "/calendar" },
-        { name: "Sunnahs", icon: "explore", path: "/sunnahs" },
-        { name: "Performance", icon: "bar_chart", path: "/stats" },
-        { name: "Settings", icon: "settings", path: "/settings" },
+      { name: "Home", icon: "home", fa_icon: "fas fa-house", path: "/" },
+        { name: "Calendar", icon: "calendar_today", fa_icon: "fas fa-calendar", path: "/calendar" },
+        { name: "Sunnahs", icon: "explore", fa_icon: "fas fa-compass", path: "/sunnahs" },
+        { name: "Performance", icon: "bar_chart", fa_icon: "fas fa-chart-simple", path: "/stats" },
+        { name: "Settings", icon: "settings", fa_icon: "fas fa-cog", path: "/settings" },
       ],
       isDropdownOpen: false,
       isTablet: false,

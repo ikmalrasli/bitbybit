@@ -9,7 +9,8 @@
         class="flex flex-col items-center justify-center p-2 text-center"
         :class="isLinkActive(link.path) ? 'text-violet-400' : 'text-gray-600'"
       >
-        <span class="material-icons-round">{{ link.icon }}</span>
+        <i :class="link.fa_icon" class="text-2xl"></i>
+        <!--<span class="material-icons-round">{{ link.icon }}</span>-->
       </router-link>
     </div>
   </div>
@@ -20,11 +21,11 @@ export default {
   data() {
     return {
       links: [
-        { name: "Home", icon: "home", path: "/" },
-        { name: "Calendar", icon: "calendar_today", path: "/calendar" },
-        { name: "Sunnahs", icon: "explore", path: "/sunnahs" },
-        { name: "Performance", icon: "bar_chart", path: "/stats" },
-        { name: "Settings", icon: "settings", path: "/settings" },
+        { name: "Home", icon: "home", fa_icon: "fas fa-home", path: "/" },
+        { name: "Calendar", icon: "calendar_today", fa_icon: "fas fa-calendar", path: "/calendar" },
+        { name: "Sunnahs", icon: "explore", fa_icon: "fas fa-compass", path: "/sunnahs" },
+        { name: "Performance", icon: "bar_chart", fa_icon: "fas fa-chart-simple", path: "/stats" },
+        { name: "Settings", icon: "settings", fa_icon: "fas fa-cog", path: "/settings" },
       ],
       isMobile: false,
       isIosStandalone: false,
@@ -43,6 +44,15 @@ export default {
         window.navigator.standalone;
     },
     isLinkActive(linkPath) {
+      // Check if the current path matches the link or is a child route of it
+      if (linkPath === '/' && (this.$route.name === 'add-habit' || this.$route.name === 'detail-habit' || this.$route.name === 'edit-habit')) {
+        return true;
+      }
+
+      if (linkPath === '/settings' && (this.$route.name === 'account' || this.$route.name === 'about' || this.$route.name === 'news')) {
+        return true;
+      }
+
       const currentPath = this.$route.path;
       return (
         currentPath === linkPath || currentPath.startsWith(linkPath + "/")
