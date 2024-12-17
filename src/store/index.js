@@ -2,27 +2,28 @@ import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '../firebase'; // Import your Firestore instance
-import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
-import { data } from 'autoprefixer';
 
 const loadTimeout = 1000;
 
 export default createStore({
   plugins: [
     createPersistedState({
-    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'week', 'weekProgress']  // Include user and isAuthenticated
+    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'weekProgress', 'weekMemos']  // Include user and isAuthenticated
   })
   ],
   state: {
     firstFetchHabits: false,
     firstFetchWeekProgress: false,
+    firstFetchWeekMemos: false,
     selectedDay: new Date(),
     user: null,
     isAuthenticated: false,
     habits: [],
     weekProgress: [],
     weekHabits: [],
+    weekMemos: [],
     dayHabits: [],
     dayMemos: [],
     selectedHabit: [],
@@ -35,6 +36,9 @@ export default createStore({
     sortType: 'name',
   },
   mutations: {
+    setFirstFetchWeekMemos(state, firstFetchMemos) {
+      state.firstFetchWeekMemos = firstFetchMemos;
+    },
     setFirstFetchHabits(state, firstFetchHabits) {
       state.firstFetchHabits = firstFetchHabits;
     },
@@ -71,6 +75,13 @@ export default createStore({
       state.selectionMode = false;
       state.selectedHabits = [];
       state.sortType = 'name';
+      state.weekMemos = [];
+      state.dayMemos = [];
+      state.firstFetchHabits = false;
+      state.firstFetchWeekProgress = false;
+      state.firstFetchWeekMemos = false;
+      state.selectedDay = new Date();
+      state.loadingHome = true;
     },
     SET_HABITS(state, habits) {
       state.habits = habits;
@@ -90,6 +101,9 @@ export default createStore({
     SET_SUNNAHS(state, sunnahs) {
       state.allSunnahs = sunnahs;
     },
+    SET_WEEK_MEMOS(state, memos) {
+      state.weekMemos = memos;
+    },
     SET_DAY_MEMOS(state, memos) {
       state.dayMemos = memos;
     },
@@ -107,58 +121,53 @@ export default createStore({
     markHabitsCompleted(state, toast) {
       let setTimestamp = new Date();
       let onTime = true;
+    
       if (state.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
         setTimestamp = new Date(state.selectedDay);
         setTimestamp.setHours(23, 59, 59, 999);
         onTime = false;
       }
-
-      state.selectedHabits.forEach(habitId => {
+    
+      const updatePromises = state.selectedHabits.map(habitId => {
         const habit = state.dayHabits.find(h => h.habitId === habitId);
+    
         if (habit.progressId !== '') {
           const docRef = doc(db, 'progress', habit.progressId);
-          updateDoc(docRef, {
+          return updateDoc(docRef, {
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
             onTime: onTime
-        }).then(() => {
-          console.log('Habits completed!');
+          });
+        } else {
+          return addDoc(collection(db, "progress"), {
+            habitId: habit.habitId,
+            progress: habit.dailyGoal,
+            timestamp: setTimestamp,
+            onTime: onTime
+          });
+        }
+      });
+    
+      // Wait for all promises to resolve
+      Promise.all(updatePromises)
+        .then(() => {
           toast.success({
             message: 'Habits completed!',
             duration: 1000
           });
         })
-        .catch((error) => {
-            console.error(error);
-            toast.error({
-              message: 'Error. Please try again.',
-              duration: 1000
-            });
+        .catch(error => {
+          console.error(error);
+          toast.error({
+            message: 'Error. Please try again.',
+            duration: 1000
           });
-        } else {
-          const habitRef = addDoc(collection(db, "progress"), {
-            habitId: habit.habitId,
-            progress: habit.dailyGoal,
-            timestamp: setTimestamp,
-            onTime: onTime
-          }).then(() => {
-            console.log('Habits completed!');
-            toast.success({
-              message: 'Habits completed!',
-              duration: 1000
-            });
-          }).catch((error) => {
-            console.error(error);
-            toast.error({
-              message: 'Error. Please try again.',
-              duration: 1000
-            });
-          })
-        }
-      });
-      state.selectedHabits = []; // Clear selection after marking as completed
-      state.selectionMode = false; // Exit selection mode
-    },
+        });
+    
+      // Clear selection and exit selection mode
+      state.selectedHabits = [];
+      state.selectionMode = false;
+    },    
     setSortType(state, type) {
       state.sortType = type
     },
@@ -210,8 +219,12 @@ export default createStore({
     selectHabit({ commit }, habitId) {
       commit('selectHabit', habitId);
     },
-    markHabitsCompleted({ commit }, toast) {
+    markHabitsCompleted({ commit, state }, toast) {
       commit('markHabitsCompleted', toast);
+      if (state.firstFetchWeekProgress===false){
+        this.dispatch('fetchWeekProgress');
+        commit('setFirstFetchWeekProgress', true);
+      }
     },
     updateLoading({ commit }, loading) {
       commit('setLoading', loading);
@@ -226,9 +239,11 @@ export default createStore({
       commit('setSelectedHabit', habit);
     },
     async login({ commit }, { email, password }) {
+      commit('setLoading', true);
       const auth = getAuth();
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        commit('setLoading', false);
         commit('SET_USER', userCredential.user);
       } catch (error) {
         throw error;
@@ -245,17 +260,16 @@ export default createStore({
       }
     },
     fetchUser({ commit }) {
+      commit('setLoading', true);
       return new Promise((resolve) => {
         const auth = getAuth();
         onAuthStateChanged(auth, (user) => {
           if (user) {
             commit('SET_USER', user);
             commit('setLoading', false);
-            console.log('fetchUser done');
           } else {
             commit('CLEAR_USER');
             commit('setLoading', false);
-            console.log('fetchUser set loading to false');
           }
           resolve(user);
         });
@@ -277,24 +291,17 @@ export default createStore({
             const habits = [];
             querySnapshot.forEach((doc) => {
               habits.push({ habitId: doc.id, ...doc.data() });
-              commit('SET_HABITS', habits);
             });
+            commit('SET_HABITS', habits);
             commit('sortHabits', state.sortType);
             this.dispatch('fetchWeekProgress')
             
             console.log('fetchHabits done');
 
             if (querySnapshot.empty) {
-              console.log('No habits found');
-              setTimeout(() => {
-                commit('setLoading', false);
-              }, loadTimeout);
-              console.log('fetchHabits set loading to false');
-            } else {
-              setTimeout(() => {
-                commit('setLoadingHome', false);
-              }, loadTimeout);
+              commit('setLoadingHome', false);
             }
+
           }, (error) => {
             console.error('Error fetching real-time habits:', error);
             if (error.code === 'resource-exhausted') {
@@ -307,18 +314,21 @@ export default createStore({
       }
     },
     async fetchWeekProgress({ commit, state }) {
-      // get progress for up until last sunday sunday
       const progressArray = [];
       const today = new Date();
       const currentDayOfWeek = today.getDay();
       const currentDate = today.getDate();
     
+      // Define start of the previous week (up to last Sunday)
       const startOfWeek = new Date(today);
       startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
       startOfWeek.setHours(0, 0, 0, 0);
-      
+    
+      // Track total habits to ensure all queries are processed before committing
+      let habitsProcessed = 0;
+    
       for (const index in state.habits) {
-        const habit = state.habits[index]; // Access habit by index
+        const habit = state.habits[index]; // Access each habit by index
         try {
           const q = query(
             collection(db, 'progress'),
@@ -326,46 +336,33 @@ export default createStore({
             where('timestamp', '>=', startOfWeek),
             orderBy('timestamp', 'desc')
           );
-          
-          // Set up real-time listener
+    
+          // Set up a real-time listener
           onSnapshot(q, (querySnapshot) => {
+            // Initialize map for the latest progress entry per day for this habit
+            const dailyProgressMap = {};
+    
             querySnapshot.forEach((doc) => {
               const data = doc.data();
-              progressArray.push({ ...data, progressId: doc.id });
-              
-              const outputArray = progressArray.reduce((acc, curr) => {
-                const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
-                const currentDay = currentDate.setHours(0, 0, 0, 0);
-                
-                const existingHabit = acc.find(habit => {
-                  const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
-                  const existingDay = habitDate.setHours(0, 0, 0, 0);
-                  
-                  return habit.habitId === curr.habitId && existingDay === currentDay;
-                });
-                
-                if (existingHabit) {
-                  if (curr.timestamp >= existingHabit.timestamp) {
-                    acc[acc.indexOf(existingHabit)] = curr;
-                  }
-                } else {
-                  acc.push(curr);
-                }
-                
-                return acc;
-              }, []);
-              
-              commit('SET_WEEK_PROGRESS', outputArray);
+              const progressDate = new Date(data.timestamp.toDate());
+              const dayKey = progressDate.toISOString().split("T")[0]; // Extract the day in YYYY-MM-DD format
+    
+              // Only keep the latest document for each day (sorted by desc)
+              if (!dailyProgressMap[dayKey]) {
+                dailyProgressMap[dayKey] = { ...data, progressId: doc.id };
+              }
             });
-            // console.log('fetchWeekProgress done');
-            this.dispatch('getDayHabits', this.state.selectedDay);
-
-            if (querySnapshot.empty) {
-              setTimeout(() => {
-                commit('setLoading', false);
-              }, loadTimeout);
-            } else {
-              commit('setLoadingHome', false);
+    
+            // Push all entries for this habit into the main progress array
+            progressArray.push(...Object.values(dailyProgressMap));
+    
+            // Check if all habit queries have completed
+            habitsProcessed++;
+            if (habitsProcessed === state.habits.length) {
+              // Commit the aggregated result once all habit queries are processed
+              //console.log(progressArray);
+              commit('SET_WEEK_PROGRESS', progressArray);
+              this.dispatch('getDayHabits', this.state.selectedDay);
             }
           });
         } catch (error) {
@@ -376,28 +373,25 @@ export default createStore({
     async getDayHabits({ commit, state }, day) {
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
       commit('SET_DAY_HABITS', endHabits);
-      // console.log('getDayHabits done (no query)');
-      setTimeout(() => {
-        commit('setLoading', false);
-      }, loadTimeout);
       commit('setLoadingHome', false);
-      this.dispatch('getDayMemos', day);
     },
-    getDayMemos({ commit, state}, day) {
-      // Create separate Date objects for start and end of day
-      const startOfDay = new Date(day);
-      startOfDay.setHours(0, 0, 0, 0);
 
-      const endOfDay = new Date(day);
-      endOfDay.setHours(23, 59, 59, 999);
+
+    async fetchWeekMemos({ commit, state}) {
+      const today = new Date();
+      const currentDayOfWeek = today.getDay();
+      const currentDate = today.getDate();
+    
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
+      startOfWeek.setHours(0, 0, 0, 0);
       const userId = state.user.uid;
       
       // Query Firestore for habits belonging to the authenticated user
       const q = query(
         collection(db, 'memos'),
         where('userId', '==', userId),
-        where('timestamp', '>=', startOfDay),
-        where('timestamp', '<=', endOfDay),
+        where('timestamp', '>=', startOfWeek),
         orderBy('memo', 'asc')
       );
       const memos = [];
@@ -409,10 +403,25 @@ export default createStore({
           const data = doc.data();
           memos.push({ ...data, memoId: doc.id });
         });
-        commit('SET_DAY_MEMOS', memos);
+
+        commit('SET_WEEK_MEMOS', memos);
+        this.dispatch('getDayMemos', this.state.selectedDay);
       }, (error) => {
         console.error('Error fetching real-time memos:', error);
       });
+    },
+    async getDayMemos({ commit, state }, day) {
+      const startOfDay = new Date(day);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(day);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const dayMemos = state.weekMemos.filter(memo => {
+        const memoDate = new Timestamp(memo.timestamp.seconds, memo.timestamp.nanoseconds).toDate();
+        return memoDate >= startOfDay && memoDate <= endOfDay;
+      })
+      
+      commit('SET_DAY_MEMOS', dayMemos);
     },
     fetchSunnahs({ commit }) {
       const sunnahs = [];
