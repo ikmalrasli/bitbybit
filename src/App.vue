@@ -13,7 +13,23 @@ export default {
   created() {
     this.$store.dispatch('fetchUser').then((user) => {
       if (user) {
-        this.$store.dispatch('fetchHabits');
+        if (this.$store.state.habits.length === 0) {
+          this.$store.commit('setFirstFetchHabits', true);
+          this.$store.dispatch('fetchHabits');
+        } else {
+          if (this.$store.state.weekProgress.length === 0) {
+            this.$store.dispatch('fetchWeekProgress');
+          } else {
+            //console.log('App.vue')
+            //this.$store.dispatch('getDayHabits', this.$store.state.selectedDay, false);
+          }
+          
+          if (this.$store.state.weekMemos.length === 0) {
+            this.$store.dispatch('fetchWeekMemos');
+          } else {
+            this.$store.dispatch('getDayMemos', this.$store.state.selectedDay);
+          }
+        }
       } else {
         this.$store.dispatch('updateLoading',false);
       }
