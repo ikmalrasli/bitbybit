@@ -8,8 +8,12 @@ export const useStatStore = defineStore('habitStore', {
     textColor: 'text-violet-400',
     fillColor: 'fill-violet-400',
     habitsCache: {}, // Caches habits data by month and year
+    progressUpdated: true,
   }),
   actions: {
+    resetHabitsCache() {
+      this.habitsCache = {};
+    },
     // Sets the selected habit
     selectStat(habit) {
       this.selectedStat = habit;
@@ -32,6 +36,12 @@ export const useStatStore = defineStore('habitStore', {
     getHabitsForMonth(month, year) {
       const key = `${month}-${year}`;
       return this.habitsCache[key] || null;
+    },
+    setProgressUpdated() {
+      this.progressUpdated = true;
+    },
+    resetProgressUpdated() {
+      this.progressUpdated = false;
     },
   },
   getters: {
