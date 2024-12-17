@@ -34,7 +34,23 @@ export const useDialogStore = defineStore('dialog', () => {
     dialogType.value = type;
   }
 
+  function openViewMemoDialog(memoContent, type = 'view-memo') {
+    isVisible.value = true;
+    dialogType.value = type;
+    content.value = memoContent;
+  }
+
   function openSortHabitsDialog(type = 'sort-habits') {
+    isVisible.value = true;
+    dialogType.value = type;
+  }
+
+  function openYoutubeDialog(type = 'youtube-dialog') {
+    isVisible.value = true;
+    dialogType.value = type;
+  }
+
+  function openSpotifyDialog(type = 'spotify-dialog') {
     isVisible.value = true;
     dialogType.value = type;
   }
@@ -45,5 +61,10 @@ export const useDialogStore = defineStore('dialog', () => {
   }
 
   return { isVisible, title, content, dialogType, confirmText, confirmTextClass, 
-    openDialog, closeDialog, confirmAction, openAddMemoDialog, openSortHabitsDialog };
+    openDialog, closeDialog, confirmAction,
+    openAddMemoDialog, 
+    openSortHabitsDialog,
+    openViewMemoDialog,
+    openYoutubeDialog,
+    openSpotifyDialog };
 });
