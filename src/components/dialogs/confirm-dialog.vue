@@ -20,7 +20,7 @@
   </template>
   
   <script>
-  import { useDialogStore } from '../store/dialogStore';
+  import { useDialogStore } from '../../store/dialogStore';
   
   export default {
     setup() {

@@ -48,8 +48,8 @@
   </template>
   
 <script>
-import { useDialogStore } from '../store/dialogStore';
-import { db } from "../firebase";
+import { useDialogStore } from '../../store/dialogStore';
+import { db } from "../../firebase";
 import { collection, addDoc} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { mapState} from 'vuex';
@@ -104,7 +104,10 @@ export default {
           timestamp: new Date(this.formData.date),
           category: this.formData.category
         });
-        
+        if (this.$store.state.firstFetchWeekMemos===false){
+          this.$store.dispatch('fetchWeekMemos');
+          this.$store.commit('setFirstFetchWeekMemos', true);
+        }
         this.loading = false;
         this.$toast.success({
           message: "Memo created successfully!",

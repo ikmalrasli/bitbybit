@@ -55,10 +55,10 @@
 </template>
 
 <script>
-import { useDialogStore } from '../store/dialogStore';
+import { useDialogStore } from '../../store/dialogStore';
 import { mapState } from 'vuex';
 import draggable from 'vuedraggable';
-import { db } from '../firebase'; // Import your Firestore instance
+import { db } from '../../firebase'; // Import your Firestore instance
 import { doc, updateDoc } from 'firebase/firestore';
 
 export default {
@@ -104,6 +104,11 @@ export default {
           })
         })
         this.$store.dispatch('setSortType', 'custom');
+      }
+      if (this.$store.state.firstFetchHabits===false){
+        console.log('fetchHabits');
+        this.$store.dispatch('fetchHabits');
+        this.$store.commit('setFirstFetchHabits', true);
       }
       this.$store.dispatch('getDayHabits', this.$store.state.selectedDay, true);
       this.dialogStore.closeDialog();
