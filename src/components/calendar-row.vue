@@ -74,14 +74,14 @@ export default {
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
-
-    if (this.selectedDay.getDate() < startOfWeek.getDate()) {
-        this.currentWeek = 'lastWeek';
-        this.days = this.generateWeekDays('lastWeek');
-      } else {
-        this.currentWeek = 'thisWeek';
-        this.days = this.generateWeekDays('thisWeek');
-      }
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    if (this.selectedDay < startOfWeek) {
+      this.currentWeek = 'lastWeek';
+      this.days = this.generateWeekDays('lastWeek');
+    } else if (this.selectedDay >= startOfWeek) {
+      this.showThisWeek();
+    }
   },
   computed: {
     ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay']),
@@ -121,7 +121,9 @@ export default {
     selectDay(day) {
       const selectedDate = new Date(day.dateobj);
       this.updateSelectedDay(selectedDate);
-      this.$store.dispatch('getDayHabits', selectedDate, true);
+      if (!this.habits.empty) {
+        this.$store.dispatch('getDayHabits', selectedDate);
+      }
       this.$store.dispatch('getDayMemos', selectedDate)
       this.$router.push('/');
     },
