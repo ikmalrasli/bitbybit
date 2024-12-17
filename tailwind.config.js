@@ -30,5 +30,6 @@ export default {
     {pattern: /^text-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
     {pattern: /^accent-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
     {pattern: /^fill-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
+    {pattern: /^border-(red|green|blue|yellow|pink|violet|emerald|orange)-300$/},
   ]
 }
