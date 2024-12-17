@@ -1,5 +1,32 @@
 <template>
   <div class="w-full h-full flex flex-col bg-white">
+    <!-- Full-Screen Image Modal -->
+    <div v-if="isImgFullscreen" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+    @click.self="closeImgFullscreen">
+      <!-- Full-Screen Image -->
+      <div class="relative">
+        <img :src="fullscreenImageUrl" alt="Full-Screen Image" 
+        class="object-contain max-h-full max-w-full"
+        :style="{ transform: `scale(${imageScale})` }" />
+        <span v-if="imageUrls.length > 1" class="absolute top-2 right-2 text-xs rounded-full bg-black bg-opacity-60 text-white px-1">
+          {{ currentImageIndex + 1 }}/{{ imageUrls.length }}</span>
+      </div>
+      
+      
+      <!-- Navigation Buttons -->
+      <button
+      v-if="currentImageIndex > 0" @click="prevImage"
+      class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white material-icons bg-black bg-opacity-60 rounded-full">chevron_left</button>
+      <button v-if="currentImageIndex < imageUrls.length - 1" @click="nextImage"
+      class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white material-icons bg-black bg-opacity-60 rounded-full">chevron_right</button>
+
+      <!-- Zoom Controls -->
+      <div class="flex mt-4 space-x-4 absolute top-4 right-4">
+        <button @click="zoomIn" class="text-white material-icons">zoom_in</button>
+        <button @click="zoomOut" class="text-white material-icons">zoom_out</button>
+        <button @click="closeImgFullscreen" class="text-white material-icons">close</button>
+      </div>
+    </div>
     <!-- Header -->
     <header class="bg-white p-4 flex flex-row relative justify-between">
       <button @click="goBack" class="material-icons rounded-full active:bg-gray-200">chevron_left</button>
@@ -31,7 +58,7 @@
     <div class="h-96 flex-grow overflow-y-auto px-4 space-y-2 pb-4 scrollbar-hide"
     :class="[isImgFullscreen ? 'overflow-hidden' : '']">
       <!-- Progress Card -->
-      <div class="w-full p-8 text-gray-700 bg-white border rounded-lg text-center">
+      <div class="w-full p-4 text-gray-700 bg-white border rounded-lg text-center">
         <h2 class="flex-auto text-xl block mb-2">Progress</h2>
         <h1 class="flex-auto text-5xl">{{ addProgress }}</h1>
         <h2 class="flex-auto text-xl mb-2">/ {{ selectedHabit?.dailyGoal }}</h2>
@@ -58,7 +85,7 @@
         <!-- Add Progress Button-->
         <button type="button" @click="confirmProgress" 
           class="material-icons font-semibold mt-4 ml-2 p-1 rounded-full active:bg-gray-200 disabled:text-gray-400 disabled:font-normal"
-          :class="selectedHabit.color ? `text-${selectedHabit.color.default}` : 'text-violet-400'"
+          :class="selectedHabit?.color ? `text-${selectedHabit?.color.default}` : 'text-violet-400'"
           :disabled="addProgress == selectedHabit?.progress || loading" 
         >
           <template v-if="loading">
@@ -71,6 +98,69 @@
         </button>
       </div>
 
+      <!-- Notes and Image -->
+      <div v-if="selectedHabit?.notes || selectedHabit?.imageUrl ||
+      selectedHabit?.imageUrls?.length > 0 || selectedHabit?.youtubeUrls?.length > 0 ||
+      selectedHabit?.spotifyUrls?.length > 0"
+      class="w-full p-4 text-gray-700 bg-white border rounded-lg space-y-2">
+        <h2 class="text-lg text-center block mb-2">Notes</h2>
+        <p v-if="selectedHabit?.notes" class="leading-tight py-2" style="white-space: pre-wrap;" v-html="processedNotes"></p>
+        
+        <!-- <div v-if="selectedHabit?.imageUrl">
+          <img @click="openImgFullscreen" :src="selectedHabit.imageUrl" alt="Uploaded Image" 
+          class="object-cover rounded-md cursor-pointer" />
+        </div> -->
+
+        <!-- Photo Gallery -->
+        <div v-if="selectedHabit?.imageUrls?.length > 0" class="w-full text-gray-700 bg-white">
+          <div class="snap-x snap-mandatory flex overflow-x-auto md:overflow-x-scroll"
+          style="scrollbar-width: thin;" ref="gallery">
+            <div v-for="(imageUrl, index) in imageUrls" :key="index" 
+            class="flex relative image-wrapper snap-center flex-shrink-0 w-full">
+              <img 
+                :src="imageUrl" 
+                :alt="`Image ${index + 1}`" 
+                class="flex flex-grow w-full object-cover rounded-lg border cursor-pointer transition-transform duration-300 ease-in-out"
+                @click="openImgFullscreen2(imageUrl)"
+              />
+              <span v-if="imageUrls.length > 1" class="absolute top-2 right-2 text-xs rounded-full bg-black bg-opacity-30 text-white px-1">
+                {{ index + 1 }}/{{ imageUrls.length }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Youtube Urls -->
+        <div v-if="selectedHabit?.youtubeUrls?.length > 0" class="w-full space-y-2">
+          <div v-for="(video, index) in selectedHabit.youtubeUrls" :key="index"
+          class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+
+            <div class="flex items-center">
+              <i class="fa-brands fa-youtube text-xl mx-2" style="color: #ff0000;"></i>
+              <a :href="video.url" target="_blank" 
+              class="ml-2 hover:underline">
+                <span class="block truncate">{{ formatURLTitle(video.title) }}</span>
+                <span class="block text-xs">{{ video.channel }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spotify Urls -->
+        <div v-if="selectedHabit?.spotifyUrls?.length > 0" class="w-full space-y-2">
+          <div v-for="(track, index) in selectedHabit.spotifyUrls" :key="index"
+          class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+            <div class="flex items-center">
+              <i class="fa-brands fa-spotify text-xl mx-2" style="color: #1DB954;"></i>
+              <a :href="track.url" target="_blank" 
+              class="ml-2 truncate hover:underline">
+                <span class="block">{{ formatURLTitle(track.title) }}</span>
+                <span class="block text-xs">{{ track.artist }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Timeline Card -->
       <div class="w-full justify-between flex flex-col p-4 px-4 text-gray-700 bg-white border rounded-lg">
         <h2 class="text-lg text-center block mb-2">Term</h2>
@@ -79,41 +169,12 @@
             {{ habitTermStart.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' }) }}
           </span>
           <hr class="flex-grow border-t mx-2"
-          :class="selectedHabit.color ? `border-${selectedHabit.color.default}` : 'border-violet-400'" />
+          :class="selectedHabit?.color ? `border-${selectedHabit?.color.default}` : 'border-violet-400'" />
           <span class="min-w-24 text-center text-sm text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">
             {{ selectedHabit?.termEnd ? habitTermEnd.toLocaleDateString() : 'No end' }}
           </span>
         </div>
       </div>
-
-      <!-- Notes and Image -->
-      <div v-if="selectedHabit?.imageUrl || selectedHabit?.notes" class="w-full p-4 text-gray-700 bg-white border rounded-lg">
-        <h2 class="text-lg text-center block mb-2">Notes</h2>
-        <p v-if="selectedHabit?.notes" class="py-2" style="white-space: pre-wrap;">{{ selectedHabit?.notes }}</p>
-        
-        <div v-if="selectedHabit?.imageUrl">
-          <img @click="openImgFullscreen" :src="selectedHabit.imageUrl" alt="Uploaded Image" 
-          class="object-cover rounded-md cursor-pointer" />
-          
-          <!-- Full-Screen Image Modal -->
-          <div v-if="isImgFullscreen" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-          @click.self="closeImgFullscreen">
-            <img :src="selectedHabit.imageUrl" alt="Full-Screen Image" 
-            class="object-contain max-h-full max-w-full"
-            :style="{ transform: `scale(${imageScale})` }" />
-
-            <!-- Zoom Controls -->
-            <div class="flex mt-4 space-x-4 absolute top-4 right-4">
-              <button @click="zoomIn" class="text-white material-icons">zoom_in</button>
-              <button @click="zoomOut" class="text-white material-icons">zoom_out</button>
-              <button @click="closeImgFullscreen" class=" text-white material-icons">close</button>
-            </div>
-            
-            
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </template>
@@ -124,6 +185,7 @@ import { db } from "../../firebase"; // Firestore instance
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { useDialogStore } from '../../store/dialogStore';
+import { useStatStore } from '../../store/statStore.js';
 
 export default {
   data() {
@@ -137,22 +199,82 @@ export default {
       dialogStore: useDialogStore(),
       isImgFullscreen: false,
       imageScale: 1,
+      statStore: useStatStore(),
+      fullscreenImageUrl: '',
+      scrollTimeout: null,
+      currentImageIndex: 0,
     };
   },
   computed: {
     ...mapState(['selectedHabit', 'selectedDay', 'firstFetchWeekProgress']),
     selectedHabit() {
-      this.addProgress = this.$store.state.selectedHabit.progress;
+      this.addProgress = this.$store.state.selectedHabit?.progress;
       return this.$store.state.selectedHabit;
     },
     habitTermStart() {
-      return new Timestamp(this.selectedHabit.termStart.seconds, this.selectedHabit.termStart.nanoseconds).toDate()
+      return new Timestamp(this.selectedHabit?.termStart.seconds, this.selectedHabit?.termStart.nanoseconds).toDate()
     },
     habitTermEnd() {
-      return new Timestamp(this.selectedHabit.termEnd.seconds, this.selectedHabit.termEnd.nanoseconds).toDate()
+      return new Timestamp(this.selectedHabit?.termEnd.seconds, this.selectedHabit?.termEnd.nanoseconds).toDate()
+    },
+    processedNotes() {
+      if (!this.selectedHabit?.notes) return '';
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return this.selectedHabit.notes.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">${url}</a>`;
+      });
+    },
+    imageUrls() {
+      return this.selectedHabit?.imageUrls || [];
     }
   },
   methods: {
+    formatURLTitle(title) {
+      const maxLength = 35; // Maximum length before truncating
+      if (title.length > maxLength) {
+        return `${title.substring(0, maxLength)}...`; // Truncate and append ellipsis
+      }
+      
+      return title; // Return original file name if it's within limit
+    },
+    openImgFullscreen2(imageUrl) {
+      this.fullscreenImageUrl = imageUrl;
+      this.isImgFullscreen = true;
+      this.imageScale = 1;
+      this.currentImageIndex = this.imageUrls.indexOf(imageUrl);
+    },
+    nextImage() {
+      if (this.currentImageIndex < this.imageUrls.length - 1) {
+        this.currentImageIndex++;
+        this.fullscreenImageUrl = this.imageUrls[this.currentImageIndex];
+      }
+    },
+    prevImage() {
+      if (this.currentImageIndex > 0) {
+        this.currentImageIndex--;
+        this.fullscreenImageUrl = this.imageUrls[this.currentImageIndex];
+      }
+    },
+    handleScroll(e) {
+      if (this.$refs.gallery) {
+        e.preventDefault();
+        const gallery = this.$refs.gallery;
+        const scrollAmount = e.deltaY;
+        gallery.scrollLeft += scrollAmount;
+        
+        // Snap to nearest image after scroll
+        clearTimeout(this.scrollTimeout);
+        this.scrollTimeout = setTimeout(() => {
+          const scrollLeft = gallery.scrollLeft;
+          const itemWidth = gallery.offsetWidth * 0.9; // 90% of container width
+          const nearestItem = Math.round(scrollLeft / itemWidth);
+          gallery.scrollTo({
+            left: nearestItem * itemWidth,
+            behavior: 'smooth'
+          });
+        }, 150);
+      }
+    },
     openImgFullscreen() {
       this.isImgFullscreen = true;
       this.imageScale = 1;
@@ -239,6 +361,7 @@ export default {
         this.addProgress = 0;
         this.$store.state.selectedHabit.progress = 0;
         this.docId = null;
+        this.statStore.setProgressUpdated();
 
         if (this.firstFetchWeekProgress===false){
           this.$store.dispatch('fetchWeekProgress');
@@ -261,8 +384,8 @@ export default {
       this.checkProgress();
     },
     checkProgress() {
-      if (this.selectedHabit.progressId !== '') {
-        this.docId = this.selectedHabit.progressId;
+      if (this.selectedHabit?.progressId !== '') {
+        this.docId = this.selectedHabit?.progressId;
       } else {
         this.docId = null;
       }
@@ -367,6 +490,8 @@ export default {
       if (this.addProgress === 0) {
         this.removeTodayEntries();
       }
+
+      this.statStore.setProgressUpdated();
     },
     editHabit() {
       //use addHabit layout for edit habit
@@ -424,10 +549,23 @@ export default {
   },
   mounted() {
     this.handleSelectedHabitChange();
+    if (this.$refs.galleryContainer) {
+      this.$refs.galleryContainer.addEventListener('wheel', this.handleScroll, { passive: false });
+    }
   },
   beforeDestroy() {
     document.removeEventListener('click', this.handleClickOutside);
-  }
+    if (this.$refs.galleryContainer) {
+      this.$refs.galleryContainer.removeEventListener('wheel', this.handleScroll);
+    }
+    clearTimeout(this.scrollTimeout);
+  },
+  beforeRouteLeave(to, from, next) {
+        if (from.name && to.name!='edit-habit') { // Check if user is navigating away
+          this.$store.commit('setSelectedHabit', null);
+        }
+        next();
+    }
 };
 </script>
 
@@ -446,5 +584,43 @@ export default {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+.image-gallery-container {
+  width: 100%;
+  overflow: hidden;
+  padding: 10px 0;
+}
+
+.image-gallery {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.image-gallery::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+.image-wrapper {
+  flex: 0 0 auto;
+  margin-right: 5px;
+}
+
+.gallery-image {
+  height: 100px;
+  width: auto;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.gallery-image:hover {
+  transform: scale(1.05);
 }
 </style>
