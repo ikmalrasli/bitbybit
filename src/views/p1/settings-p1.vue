@@ -1,35 +1,35 @@
 <template>
 <div class="w-full h-full flex flex-col flex-grow flex p-4 space-y-8">
-  <div class="space-y-0.5">
+  <div class="space-y-1">
     <router-link
       v-for="link in links" 
       :key="link.name" 
       :to="link.path"
-      class="flex items-center p-4 text-gray-700 border rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+      class="flex items-center p-4 text-gray-700 border rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
     >
       <span class="mr-4 material-icons">{{ link.icon }}</span> 
       <span>{{ link.name }}</span>
     </router-link>
   </div>
 
-  <div class="space-y-0.5">
-    <div class="flex items-center p-4 text-gray-700 border rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+  <div class="space-y-1">
+    <div class="flex items-center p-4 text-gray-700 border rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
     @click="shareApp">
       <span class="mr-4 material-icons">share</span> 
       <span>Share to friends</span>
     </div>
-    <div class="flex items-center p-4 text-gray-700 border rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+    <div class="flex items-center p-4 text-gray-700 border rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
     @click="sendEmail">
       <span class="mr-4 material-icons">mail</span> 
       <span>Send feedback/suggestions</span>
     </div>
-    <button
+  </div>
+  <button
       @click="userLogout"
-      class="w-full p-4 flex border border-red-400 rounded-lg text-red-400 hover:text-red-500 hover:bg-gray-50"
+      class="w-full p-4 flex border bg-red-400 border-red-400 rounded-full text-white hover:text-red-500 hover:bg-gray-50"
     >
       <span class="text-center w-full font-semibold">Logout</span>
     </button>
-  </div>
 </div>
 </template>
 
@@ -37,6 +37,7 @@
 import { mapActions } from "vuex";
 import { getAuth } from "firebase/auth";
 import { useDialogStore } from '../../store/dialogStore';
+import { useStatStore } from "../../store/statStore";
 
 export default {
   data() {
@@ -47,6 +48,7 @@ export default {
         { name: "About Us", icon: "info", path: "/about" },
       ],
       dialogStore: useDialogStore(),
+      statStore: useStatStore(),
     };
   },
   methods: {
@@ -58,6 +60,9 @@ export default {
         'default',
         () => {
           this.handleLogout();
+          this.statStore.setProgressUpdated();
+          this.statStore.resetHabitsCache();
+          this.$store.dispatch('updateLoadingHome', true);
         },
         'Confirm',
         'text-red-500')
@@ -97,7 +102,3 @@ export default {
   }
 }
 </script>
-
-<style>
-
-</style>
