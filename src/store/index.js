@@ -345,8 +345,7 @@ export default createStore({
             querySnapshot.forEach((doc) => {
               const data = doc.data();
               const progressDate = new Date(data.timestamp.toDate());
-              const dayKey = progressDate.toISOString().split("T")[0]; // Extract the day in YYYY-MM-DD format
-    
+              const dayKey = progressDate.toLocaleDateString("en-CA"); // Extract the day in YYYY-MM-DD format
               // Only keep the latest document for each day (sorted by desc)
               if (!dailyProgressMap[dayKey]) {
                 dailyProgressMap[dayKey] = { ...data, progressId: doc.id };
@@ -375,7 +374,6 @@ export default createStore({
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoadingHome', false);
     },
-
 
     async fetchWeekMemos({ commit, state}) {
       const today = new Date();
