@@ -84,6 +84,7 @@ export default {
         this.$router.push("/"); // Redirect after successful login
 
       } catch (error) {
+        this.$store.dispatch('updateLoading', false);
         console.error("Login error:", error);
         alert(error.message); // Display error message to the user
       }
@@ -123,6 +124,7 @@ export default {
         this.$router.push("/")
         
       } catch (error) {
+        this.$store.dispatch('updateLoading', false);
         console.error("Google login error:", error);
         alert(error.message); // Display error message to the user
       }
