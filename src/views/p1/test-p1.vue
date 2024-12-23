@@ -38,7 +38,6 @@
     <button @click="fetchWP" class="m-2 bg-orange-300 text-white font-bold p-2 rounded-lg shadow-lg active:bg-pink-400">
       fetch progress
     </button>
-
   </div>
 </template>
 
