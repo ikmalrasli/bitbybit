@@ -1,6 +1,6 @@
 <template>
   <div v-if="dialogStore.isVisible && dialogStore.dialogType === 'sort-habits'" 
-    class="p-4 fixed inset-0 z-50 bg-gray-600 bg-opacity-50 flex items-center justify-center"
+    class="p-4 fixed inset-0 z-40 bg-gray-600 bg-opacity-50 flex items-center justify-center"
     @click.self="dialogStore.closeDialog">
     
     <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
@@ -14,7 +14,8 @@
         </select>
       </div>
       
-      <div class="mb-4 space-y-2 overflow-y-auto max-h-96">
+      <div class="mb-4 space-y-2 overflow-y-auto max-h-96"
+      style="scrollbar-width: thin;">
         <draggable v-if="isCustom" v-model="localHabits" item-key="id" handle=".drag-handle" @end="saveCustomOrder">
           <template #item="{ element: habit }">
             <div class="mb-2 w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer">

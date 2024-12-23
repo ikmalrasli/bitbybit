@@ -1,6 +1,6 @@
 <template>
     <div v-if="dialogStore.isVisible && dialogStore.dialogType === 'view-memo'" 
-    class="p-4 fixed inset-0 z-50 bg-gray-600 bg-opacity-50 flex items-center justify-center"
+    class="p-4 fixed inset-0 z-40 bg-gray-600 bg-opacity-50 flex items-center justify-center"
     @click.self="closeDialog">
       <div class="flex flex-col bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative space-y-4">
         <!-- Header -->

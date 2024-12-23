@@ -1,6 +1,6 @@
 <template>
     <div v-if="dialogStore.isVisible && dialogStore.dialogType === 'default'" 
-    class="p-4 fixed inset-0 z-50 bg-gray-600 bg-opacity-50 flex items-center justify-center"
+    class="p-4 fixed inset-0 z-40 bg-gray-600 bg-opacity-50 flex items-center justify-center"
     @click.self="dialogStore.closeDialog">
       <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
         <div class="flex justify-between items-center mb-4">
