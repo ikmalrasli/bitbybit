@@ -10,7 +10,7 @@ const loadTimeout = 1000;
 export default createStore({
   plugins: [
     createPersistedState({
-    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'weekProgress', 'weekMemos']  // Include user and isAuthenticated
+    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'weekProgress', 'weekMemos', 'pushNotiGranted']
   })
   ],
   state: {
@@ -34,8 +34,12 @@ export default createStore({
     selectionMode: false,
     selectedHabits: [],
     sortType: 'name',
+    pushNotiGranted: false
   },
   mutations: {
+    setPushNotiGranted(state, granted) {
+      state.pushNotiGranted = granted;
+    },
     setFirstFetchWeekMemos(state, firstFetchMemos) {
       state.firstFetchWeekMemos = firstFetchMemos;
     },
@@ -82,6 +86,7 @@ export default createStore({
       state.firstFetchWeekMemos = false;
       state.selectedDay = new Date();
       state.loadingHome = true;
+      state.pushNotiGranted = false;
     },
     SET_HABITS(state, habits) {
       state.habits = habits;
@@ -109,13 +114,13 @@ export default createStore({
     },
     toggleSelectionMode(state) {
       state.selectionMode = !state.selectionMode;
-      if (!state.selectionMode) state.selectedHabits = []; // Clear selection when exiting selection mode
+      if (!state.selectionMode) state.selectedHabits = [];
     },
     selectHabit(state, habitId) {
       if (state.selectedHabits.includes(habitId)) {
         state.selectedHabits = state.selectedHabits.filter(id => id !== habitId); // Deselect habit
       } else {
-        state.selectedHabits.push(habitId); // Select habit
+        state.selectedHabits.push(habitId);
       }
     },
     markHabitsCompleted(state, toast) {

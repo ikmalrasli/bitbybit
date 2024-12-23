@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "firebase": "^10.13.1",
+    "moment-timezone": "^0.5.46",
     "pinia": "^2.2.4",
     "vue": "^3.4.35",
     "vue-router": "^4.4.3",
@@ -20,6 +21,7 @@
     "vuex-persistedstate": "^4.1.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
     "@vitejs/plugin-vue": "^5.1.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",

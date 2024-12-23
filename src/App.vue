@@ -7,21 +7,20 @@
 
 <script>
 import loading from './views/loading.vue';
+import { getNotifications } from './utils/pushNotifications';
 
 export default {
   components: { loading },
   created() {
     this.$store.dispatch('fetchUser').then((user) => {
       if (user) {
+        getNotifications(this.$store, this.$toast);
         if (this.$store.state.habits.length === 0) {
           this.$store.commit('setFirstFetchHabits', true);
           this.$store.dispatch('fetchHabits');
         } else {
           if (this.$store.state.weekProgress.length === 0) {
             this.$store.dispatch('fetchWeekProgress');
-          } else {
-            //console.log('App.vue')
-            //this.$store.dispatch('getDayHabits', this.$store.state.selectedDay, false);
           }
           
           if (this.$store.state.weekMemos.length === 0) {
@@ -31,9 +30,12 @@ export default {
           }
         }
       } else {
-        this.$store.dispatch('updateLoading',false);
+        this.$store.dispatch('updateLoading', false);
       }
     });
+
+    
+    
   },
 };
 </script>
