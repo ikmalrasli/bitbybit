@@ -25,17 +25,24 @@
     <div class="flex flex-col flex-grow">
       <div class="flex justify-between items-center gap-2" style="min-height: 26px;">
         <!-- Task title -->
-        <span class="overflow-hidden">{{ text }}</span>
+        <div class="flex flex-col">
+          <span class="overflow-hidden">{{ text }}</span>
+          <span v-if="subtext" class="text-xs text-gray-500">{{ subtext }}</span>
+        </div>
+        
 
         <!-- Container for either the check icon or timesdone -->
         <div class="flex items-center">
           <div v-if="percent === 100">
             <span class="material-icons" style="font-size: 24px;">check</span>
           </div>
-          <div v-else>
+          <div v-else class="flex items-center space-x-1">
             <span>{{ timesdone }}</span>
+            <div v-if="showDot" class="rounded-full border bg-red-400 w-2 h-2 text-red-400"></div>
           </div>
+          
         </div>
+        
       </div>
 
       <!-- Progress bar background and fill -->
@@ -65,6 +72,10 @@ const props = defineProps({
     type: String,
     default: ""
   },
+  subtext: {
+    type: String,
+    default: ""
+  },
   percent: {
     type: Number,
     default: 0
@@ -84,6 +95,10 @@ const props = defineProps({
   bgColor: {
     type: String,
     default: 'bg-white'
+  },
+  showDot: {
+    type: Boolean,
+    default: false
   }
 });
 </script>

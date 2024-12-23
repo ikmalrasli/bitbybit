@@ -43,6 +43,8 @@
                   :selectionMode="$store.state.selectionMode"
                   :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
                   :bgColor="habit===$store.state.selectedHabit ? 'bg-gray-50' : ''"
+                  :showDot="habit.reminders ? showDot(habit): false"
+                  :subtext="habit.reminders ? formatReminderTimes(habit.reminders) : ''"
                   @toggleSelect="$store.dispatch('selectHabit', habit.habitId)"
                   @openDetail="openDetail(habit)"
                 />
@@ -159,6 +161,52 @@ export default {
   
   },
   methods: {
+    showDot(habit) {
+      if (!habit.reminders || habit.reminders.length === 0) return false;
+
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      const todayEnd = new Date().setHours(23, 59, 59, 999);
+      if (todayStart > this.selectedDay || todayEnd < this.selectedDay) return false;
+      
+      const now = new Date();
+
+      return habit.reminders.some((time) => {
+        const [hours, minutes] = time.split(":").map(Number);
+        const reminderTime = new Date();
+        reminderTime.setHours(hours);
+        reminderTime.setMinutes(minutes);
+        reminderTime.setSeconds(0);
+
+        return reminderTime <= now && habit.progress === 0;
+      });
+    },
+    formatReminderTimes(reminderTimes) {
+      return reminderTimes
+        .map((time) => {
+          const [hour, minute] = time.split(":").map(Number);
+          const period = hour >= 12 ? "PM" : "AM";
+          const hour12 = hour % 12 || 12;
+          return `${hour12}:${minute.toString().padStart(2, "0")}${period}`;
+        })
+        .join(", ");
+    },
+    convertTime(time) {
+      const timeParts = time.split(':');
+      let hours = parseInt(timeParts[0]);
+      const minutes = timeParts[1];
+      let period = 'AM';
+
+      if (hours >= 12) {
+        period = 'PM';
+        if (hours > 12) {
+          hours -= 12;
+        }
+      } else if (hours === 0) {
+        hours = 12;
+      }
+
+      return `${hours}:${minutes} ${period}`;
+    },
     memoCategory(category) {
       if (category === 'feeling') {
         return 'How I feel today'
