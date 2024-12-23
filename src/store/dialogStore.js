@@ -1,4 +1,3 @@
-// stores/useDialogStore.js
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -55,6 +54,11 @@ export const useDialogStore = defineStore('dialog', () => {
     dialogType.value = type;
   }
 
+  function openReminderDialog(type = 'reminder-dialog') {
+    isVisible.value = true;
+    dialogType.value = type;
+  }
+
   function confirmAction() {
     if (confirmCallback.value) confirmCallback.value();
     closeDialog();
@@ -66,5 +70,6 @@ export const useDialogStore = defineStore('dialog', () => {
     openSortHabitsDialog,
     openViewMemoDialog,
     openYoutubeDialog,
-    openSpotifyDialog };
+    openSpotifyDialog,
+    openReminderDialog };
 });
