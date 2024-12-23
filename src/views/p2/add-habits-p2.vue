@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-row"
+  <div class="w-full h-full flex"
   @click="startLoadingDots">
     <div class="w-full h-full flex flex-col bg-white relative">
       <!-- Header -->
@@ -106,9 +106,57 @@
           </div>
 
           <!-- Reminder -->
-          <div>
-            <label class="text-left block text-sm font-medium text-gray-700">Reminder</label>
-            <button type="button" @click="setReminder" class="mt-1 bg-gray-300 text-gray-700 p-2 rounded-md w-full">Add a reminder</button>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Reminder <span class="text-gray-400">(Optional)</span>
+            </label>
+            <!-- <div class="flex items-center justify-center space-x-3">
+              <i class="material-icons text-gray-500">schedule</i>
+              <input 
+                type="time" 
+                v-model="formData.reminder" 
+                class="border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-1/2 p-2 text-sm"
+              />
+              <button 
+                type="button"
+                @click="formData.reminder = null" 
+                class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm disabled:bg-gray-300 disabled:text-gray-700 disabled:font-normal transition-colors duration-200"
+                :disabled="formData.reminder === null"
+              >
+                Reset
+              </button>
+            </div> -->
+            
+            <!-- Setted Reminders Preview -->
+            <div v-if="formData.reminders && formData.reminders?.length > 0" class="flex flex-wrap"
+              style="scrollbar-width: thin;">
+              <div v-for="(time, index) in formData.reminders" :key="index" 
+              class="flex items-center border rounded-full space-x-2 text-sm py-2 px-3">
+
+                <div class="flex items-center w-20">
+                  <i class="fa-regular fa-clock"></i>
+                  <span class="ml-1">
+                    <span class="block">{{ convertTime(time) }}</span>
+                  </span>
+                </div>
+                
+                <button type="button" @click="removeReminder(index)" class="text-black text-sm items-center">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+              
+
+            <div class="flex justify-center">
+              <button 
+                  type="button" 
+                  @click="openReminderDialog"
+                  class="space-x-1 p-2 px-4 rounded-full text-white"
+                  :class="[`bg-${formData.color.default}`, 'hover:'+ `bg-${formData.color.active}`, 'active:'+`bg-${formData.color.active}`]"
+                >
+                Add Reminder
+              </button>
+            </div>
           </div>
 
           <!-- Notes -->
@@ -194,7 +242,7 @@
                 </a>
               </div>
               
-              <button type="button" @click="removeYoutubeUrl(index)" class="text-black text-sm">
+              <button type="button" @click="removeSpotifyUrl(index)" class="text-black text-sm">
                 <span class="material-icons">close</span>
               </button>
             </div>
@@ -262,6 +310,7 @@
       </div>
       
       <!-- Dialogs -->
+      <pickReminderDialog @saveReminders="saveReminders" />
       <youtubeDialog @add-link="handleYoutubeLink" />
       <spotifyDialog @add-link="handleSpotifyLink" /> 
     </div>
@@ -275,6 +324,7 @@ import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
 import { mapState } from "vuex";
 import { useDialogStore } from '../../store/dialogStore';
+import pickReminderDialog from "../../components/dialogs/reminder-dialog.vue";
 import spotifyDialog from "../../components/dialogs/spotify-dialog.vue";
 import youtubeDialog from "../../components/dialogs/youtube-dialog.vue";
 import draggable from 'vuedraggable';
@@ -282,6 +332,7 @@ import draggable from 'vuedraggable';
 
 export default {
   components: {
+    pickReminderDialog,
     youtubeDialog,
     spotifyDialog,
     draggable
@@ -293,13 +344,13 @@ export default {
         name: "",
         dailyGoal: 1,
         repeatDays: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true },
-        reminder: null,
         notes: "",
         termStart: new Date().toISOString().split("T")[0], // Default to today
         termEnd: null,
         imageUrl: "",
         youtubeUrls: [],
         spotifyUrls: [],
+        reminders: [],
         color: { default: "violet-400", active: "violet-500" }
       },
       days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
@@ -335,16 +386,14 @@ export default {
       this.formData.notes = this.selectedHabit.notes;
       this.formData.termStart = this.selectedHabit.termStart ? new Timestamp(this.selectedHabit.termStart.seconds, this.selectedHabit.termStart.nanoseconds).toDate().toISOString().split("T")[0] : '';
       this.formData.termEnd = this.selectedHabit.termEnd ? new Timestamp(this.selectedHabit.termEnd.seconds, this.selectedHabit.termEnd.nanoseconds).toDate().toISOString().split("T")[0] : '';
-
+      this.formData.imageUrl = this.selectedHabit.imageUrl;
+      this.imagePreviewUrl = this.selectedHabit.imageUrl;
       if (!this.selectedHabit.imageUrl) {
         this.selectedHabit.imageUrl = '';
       }
-      this.formData.imageUrl = this.selectedHabit.imageUrl;
-      this.imagePreviewUrl = this.selectedHabit.imageUrl;
-
-      
-
-      this.formData.reminder = this.selectedHabit.reminder;
+      if (this.selectedHabit.reminders) {
+        this.formData.reminders = this.selectedHabit.reminders;
+      }
       if (this.selectedHabit.color) {
         this.formData.color = { default: this.selectedHabit.color.default, active: this.selectedHabit.color.active };
       }
@@ -370,6 +419,23 @@ export default {
     ...mapState(["selectedHabit", "firstFetchHabits"]),
   },
   methods: {
+    convertTime(time) {
+      const timeParts = time.split(':');
+      let hours = parseInt(timeParts[0]);
+      const minutes = timeParts[1];
+      let period = 'AM';
+
+      if (hours >= 12) {
+        period = 'PM';
+        if (hours > 12) {
+          hours -= 12;
+        }
+      } else if (hours === 0) {
+        hours = 12;
+      }
+
+      return `${hours}:${minutes} ${period}`;
+    },
     toggleColorPicker() {
       this.showColorPicker = !this.showColorPicker; // Toggle the visibility
     },
@@ -401,19 +467,19 @@ export default {
         this.formData.dailyGoal--;
       }
     },
-    setReminder() {
-      this.$toast.info({
-        message: 'Feature not available.',
-        duration: 2000
-      });
-    },
     decodeHtmlEntities(text) {
       const txt = document.createElement("textarea");
       txt.innerHTML = text;
       return txt.value;
     },
+    removeReminder(index) {
+      this.formData.reminders.splice(index, 1);
+    },
     removeYoutubeUrl(index) {
       this.formData.youtubeUrls.splice(index, 1);
+    },
+    removeSpotifyUrl(index) {
+      this.formData.spotifyUrls.splice(index, 1);
     },
     openYoutubeLink(video){
       let link = '';
@@ -423,6 +489,19 @@ export default {
         link = `https://www.youtube.com/watch?v=${video.id.videoId}`
       }
       return link
+    },
+    saveReminders(reminderTimes) {
+      this.formData.reminders.push(...reminderTimes);
+      this.formData.reminders.sort((a, b) => {
+        const [aHour, aMinute] = a.split(':').map(Number);
+        const [bHour, bMinute] = b.split(':').map(Number);
+
+        if (aHour === bHour) {
+          return aMinute - bMinute; // Sort by minute if hours are the same
+        } else {
+          return aHour - bHour; // Sort by hour
+        }
+      });
     },
     handleYoutubeLink(link) {
       if (link) {
@@ -561,6 +640,9 @@ export default {
       // Filter out null values and return the ordered URLs
       return urls.filter(url => url !== null);
     },
+    openReminderDialog() {
+      this.dialogStore.openReminderDialog()
+    },
     openYoutubeDialog(){
       this.dialogStore.openYoutubeDialog();
     },
@@ -581,7 +663,8 @@ export default {
           notes: this.formData.notes,
           termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
           termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
-          reminder: this.formData.reminder,
+          reminders: this.formData.reminders,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           imageUrl: imageUrl || this.formData.imageUrl,
           color: this.formData.color,
           imageUrls: photoUrls || this.selectedPhotos,
