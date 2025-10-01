@@ -8,35 +8,44 @@
 <script>
 import loading from './views/loading.vue';
 import { getNotifications } from './utils/pushNotifications';
+import { getAuth } from 'firebase/auth';
 
 export default {
   components: { loading },
-  created() {
-    this.$store.dispatch('fetchUser').then((user) => {
+  async created() {
+    try {
+      const user = await this.$store.dispatch('fetchUser');
       if (user) {
         getNotifications(this.$store, this.$toast);
-        if (this.$store.state.habits.length === 0) {
-          this.$store.commit('setFirstFetchHabits', true);
-          this.$store.dispatch('fetchHabits');
-        } else {
-          if (this.$store.state.weekProgress.length === 0) {
-            this.$store.dispatch('fetchWeekProgress');
-          }
-          
-          if (this.$store.state.weekMemos.length === 0) {
-            this.$store.dispatch('fetchWeekMemos');
-          } else {
-            this.$store.dispatch('getDayMemos', this.$store.state.selectedDay);
-          }
+        
+        // Fetch habits first
+        await this.$store.dispatch('fetchHabits');
+        await this.$store.dispatch('fetchPauses');
+        
+        // If we're on the calendar route, fetch week progress
+        if (this.$route.name === 'calendar') {
+          await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
         }
       } else {
         this.$store.dispatch('updateLoading', false);
       }
-    });
-
-    
-    
+    } catch (error) {
+      console.error('Error in App created:', error);
+      this.$store.dispatch('updateLoading', false);
+    }
   },
+  async mounted() {
+    // If user is already logged in
+    const auth = getAuth();
+    if (auth.currentUser) {
+      await this.$store.dispatch('checkForNewNews');
+    }
+  },
+  beforeDestroy() {
+    if (this.$store.state.unsubscribeHabits) {
+      this.$store.state.unsubscribeHabits();
+    }
+  }
 };
 </script>
 

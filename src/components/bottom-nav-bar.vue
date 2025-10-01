@@ -1,15 +1,19 @@
 <!-- BottomNavBar.vue -->
 <template>
   <div :class="['w-full bg-white border-t', iosPaddingClass]">
-    <div class="flex justify-between items-center py-2 px-6">
+    <div class="flex grid grid-cols-5 items-center px-2 py-1">
       <router-link
         v-for="link in links"
         :key="link.name"
         :to="link.path"
-        class="flex flex-col items-center justify-center p-2 text-center"
+        class="flex flex-col items-center justify-center p-2 text-center relative"
         :class="isLinkActive(link.path) ? 'text-violet-400' : 'text-gray-600'"
       >
+        <div v-if="link.name === 'Settings' && $store.state.hasNewNews" 
+          class="absolute top-2 right-5 w-2 h-2 bg-red-500 rounded-full">
+        </div>
         <i :class="link.fa_icon" class="text-2xl"></i>
+        <span class="text-xs">{{ link.name }}</span>
         <!--<span class="material-icons-round">{{ link.icon }}</span>-->
       </router-link>
     </div>
@@ -33,7 +37,7 @@ export default {
   },
   computed: {
     iosPaddingClass() {
-      return this.isIosStandalone ? 'pb-6' : '';
+      return this.isIosStandalone ? 'pb-5' : '';
     },
   },
   methods: {

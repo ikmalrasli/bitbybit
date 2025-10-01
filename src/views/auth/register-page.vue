@@ -59,6 +59,7 @@
 <script>
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore"; // Import Firestore
+import { getNotifications } from '../../utils/pushNotifications';
 
 export default {
   data() {
@@ -92,7 +93,7 @@ export default {
 
         // Commit user to Vuex store
         this.$store.commit('SET_USER', user);
-
+        getNotifications(this.$store, this.$toast);
         // Redirect after successful registration
         this.$router.push("/home");
       } catch (error) {

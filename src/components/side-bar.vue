@@ -6,12 +6,15 @@
         v-for="link in links" 
         :key="link.name" 
         :to="link.path"
-        class="flex items-center p-2 pl-8"
+        class="flex items-center p-2 pl-8 relative"
         :class="
           isLinkActive(link.path) ? 'text-white font-semibold bg-violet-400 hover:bg-violet-500': 'hover:bg-gray-100'
         "
       >
-        <!--<span class="mr-2 material-icons-round">{{ link.icon }}</span>-->
+        <!-- Add notification dot for settings -->
+        <div v-if="link.name === 'Settings' && $store.state.hasNewNews" 
+          class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full">
+        </div>
         <i class="text-xl w-6 mr-2" :class="link.fa_icon"></i>
         <span>{{ link.name }}</span>
       </router-link>

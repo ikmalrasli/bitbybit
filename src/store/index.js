@@ -2,16 +2,17 @@ import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '../firebase'; // Import your Firestore instance
-import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp, getDocs, limit, startAfter, getDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
+import * as Sentry from "@sentry/vue";
 
 const loadTimeout = 1000;
 
 export default createStore({
   plugins: [
     createPersistedState({
-    paths: ['user', 'isAuthenticated', 'sortType', 'habits', 'weekProgress', 'weekMemos', 'pushNotiGranted']
-  })
+      paths: ['user', 'isAuthenticated', 'sortType', 'pushNotiGranted']
+    })
   ],
   state: {
     firstFetchHabits: false,
@@ -34,7 +35,15 @@ export default createStore({
     selectionMode: false,
     selectedHabits: [],
     sortType: 'name',
-    pushNotiGranted: false
+    pushNotiGranted: false,
+    unsubscribeThisWeek: null,
+    unsubscribeLastWeek: null,
+    loadingWeekProgress: false,
+    unsubscribeProgress: null,
+    hasNewNews: false,
+    unsubscribeHabits: null,
+    pauses: [],
+    // loadingMoreHabits: false
   },
   mutations: {
     setPushNotiGranted(state, granted) {
@@ -90,7 +99,7 @@ export default createStore({
     },
     SET_HABITS(state, habits) {
       state.habits = habits;
-    },  
+    },
     SET_WEEK_PROGRESS(state, weekProgress) {
       state.weekProgress = weekProgress;
     },
@@ -126,16 +135,16 @@ export default createStore({
     markHabitsCompleted(state, toast) {
       let setTimestamp = new Date();
       let onTime = true;
-    
+
       if (state.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
         setTimestamp = new Date(state.selectedDay);
         setTimestamp.setHours(23, 59, 59, 999);
         onTime = false;
       }
-    
+
       const updatePromises = state.selectedHabits.map(habitId => {
         const habit = state.dayHabits.find(h => h.habitId === habitId);
-    
+
         if (habit.progressId !== '') {
           const docRef = doc(db, 'progress', habit.progressId);
           return updateDoc(docRef, {
@@ -152,7 +161,7 @@ export default createStore({
           });
         }
       });
-    
+
       // Wait for all promises to resolve
       Promise.all(updatePromises)
         .then(() => {
@@ -168,18 +177,18 @@ export default createStore({
             duration: 1000
           });
         });
-    
+
       // Clear selection and exit selection mode
       state.selectedHabits = [];
       state.selectionMode = false;
-    },    
+    },
     setSortType(state, type) {
       state.sortType = type
     },
     sortHabits(state) {
-      if (state.sortType === 'name'){
+      if (state.sortType === 'name') {
         state.habits.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (state.sortType === 'color'){
+      } else if (state.sortType === 'color') {
         const colorOrder = {
           "red-300": 0,
           "orange-300": 1,
@@ -189,17 +198,17 @@ export default createStore({
           "pink-300": 5,
           "violet-400": 6
         };
-    
+
         // Sort by color first, then alphabetically by name within the same color
         state.habits.sort((a, b) => {
           const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
           const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
-    
+
           // First, compare color order
           if (colorA !== colorB) {
             return colorA - colorB;
           }
-          
+
           // If colors are the same, sort alphabetically by name
           return a.name.localeCompare(b.name);
         });
@@ -207,6 +216,36 @@ export default createStore({
         state.habits.sort((a, b) => (a.index ?? state.habits.length) - (b.index ?? state.habits.length));
       }
     },
+    setUnsubscribeThisWeek(state, unsubscribe) {
+      state.unsubscribeThisWeek = unsubscribe;
+    },
+    setUnsubscribeLastWeek(state, unsubscribe) {
+      state.unsubscribeLastWeek = unsubscribe;
+    },
+    setLoadingWeekProgress(state, loading) {
+      state.loadingWeekProgress = loading;
+    },
+    setUnsubscribeProgress(state, unsubscribe) {
+      if (state.unsubscribeProgress) {
+        state.unsubscribeProgress();
+      }
+      state.unsubscribeProgress = unsubscribe;
+    },
+    setHasNewNews(state, value) {
+      state.hasNewNews = value;
+    },
+    setUnsubscribeHabits(state, unsubscribe) {
+      if (state.unsubscribeHabits) {
+        state.unsubscribeHabits(); // Clean up existing listener
+      }
+      state.unsubscribeHabits = unsubscribe;
+    },
+    SET_PAUSES(state, pauses) {
+      state.pauses = pauses;
+    },
+    // setLoadingMoreHabits(state, value) {
+    //   state.loadingMoreHabits = value;
+    // }
   },
   actions: {
     setSortType({ commit }, type) {
@@ -226,10 +265,6 @@ export default createStore({
     },
     markHabitsCompleted({ commit, state }, toast) {
       commit('markHabitsCompleted', toast);
-      if (state.firstFetchWeekProgress===false){
-        this.dispatch('fetchWeekProgress');
-        commit('setFirstFetchWeekProgress', true);
-      }
     },
     updateLoading({ commit }, loading) {
       commit('setLoading', loading);
@@ -243,6 +278,14 @@ export default createStore({
     updateSelectedHabit({ commit }, habit) {
       commit('setSelectedHabit', habit);
     },
+    updateWeekProgress({ state, commit }, weekProgress) {
+      // weekProgress = [...state.weekProgress, ...weekProgress];
+      // console.log('updateWeekProgress', weekProgress);
+      commit('SET_WEEK_PROGRESS', weekProgress);
+    },
+
+    //-------------------------------------------------------------------------------------------
+
     async login({ commit }, { email, password }) {
       commit('setLoading', true);
       const auth = getAuth();
@@ -251,6 +294,12 @@ export default createStore({
         commit('setLoading', false);
         commit('SET_USER', userCredential.user);
       } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
+            action: 'login',
+            email: email
+          }
+        });
         throw error;
       }
     },
@@ -282,114 +331,211 @@ export default createStore({
     },
     async fetchHabits({ commit, state }) {
       try {
-        if (state.user) { // Ensure the user is authenticated
-          const userId = state.user.uid; // Get the authenticated user's ID
-          
-          // Query Firestore for habits belonging to the authenticated user
-          const q = query(
-            collection(db, 'habits'),
-            where('userId', '==', userId), // Filter habits by userId
-          );
-          
-          // Set up a real-time listener
-          onSnapshot(q, (querySnapshot) => {
-            const habits = [];
-            querySnapshot.forEach((doc) => {
-              habits.push({ habitId: doc.id, ...doc.data() });
-            });
-            commit('SET_HABITS', habits);
-            commit('sortHabits', state.sortType);
-            this.dispatch('fetchWeekProgress')
-            
-            console.log('fetchHabits done');
+        if (!state.user) return;
 
-            if (querySnapshot.empty) {
-              commit('setLoadingHome', false);
-            }
+        // Query Firestore for habits belonging to the authenticated user
+        const q = query(
+          collection(db, 'habits'),
+          where('userId', '==', state.user.uid),
+          orderBy(state.sortType === 'name' ? 'name' : 'index')
+        );
 
-          }, (error) => {
-            console.error('Error fetching real-time habits:', error);
-            if (error.code === 'resource-exhausted') {
-              alert('Sorry! Database daily limit reached. Please try again later.');
+        // Set up a real-time listener
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const habits = [];
+          querySnapshot.forEach((doc) => {
+            habits.push({ habitId: doc.id, ...doc.data() });
+          });
+          commit('SET_HABITS', habits);
+          commit('sortHabits');
+
+          if (habits.length > 0) {
+            if (!state.firstFetchHabits) {
+              commit('setLoadingWeekProgress', true);
+              this.dispatch('fetchWeekProgress', 'thisWeek');
+              // Instead, chain pauses and day habits:
+              this.dispatch('fetchPauses').then(() => {
+                this.dispatch('getDayHabits', state.selectedDay || new Date());
+              });
+            } else {
+              // Always get day habits when habits change
+              this.dispatch('fetchPauses').then(() => {
+                this.dispatch('getDayHabits', state.selectedDay || new Date());
+              });
             }
-          });      
-        }
-      } catch(error) {
-        console.error('try failed at fetchHabits:', error);
+          } else {
+            // If no habits, clear week progress and set loading states to false
+            commit('SET_WEEK_PROGRESS', []);
+            commit('setLoadingWeekProgress', false);
+            commit('setLoadingHome', false);
+          }
+
+          // Mark first fetch as complete
+          commit('setFirstFetchHabits', true);
+        });
+
+        // Store unsubscribe function
+        commit('setUnsubscribeHabits', unsubscribe);
+
+      } catch (error) {
+        console.error('Error in fetchHabits:', error);
+        commit('setLoadingWeekProgress', false);
+        commit('setLoadingHome', false);
+        commit('setFirstFetchHabits', true);
       }
     },
-    async fetchWeekProgress({ commit, state }) {
-      const progressArray = [];
-      const today = new Date();
-      const currentDayOfWeek = today.getDay();
-      const currentDate = today.getDate();
-    
-      // Define start of the previous week (up to last Sunday)
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
-      startOfWeek.setHours(0, 0, 0, 0);
-    
-      // Track total habits to ensure all queries are processed before committing
-      let habitsProcessed = 0;
-    
-      for (const index in state.habits) {
-        const habit = state.habits[index]; // Access each habit by index
-        try {
+    async fetchWeekProgress({ commit, state }, weekType = 'thisWeek') {
+      try {
+        if (!state.habits.length) {
+          commit('setLoadingWeekProgress', false);
+          commit('setLoadingHome', false);
+          return;
+        }
+
+        commit('setLoadingWeekProgress', true);
+
+        const today = new Date();
+        const currentDayOfWeek = today.getDay();
+        const currentDate = today.getDate();
+
+        // Calculate start date based on weekType
+        const startOfWeek = new Date(today);
+        if (weekType === 'thisWeek') {
+          startOfWeek.setDate(currentDate - currentDayOfWeek);
+        } else {
+          startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
+        }
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        // Calculate end date
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        // Split habits into batches of 30
+        const habitBatches = [];
+        for (let i = 0; i < state.habits.length; i += 30) {
+          habitBatches.push(state.habits.slice(i, i + 30).map(h => h.habitId));
+        }
+
+        // Clean up existing listeners if any
+        if (state.unsubscribeProgress) {
+          state.unsubscribeProgress();
+        }
+
+        // Create a listener for each batch
+        const unsubscribes = habitBatches.map(habitIds => {
           const q = query(
             collection(db, 'progress'),
-            where('habitId', '==', habit.habitId),
+            where('habitId', 'in', habitIds),
             where('timestamp', '>=', startOfWeek),
+            where('timestamp', '<', endOfWeek),
             orderBy('timestamp', 'desc')
           );
-    
-          // Set up a real-time listener
-          onSnapshot(q, (querySnapshot) => {
-            // Initialize map for the latest progress entry per day for this habit
-            const dailyProgressMap = {};
-    
+
+          return onSnapshot(q, (querySnapshot) => {
+            const progressArray = [];
             querySnapshot.forEach((doc) => {
-              const data = doc.data();
-              const progressDate = new Date(data.timestamp.toDate());
-              const dayKey = progressDate.toLocaleDateString("en-CA"); // Extract the day in YYYY-MM-DD format
-              // Only keep the latest document for each day (sorted by desc)
-              if (!dailyProgressMap[dayKey]) {
-                dailyProgressMap[dayKey] = { ...data, progressId: doc.id };
+              progressArray.push({ ...doc.data(), progressId: doc.id });
+            });
+
+            // Merge with existing progress data
+            const existingProgress = state.weekProgress.filter(progress => {
+              if (weekType === 'lastWeek') {
+                // Keep this week's data when viewing last week
+                const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
+                return progressDate >= endOfWeek || !habitIds.includes(progress.habitId);
+              } else {
+                // When viewing this week, only keep progress for habits not in current batch
+                return !habitIds.includes(progress.habitId);
               }
             });
-    
-            // Push all entries for this habit into the main progress array
-            progressArray.push(...Object.values(dailyProgressMap));
-    
-            // Check if all habit queries have completed
-            habitsProcessed++;
-            if (habitsProcessed === state.habits.length) {
-              // Commit the aggregated result once all habit queries are processed
-              //console.log(progressArray);
-              commit('SET_WEEK_PROGRESS', progressArray);
-              this.dispatch('getDayHabits', this.state.selectedDay);
-            }
+
+            const newProgress = [...existingProgress, ...progressArray];
+
+            // Deduplicate entries keeping only the latest progress for each habit per day
+            const outputArray = newProgress.reduce((acc, curr) => {
+              const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
+              const currentDay = currentDate.setHours(0, 0, 0, 0);
+
+              const existingHabit = acc.find(habit => {
+                const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
+                const existingDay = habitDate.setHours(0, 0, 0, 0);
+                return habit.habitId === curr.habitId && existingDay === currentDay;
+              });
+
+              if (existingHabit) {
+                if (curr.timestamp >= existingHabit.timestamp) {
+                  acc[acc.indexOf(existingHabit)] = curr;
+                }
+              } else {
+                acc.push(curr);
+              }
+
+              return acc;
+            }, []);
+
+            commit('SET_WEEK_PROGRESS', outputArray);
+            this.dispatch('getDayHabits', state.selectedDay);
+
+            commit('setLoadingWeekProgress', false);
+            commit('setLoadingHome', false);
+          }, (error) => {
+            Sentry.captureException(error, {
+              tags: {
+                action: 'fetchWeekProgress',
+                weekType: weekType,
+                userId: state.user?.uid,
+                query: 'progress_habitId_timestamp'
+              },
+              extra: {
+                fullError: error.toString(),
+                indexUrl: error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/)?.[0] || 'No URL found'
+              }
+            });
+            console.error("Error fetching progress:", error);
+            commit('setLoadingWeekProgress', false);
+            commit('setLoadingHome', false);
           });
-        } catch (error) {
-          console.error("Error fetching latest progress:", error);
-        }
+        });
+
+        // Store unsubscribe functions
+        commit('setUnsubscribeProgress', () => unsubscribes.forEach(unsub => unsub()));
+
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
+            action: 'fetchWeekProgress',
+            weekType: weekType,
+            userId: state.user?.uid,
+            query: 'progress_habitId_timestamp'
+          },
+          extra: {
+            fullError: error.toString(),
+            indexUrl: error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/)?.[0] || 'No URL found'
+          }
+        });
+        console.error("Error in fetchWeekProgress:", error);
+        commit('setLoadingWeekProgress', false);
+        commit('setLoadingHome', false);
       }
     },
     async getDayHabits({ commit, state }, day) {
-      const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits);
+      const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits, state.pauses);
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoadingHome', false);
+      this.dispatch('fetchWeekMemos');
     },
-
-    async fetchWeekMemos({ commit, state}) {
+    async fetchWeekMemos({ commit, state }) {
       const today = new Date();
       const currentDayOfWeek = today.getDay();
       const currentDate = today.getDate();
-    
+
       const startOfWeek = new Date(today);
       startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
       startOfWeek.setHours(0, 0, 0, 0);
       const userId = state.user.uid;
-      
+
       // Query Firestore for habits belonging to the authenticated user
       const q = query(
         collection(db, 'memos'),
@@ -398,7 +544,7 @@ export default createStore({
         orderBy('memo', 'asc')
       );
       const memos = [];
-    
+
       // Set up a real-time listener
       onSnapshot(q, (querySnapshot) => {
         memos.length = 0; // Clear array to avoid duplicates on re-renders
@@ -423,7 +569,20 @@ export default createStore({
         const memoDate = new Timestamp(memo.timestamp.seconds, memo.timestamp.nanoseconds).toDate();
         return memoDate >= startOfDay && memoDate <= endOfDay;
       })
-      
+
+      commit('SET_DAY_MEMOS', dayMemos);
+    },
+    async getDayMemos({ commit, state }, day) {
+      const startOfDay = new Date(day);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(day);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const dayMemos = state.weekMemos.filter(memo => {
+        const memoDate = new Timestamp(memo.timestamp.seconds, memo.timestamp.nanoseconds).toDate();
+        return memoDate >= startOfDay && memoDate <= endOfDay;
+      })
+
       commit('SET_DAY_MEMOS', dayMemos);
     },
     fetchSunnahs({ commit }) {
@@ -435,7 +594,68 @@ export default createStore({
         });
         commit('SET_SUNNAHS', sunnahs);
       });
-    }
+    },
+    // Keep these actions for week switching
+    showLastWeek({ dispatch }) {
+      dispatch('fetchWeekProgress', 'lastWeek');
+    },
+    showThisWeek({ dispatch }) {
+      dispatch('fetchWeekProgress', 'thisWeek');
+    },
+    async checkForNewNews({ commit }) {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+
+      try {
+        // Get user's last read timestamp
+        const userNewsRef = doc(db, "users", auth.currentUser.uid, "metadata", "news");
+        const userNewsDoc = await getDoc(userNewsRef);
+        const lastRead = userNewsDoc.exists() ? userNewsDoc.data().lastRead : null;
+
+        // Get latest news timestamp
+        const newsQuery = query(collection(db, "news"), orderBy("date", "desc"), limit(1));
+        const newsSnapshot = await getDocs(newsQuery);
+
+        if (!newsSnapshot.empty) {
+          const latestNews = newsSnapshot.docs[0].data().date;
+
+          // If no lastRead or if there's newer news, show indicator
+          const hasNewNews = !lastRead || latestNews > lastRead;
+          commit('setHasNewNews', hasNewNews);
+        }
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
+            action: 'checkForNewNews',
+            userId: auth.currentUser?.uid
+          }
+        });
+        console.error("Error checking for new news:", error);
+      }
+    },
+    async fetchPauses({ commit, state }) {
+      if (!state.user) return;
+      const habitIds = state.habits.map(h => h.habitId);
+      if (habitIds.length === 0) {
+        commit('SET_PAUSES', []);
+        return;
+      }
+      // Firestore only allows 'in' queries for up to 30 items
+      const pauseDocs = [];
+      for (let i = 0; i < habitIds.length; i += 30) {
+        const batchIds = habitIds.slice(i, i + 30);
+        const q = query(
+          collection(db, 'pauses'),
+          where('habitId', 'in', batchIds)
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+          pauseDocs.push({ pauseId: doc.id, ...doc.data() });
+        });
+      }
+      console.log('Fetched pauses:', pauseDocs);
+      commit('SET_PAUSES', pauseDocs);
+    },
   },
   getters: {
     getSelectedDay: (state) => state.selectedDay,

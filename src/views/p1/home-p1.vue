@@ -1,6 +1,12 @@
 <template>
   <div class=" w-full flex flex-row flex-grow px-4">
-    <div class="flex-auto justify-center ">
+    <!-- Loading spinner -->
+    <div v-if="loadingHome || !firstFetchHabits" class="w-full flex justify-center items-center py-8">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Main content -->
+    <div v-else class="flex-auto justify-center ">
       <!-- if no habits-->
       <div v-if="habits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
@@ -34,20 +40,39 @@
           <transition name="slide-fade">
             <div v-if="showUncompleted" class="py-4 space-y-1">
               <div v-for="(habit, index) in uncompletedHabits" :key="index">
-                <HomeProgress 
-                  :percent="habit.progress * 100 / habit.dailyGoal"
-                  :text="habit.name"
+                <HomeProgress :percent="habit.progress * 100 / habit.dailyGoal" :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'"
-                  class="cursor-pointer"
+                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
                   :selectionMode="$store.state.selectionMode"
                   :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
-                  :bgColor="habit===$store.state.selectedHabit ? 'bg-gray-50' : ''"
-                  :showDot="habit.reminders ? showDot(habit): false"
-                  :subtext="habit.reminders ? formatReminderTimes(habit.reminders) : ''"
-                  @toggleSelect="$store.dispatch('selectHabit', habit.habitId)"
-                  @openDetail="openDetail(habit)"
-                />
+                  :bgColor="habit === $store.state.selectedHabit ? 'bg-gray-50' : ''"
+                  :showDot="habit.reminders ? showDot(habit) : false"
+                  :subtext="habit.reminders ? formatReminderTimes(habit.reminders) : ''" :isPaused="habit?.isPaused"
+                  @toggleSelect="$store.dispatch('selectHabit', habit.habitId)" @openDetail="openDetail(habit)" />
+              </div>
+            </div>
+          </transition>
+        </div>
+
+        <!-- Paused habits (expand/collapse) -->
+        <div v-if="pausedHabits.length !== 0">
+          <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Paused')">
+            <div class="flex items-center">
+              <span class="font-semibold text-black">Paused</span>
+              <span class="pl-3 text-gray-500">{{ pausedHabits.length }}</span>
+            </div>
+            <hr class="flex-grow border-t border-gray-300 mx-4" />
+            <div class="flex items-center">
+              <span v-if="showPaused" class="material-icons">keyboard_arrow_up</span>
+              <span v-else class="material-icons">keyboard_arrow_down</span>
+            </div>
+          </div>
+          <transition name="slide-fade">
+            <div v-if="showPaused" class="py-4 space-y-1">
+              <div v-for="(habit, index) in pausedHabits" :key="index">
+                <HomeProgress :percent="0" :text="habit.name" :timesdone="'Paused'"
+                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-gray-300'" class="opacity-70" :isPaused="true"
+                  @openDetail="openDetail(habit)" />
               </div>
             </div>
           </transition>
@@ -71,14 +96,10 @@
           <transition name="slide-fade">
             <div v-if="showCompleted" class="py-4 space-y-1">
               <div v-for="(habit, index) in completedHabits" :key="index">
-                <HomeProgress 
-                  :percent="habit.progress * 100 / habit.dailyGoal"
-                  :text="habit.name"
+                <HomeProgress :percent="habit.progress * 100 / habit.dailyGoal" :text="habit.name"
                   :timesdone="habit.progress + '/' + habit.dailyGoal"
-                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'"
-                  class="cursor-pointer"
-                  @click="openDetail(habit)"
-                />
+                  :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
+                  @click="openDetail(habit)" />
               </div>
             </div>
           </transition>
@@ -96,25 +117,28 @@
               <span v-else class="material-icons">keyboard_arrow_down</span>
             </div>
           </div>
-          
-          
+
+
           <!-- Memos List with Transition -->
           <transition name="slide-fade">
             <div v-if="showMemos" class="py-4 space-y-1">
               <div v-for="(memo, index) in dayMemos" :key="index">
-                <div class="flex flex-col p-2 bg-white border rounded-lg shadow-sm space-y-1 cursor-pointer hover:bg-gray-50"
-                    @click="viewMemo(memo)">
+                <div
+                  class="flex flex-col p-2 bg-white border rounded-lg shadow-sm space-y-1 cursor-pointer hover:bg-gray-50"
+                  @click="viewMemo(memo)">
                   <div class="flex w-full p-2 flex-row justify-between">
                     <!-- Memo content -->
                     <span class="truncate-text">{{ memo.memo }}</span>
                   </div>
                   <div class="flex w-full justify-end">
-                    <span class="text-xs text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">{{ memoCategory(memo?.category) }}</span>
+                    <span
+                      class="text-xs text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">{{
+                        memoCategory(memo?.category) }}</span>
                   </div>
                 </div>
               </div>
             </div>
-          </transition>          
+          </transition>
         </div>
       </div>
     </div>
@@ -140,25 +164,56 @@ export default {
     return {
       showUncompleted: true,
       showCompleted: true,
+      showPaused: true, // Add this
       showMemos: true,
       showDeleteButton: {},
       dialogStore: useDialogStore(),
     };
   },
   computed: {
-    ...mapState(['habits', 'weekHabits' ,'dayHabits', 'selectedDay', 'dayMemos', 'loadingHome']),
+    ...mapState(['habits', 'weekHabits', 'dayHabits', 'selectedDay', 'dayMemos', 'loadingHome', 'firstFetchHabits']),
+    // completedHabits: only habits that are completed and NOT paused
     completedHabits() {
-      const completed = this.dayHabits.filter(habit => 
-        habit.progress >= habit.dailyGoal)
-      return completed
+      const pausedIds = this.pausedHabits.map(h => h.habitId);
+      return this.dayHabits?.filter(habit =>
+        habit.progress >= habit.dailyGoal && !pausedIds.includes(habit.habitId)
+      ) || [];
     },
 
+    // uncompletedHabits: only habits that are not completed and NOT paused
     uncompletedHabits() {
-      const uncompleted = this.dayHabits.filter(habit => 
-        habit.progress < habit.dailyGoal)
-      return uncompleted
+      const pausedIds = this.pausedHabits.map(h => h.habitId);
+      return this.dayHabits?.filter(habit =>
+        habit.progress < habit.dailyGoal && !pausedIds.includes(habit.habitId)
+      ) || [];
     },
-  
+    pausedHabits() {
+      // selectedDay should be a Date object
+      const selectedDay = this.selectedDay instanceof Date ? this.selectedDay : new Date(this.selectedDay);
+      selectedDay.setHours(0, 0, 0, 0);
+
+      // Use Vuex pauses array
+      return this.dayHabits.filter(habit => {
+        // Find all pauses for this habit
+        const pauses = this.$store.state.pauses.filter(pause => pause.habitId === habit.habitId);
+        // Check if selectedDay is within any pause period
+        return pauses.some(pause => {
+          const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
+          start.setHours(0, 0, 0, 0);
+          const end = pause.end
+            ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
+            : null;
+          if (end) {
+            end.setHours(23, 59, 59, 999);
+            return selectedDay >= start && selectedDay <= end;
+          } else {
+            // Ongoing pause, treat as paused from start date onwards
+            return selectedDay >= start;
+          }
+        });
+      });
+    },
+
   },
   methods: {
     showDot(habit) {
@@ -167,7 +222,7 @@ export default {
       const todayStart = new Date().setHours(0, 0, 0, 0);
       const todayEnd = new Date().setHours(23, 59, 59, 999);
       if (todayStart > this.selectedDay || todayEnd < this.selectedDay) return false;
-      
+
       const now = new Date();
 
       return habit.reminders.some((time) => {
@@ -242,6 +297,8 @@ export default {
         this.showUncompleted = !this.showUncompleted;
       } else if (section === 'Completed') {
         this.showCompleted = !this.showCompleted;
+      } else if (section === 'Paused') {
+        this.showPaused = !this.showPaused;
       } else if (section === 'Memos') {
         this.showMemos = !this.showMemos;
       }
@@ -251,7 +308,7 @@ export default {
       this.$store.dispatch('getDayHabits', date); // Fetch day-specific progress for the selected date
       this.$store.dispatch('getDayMemos', date);
     },
-    formatDate(date){
+    formatDate(date) {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based, so we add 1
       const day = String(date.getDate()).padStart(2, '0');
@@ -260,7 +317,7 @@ export default {
     openDetail(habit) {
       this.$router.push({
         name: 'detail-habit',
-        params: { 
+        params: {
           habitId: habit.habitId,
           timestamp: this.formatDate(new Date())
         }
@@ -273,39 +330,50 @@ export default {
 
 <style>
 /* Transition for slide-fade */
-.slide-fade-enter-active, .slide-fade-leave-active {
+.slide-fade-enter-active,
+.slide-fade-leave-active {
   transition: all 0.3s ease;
 }
-.slide-fade-enter-from, .slide-fade-leave-to {
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
   transform: translateY(-10px);
   opacity: 0;
 }
 
 /* Transition for expand-collapse */
-.expand-collapse-enter-active, .expand-collapse-leave-active {
+.expand-collapse-enter-active,
+.expand-collapse-leave-active {
   transition: all 0.3s ease;
 }
-.expand-collapse-enter, .expand-collapse-leave-to {
+
+.expand-collapse-enter,
+.expand-collapse-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }
 
 .spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #a78bfa; /* Change color as needed */
+  border-left-color: #a78bfa;
+  /* Change color as needed */
   border-radius: 50%;
-  width: 32px; /* Spinner size */
-  height: 32px; /* Spinner size */
+  width: 32px;
+  /* Spinner size */
+  height: 32px;
+  /* Spinner size */
   animation: spin 1s linear infinite;
 }
 
 .truncate-text {
   display: -webkit-box;
-  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-line-clamp: 2;
+  /* Limit to 2 lines */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: pre-wrap; /* Allow wrapping */
+  white-space: pre-wrap;
+  /* Allow wrapping */
   font-size: 16px;
 }
 
@@ -313,10 +381,9 @@ export default {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
 }
-
-
 </style>

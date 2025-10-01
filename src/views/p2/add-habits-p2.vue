@@ -12,7 +12,7 @@
       
       <!-- Form Content -->
       <div class="flex-grow h-96 overflow-y-auto scrollbar-hide p-4 pb-20">
-        <form @submit.prevent="createEntry" class="space-y-4">
+        <div class="space-y-4">
           <!-- Name and color picker-->
           <div class="flex space-x-4 items-center">
             <!-- Name Field -->
@@ -287,14 +287,14 @@
           <div class="grid grid-cols-2 gap-2 w-full">
             <div class="flex flex-col">
               <label for="term-start" class="block text-sm font-medium text-gray-700">Start Date</label>
-              <input v-model="formData.termStart" type="date" id="term-start" class="bg-white text-black mt-1 w-full p-2 border border-gray-300 rounded-md text-center" />
+               <datePicker v-model="formData.termStart" class="mt-1 w-full" />
             </div>
             <div class="flex flex-col">
               <label for="term-end" class="block text-sm font-medium text-gray-700">End Date<span class="text-s ml-2 text-gray-400">(Optional)</span></label>
-              <input v-model="formData.termEnd" type="date" id="term-end" class="bg-white text-black mt-1 w-full p-2 border border-gray-300 rounded-md text-center" />
+              <datePicker v-model="formData.termEnd" class="mt-1 w-full" :reset="true" />
             </div>
           </div>
-        </form>
+        </div>
       </div>
 
       <!-- Floating Create Button -->
@@ -312,7 +312,8 @@
       <!-- Dialogs -->
       <pickReminderDialog @saveReminders="saveReminders" />
       <youtubeDialog @add-link="handleYoutubeLink" />
-      <spotifyDialog @add-link="handleSpotifyLink" /> 
+      <spotifyDialog @add-link="handleSpotifyLink" />
+      
     </div>
   </div>  
 </template>
@@ -327,6 +328,7 @@ import { useDialogStore } from '../../store/dialogStore';
 import pickReminderDialog from "../../components/dialogs/reminder-dialog.vue";
 import spotifyDialog from "../../components/dialogs/spotify-dialog.vue";
 import youtubeDialog from "../../components/dialogs/youtube-dialog.vue";
+import datePicker from "../../components/inputs/datepicker-input.vue";
 import draggable from 'vuedraggable';
 
 
@@ -335,17 +337,19 @@ export default {
     pickReminderDialog,
     youtubeDialog,
     spotifyDialog,
+    datePicker,
     draggable
   },
   data() {
     return {
+      selectedDate: new Date(),
       title: "Add Habits",
       formData: {
         name: "",
         dailyGoal: 1,
         repeatDays: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true },
         notes: "",
-        termStart: new Date().toISOString().split("T")[0], // Default to today
+        termStart: new Date(), // Default to today
         termEnd: null,
         imageUrl: "",
         youtubeUrls: [],
@@ -491,7 +495,7 @@ export default {
       return link
     },
     saveReminders(reminderTimes) {
-      this.formData.reminders.push(...reminderTimes);
+      this.formData.reminders.push(reminderTimes);
       this.formData.reminders.sort((a, b) => {
         const [aHour, aMinute] = a.split(':').map(Number);
         const [bHour, bMinute] = b.split(':').map(Number);
@@ -669,7 +673,7 @@ export default {
           color: this.formData.color,
           imageUrls: photoUrls || this.selectedPhotos,
           youtubeUrls: this.formData.youtubeUrls,
-          spotifyUrls: this.formData.spotifyUrls
+          spotifyUrls: this.formData.spotifyUrls,
         };
 
         if (this.$route.name === 'edit-habit') {
@@ -706,16 +710,21 @@ export default {
         const user = getAuth().currentUser;
         if (!user || this.formData.name === '') throw new Error("Invalid user or empty habit name.");
 
+        // Add index for sorting
+        const index = this.$store.state.habits.length;
+        
         await addDoc(collection(db, "habits"), {
           ...habitData,
           userId: user.uid,
           createdAt: new Date(),
+          index: index, // Add index for sorting
         });
 
-        if (!this.firstFetchHabits) {
-          this.$store.dispatch('fetchHabits');
-          this.$store.commit('setFirstFetchHabits', true);
-        }
+        // Force a refresh of habits
+        await this.$store.dispatch('fetchHabits');
+        
+        // Force refresh of day habits
+        await this.$store.dispatch('getDayHabits', new Date());
 
         this.$toast.success({
           message: "Habit created!",
@@ -754,7 +763,7 @@ export default {
 .no-arrows::-webkit-inner-spin-button,
 .no-arrows::-webkit-outer-spin-button {
   -webkit-appearance: none;
-  margin: 0;
+  margin: 0;
 }
 
 .youtube-icon {

@@ -71,5 +71,5 @@ export const useDialogStore = defineStore('dialog', () => {
     openViewMemoDialog,
     openYoutubeDialog,
     openSpotifyDialog,
-    openReminderDialog };
+    openReminderDialog, };
 });

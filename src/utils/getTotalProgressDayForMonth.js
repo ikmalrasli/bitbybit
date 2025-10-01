@@ -5,18 +5,26 @@ function getDayOfWeek(date) {
   return days[new Date(date).getDay()];  // getDay() returns 0 for Sunday, 6 for Saturday
 }
 
-// utils/getTotalProgressDayForMonth.js
-export function getTotalProgressDayForMonth(day, progressArray, habits) {
-  const dayProgress = [];
-  const dayStart = new Date(day).setHours(0, 0, 0, 0);
-  const dayEnd = new Date(day).setHours(23, 59, 59, 999);
+// Add pauses parameter
+export function getTotalProgressDayForMonth(day, progressArray, habits, pauses = []) {
+  // Ensure we're working with Date objects
+  const targetDate = new Date(day);
+  const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
+  const dayEnd = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
 
-  progressArray.forEach(habit => {
-    const habitTimestamp = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
+  const dayProgress = progressArray.filter(habit => {
+    if (!habit.timestamp) return false;
 
-    if (habitTimestamp && habitTimestamp >= dayStart && habitTimestamp <= dayEnd) {
-      dayProgress.push(habit);
+    let habitDate;
+    if (habit.timestamp instanceof Timestamp) {
+      habitDate = habit.timestamp.toDate();
+    } else if (habit.timestamp.seconds) {
+      habitDate = new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate();
+    } else {
+      habitDate = new Date(habit.timestamp);
     }
+
+    return habitDate >= dayStart && habitDate <= dayEnd;
   });
 
   const combinedDayHabits = habits.map(habit => {
@@ -29,35 +37,71 @@ export function getTotalProgressDayForMonth(day, progressArray, habits) {
     };
   });
 
-  const startDay = new Date(day).setHours(0, 0, 0, 0);
-  const endDay = new Date(day).setHours(23, 59, 59, 999);
+  const dayOfWeek = getDayOfWeek(targetDate);
 
-  const dayOfWeek = getDayOfWeek(day);
-  const filteredHabits = combinedDayHabits.filter(habit => habit.repeat && habit.repeat[dayOfWeek]);
-  const startHabits = filteredHabits.filter(habit => {
-    const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate().setHours(0, 0, 0, 0);
-    return termStart <= endDay;
-  });
-  const endHabits = startHabits.filter(habit => {
-    if (habit.termEnd !== null) {
-      const termEnd = new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate().setHours(23, 59, 59, 999);
-      return termEnd >= endDay
-    }
-    return habit.termEnd === null
+  // Filter habits based on day of week and term dates
+  const filteredHabits = combinedDayHabits.filter(habit => {
+    if (!habit.repeat || !habit.repeat[dayOfWeek]) return false;
+
+    const termStart = habit.termStart instanceof Timestamp
+      ? habit.termStart.toDate()
+      : new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
+
+    const termStartDay = new Date(termStart.getFullYear(), termStart.getMonth(), termStart.getDate(), 0, 0, 0, 0);
+
+    if (termStartDay > dayEnd) return false;
+
+    if (habit.termEnd === null) return true;
+
+    const termEnd = habit.termEnd instanceof Timestamp
+      ? habit.termEnd.toDate()
+      : new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate();
+
+    const termEndDay = new Date(termEnd.getFullYear(), termEnd.getMonth(), termEnd.getDate(), 23, 59, 59, 999);
+
+    return termEndDay >= dayStart;
   }).sort((a, b) => a.name.localeCompare(b.name));
-  
+
+  // Pause exclusion logic
+  function isHabitPausedOnDay(habitId, day, pauses) {
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    return pauses?.some(pause => {
+      if (pause.habitId !== habitId) return false;
+      const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
+      const end = pause.end
+        ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
+        : null;
+      if (end) {
+        return dayStart <= end && dayEnd >= start;
+      } else {
+        return dayStart >= start;
+      }
+    });
+  }
+
+  const notPausedHabits = filteredHabits.filter(habit => !isHabitPausedOnDay(habit.habitId, targetDate, pauses));
+
   let progress = 0;
   let totalDailyGoal = 0;
-  
-  endHabits.forEach(habit => {
-    const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
-    if (habitDate && habitDate <= endDay && habitDate >= startDay) {
-      progress += Number(habit.progress);
+
+  notPausedHabits.forEach(habit => {
+    if (habit.timestamp) {
+      const habitDate = habit.timestamp instanceof Timestamp
+        ? habit.timestamp.toDate()
+        : new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate();
+
+      if (habitDate >= dayStart && habitDate <= dayEnd) {
+        progress += Number(habit.progress);
+      }
     }
     totalDailyGoal += habit.dailyGoal;
   });
 
   const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
-  
-  return { totalProgress, endHabits };
+
+  return { totalProgress, endHabits: notPausedHabits };
 }

@@ -111,6 +111,12 @@ export default {
         return formattedDate; // Use the globally selected date
       }
 
+      if (this.$route.name === "calendar" ||
+      this.$route.name === "calendar-p2"
+      ) {
+        return "Calendar";
+      }
+
       if (this.$route.name === "sunnahs" ||  
       this.$route.name === "detail-sunnah" ||
       this.$route.name === "add-sunnah") {

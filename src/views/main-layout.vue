@@ -3,33 +3,39 @@
     
     <div class="flex justify-center w-full flex-grow flex-row relative">
       <Toast />
-      <!-- left column -->
-      <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full" />
+      <!-- Container to center the columns -->
+      <div class="flex flex-row w-full max-w-7xl">
+        <!-- left column -->
+        <Sidebar :show-sidebar="showSidebar" @toggle-sidebar="toggleSidebar" class="h-full shrink-0" />
 
-      <!-- center column -->
-      <div v-if="!isTablet || !isDetailView"
-        class="flex-1 flex flex-col h-full md:border-l md:border-r">
-        <!--Title Bar-->
-        <div>
-          <TitleBar @toggle-sidebar="toggleSidebar" />
+        <!-- Main content wrapper -->
+        <div class="flex flex-1 flex-row w-full overflow-hidden">
+          <!-- center column -->
+          <div v-if="!isTablet || !isDetailView"
+            class="w-full flex flex-col h-full md:border-l md:border-r flex-auto md:flex-[0_0_50%] overflow-hidden">
+            <!--Title Bar-->
+            <div>
+              <TitleBar @toggle-sidebar="toggleSidebar" />
+            </div>
+
+            <!--Calendar Row-->
+            <div v-if="showCalendarRow"
+              class="flex-shrink-0 justify-start mb-2">
+              <calendarRow @date-selected="handleDateSelected" />
+            </div>
+
+            <!--Center Router View-->
+            <router-view class="h-96 overflow-y-auto overflow-x-hidden scrollbar-hide" />
+            
+          </div>
+
+          <!-- right column -->
+          <div v-if="!isTablet || isDetailView" 
+            class="w-full h-full flex-auto md:flex-[0_0_50%] overflow-hidden"
+          >
+            <router-view class="h-full w-full overflow-hidden" name="right" />
+          </div>
         </div>
-
-        <!--Calendar Row-->
-        <div v-if="showCalendarRow"
-          class="flex-shrink-0 justify-start mb-2">
-          <calendarRow @date-selected="handleDateSelected" />
-        </div>
-
-        <!--Center Router View-->
-        <router-view class="h-96 overflow-y-auto scrollbar-hide" />
-        
-      </div>
-
-      <!-- right column -->
-      <div v-if="!isTablet || isDetailView" 
-      class="flex-1 flex h-full"
-      >
-        <router-view class="h-full w-full" name="right" />
       </div>
 
       <!-- fab -->
@@ -100,7 +106,8 @@ export default {
         this.$route.name === 'detail-stats' ||
         this.$route.name === "account" ||
         this.$route.name === "about" ||
-        this.$route.name === "news"
+        this.$route.name === "news" ||
+        this.$route.name === "calendar-p2"
       );
     },
   },

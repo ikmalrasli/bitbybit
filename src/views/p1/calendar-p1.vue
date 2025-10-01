@@ -14,7 +14,6 @@
             <VerticalProgressbar
               :percent="habitsProgress(day.dateobj)"
               color="bg-violet-400"
-              :bgcolor="day.dateobj.getDate() <= new Date().getDate() ? 'bg-gray-200' : 'bg-gray-300'"
             />
             <div class="flex flex-col items-center">
               <span class="flex mt-2" :class="{ 'text-violet-400 font-semibold': day.dateobj.getDate() === new Date().getDate() }">{{ day.name }}</span>
@@ -55,6 +54,33 @@ export default {
       return this.currentWeek === 'thisWeek' ? 'This Week' : 'Last Week';
     }
   },
+  async created() {
+    // Fetch this week's data when component is created
+    await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+  },
+  async beforeRouteEnter(to, from, next) {
+    next(async (vm) => {
+      // Check if we need to fetch habits first
+      if (!vm.$store.state.habits.length) {
+        await vm.$store.dispatch('fetchHabits');
+      }
+      // Then fetch week progress if it's empty
+      if (!vm.$store.state.weekProgress.length) {
+        await vm.$store.dispatch('fetchWeekProgress', 'thisWeek');
+      }
+    });
+  },
+  watch: {
+    // Watch for habits changes and refetch progress if needed
+    habits: {
+      immediate: true,
+      handler(newHabits) {
+        if (newHabits.length && !this.weekProgress.length) {
+          this.$store.dispatch('fetchWeekProgress', this.currentWeek);
+        }
+      }
+    }
+  },
   methods: {
     generateWeekDays(week) {
       const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -86,13 +112,15 @@ export default {
       const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits);
       return totalProgress;
     },
-    showLastWeek() {
+    async showLastWeek() {
       this.currentWeek = 'lastWeek';
-      this.days = this.generateWeekDays('lastWeek'); // Re-generate days for last week
+      this.days = this.generateWeekDays('lastWeek');
+      await this.$store.dispatch('fetchWeekProgress', 'lastWeek');
     },
-    showThisWeek() {
+    async showThisWeek() {
       this.currentWeek = 'thisWeek';
-      this.days = this.generateWeekDays('thisWeek'); // Re-generate days for this week
+      this.days = this.generateWeekDays('thisWeek');
+      await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
     },
   },
 };

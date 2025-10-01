@@ -4,7 +4,7 @@
     <header class="h-14 bg-white p-4 flex flex-row flex-shrink-0">
       <button @click="goBack" class="material-icons">chevron_left</button>
       <h1 class="text-lg text-black font-bold truncate w-full text-center">
-        {{sunnah.name}}</h1>
+        {{formatTitle(sunnah.name)}}</h1>
     </header>
     
     <!-- Content -->
@@ -34,6 +34,14 @@ export default {
     ...mapGetters(['allSunnahs']),
   },
   methods: {
+    formatTitle(title) {
+      const maxLength = 30; // Maximum length before truncating
+      if (title.length > maxLength) {
+        return `${title.substring(0, maxLength)}...`; // Truncate and append ellipsis
+      }
+      
+      return title; // Return original file name if it's within limit
+    },
     fetchSunnahDetail() {
       const sunnahId = this.$route.params.sunnahId;
       this.sunnah = this.allSunnahs.find(sunnah => sunnah.sunnahId === sunnahId);

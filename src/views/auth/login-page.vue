@@ -54,6 +54,52 @@
 import { mapActions } from 'vuex';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getNotifications } from '../../utils/pushNotifications';
+import * as Sentry from "@sentry/vue";
+
+// Define ignored errors
+const IGNORED_AUTH_ERRORS = [
+  'auth/invalid-credential',
+  'auth/invalid-email',
+  'auth/user-not-found',
+  'auth/wrong-password',
+  'auth/invalid-login-credentials',
+  'auth/popup-closed-by-user',
+  'auth/cancelled-popup-request',
+  'auth/operation-not-allowed',
+  'auth/email-already-in-use',
+  'auth/weak-password'
+];
+
+// Helper function to check if error should be reported
+const shouldReportError = (error) => {
+  if (!error?.code) return true;
+  return !IGNORED_AUTH_ERRORS.includes(error.code);
+};
+
+// Helper function to get user-friendly error message
+const getAuthErrorMessage = (error) => {
+  switch (error.code) {
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Invalid email or password';
+    case 'auth/invalid-email':
+      return 'Invalid email address';
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Sign in was cancelled';
+    case 'auth/operation-not-allowed':
+      return 'This sign in method is not allowed';
+    case 'auth/email-already-in-use':
+      return 'This email is already registered';
+    case 'auth/weak-password':
+      return 'Password is too weak';
+    default:
+      return error.message;
+  }
+};
 
 export default {
   data() {
@@ -63,30 +109,40 @@ export default {
     };
   },
   methods: {
-    ...mapActions(['login']), // Map Vuex actions
+    ...mapActions(['login']),
     async handleLogin() {
       try {
-        // Perform email-password login
         const user = await this.login({ email: this.email, password: this.password });
 
-        // Process the logged-in user
         this.$store.dispatch('updateLoading', true);
-        // Commit the user to Vuex store
         this.$store.commit('SET_USER', user)
         this.$store.dispatch('fetchUser').then((user) => {
           if (user) {
+            getNotifications(this.$store, this.$toast);
             this.$store.dispatch('fetchHabits');
           } else {
             this.$store.dispatch('updateLoading', false);
           }
         });
 
-        this.$router.push("/"); // Redirect after successful login
+        this.$router.push("/");
 
       } catch (error) {
         this.$store.dispatch('updateLoading', false);
-        console.error("Login error:", error);
-        alert(error.message); // Display error message to the user
+        
+        // Only report non-ignored errors to Sentry
+        if (shouldReportError(error)) {
+          Sentry.captureException(error, {
+            tags: {
+              action: 'handleLogin',
+              email: this.email
+            }
+          });
+          console.error("Login error:", error);
+        }
+
+        // Show user-friendly error message
+        this.$toast.error(getAuthErrorMessage(error));
       }
     },
     async signInWithGoogle() {
@@ -98,35 +154,44 @@ export default {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Get additional user info
-        const displayName = user.displayName; // Get display name from Google account
+        const displayName = user.displayName;
         const email = user.email;
         const uid = user.uid;
 
-        // Save the user data to Firestore
         await setDoc(doc(db, "users", uid), {
           email: email,
-          nickname: displayName, // Use the Google display name as the nickname
+          nickname: displayName,
           uid: uid
         });
+        
         this.$store.dispatch('updateLoading', true);
-        // Commit the user to Vuex store
         this.$store.commit('SET_USER', user)
         this.$store.dispatch('fetchUser').then((user) => {
           if (user) {
+            getNotifications(this.$store, this.$toast);
             this.$store.dispatch('fetchHabits');
           } else {
             this.$store.dispatch('updateLoading', false);
           }
         });
 
-        // Redirect after successful login
         this.$router.push("/")
         
       } catch (error) {
         this.$store.dispatch('updateLoading', false);
-        console.error("Google login error:", error);
-        alert(error.message); // Display error message to the user
+        
+        // Only report non-ignored errors to Sentry
+        if (shouldReportError(error)) {
+          Sentry.captureException(error, {
+            tags: {
+              action: 'signInWithGoogle'
+            }
+          });
+          console.error("Google login error:", error);
+        }
+
+        // Show user-friendly error message
+        this.$toast.error(getAuthErrorMessage(error));
       }
     }
   }

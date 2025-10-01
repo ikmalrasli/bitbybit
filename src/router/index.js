@@ -49,9 +49,10 @@ const routes = [
           right: DetailHabit
         },
         props: {
-          right: (route) => ({ 
-            habitId: route.params.habitId, 
-            timestamp: route.params.timestamp})
+          right: (route) => ({
+            habitId: route.params.habitId,
+            timestamp: route.params.timestamp
+          })
         },
         meta: { requiresAuth: true }
       },
@@ -72,6 +73,18 @@ const routes = [
         name: 'calendar',
         component: Calendar,
         meta: { title: 'Calendar', requiresAuth: true },
+      },
+      {
+        path: 'calendar/:date',
+        name: 'calendar-p2',
+        components: {
+          default: Calendar,
+          right: () => import('../views/p2/calendar-p2.vue')
+        },
+        props: {
+          right: route => ({ date: route.params.date })
+        },
+        meta: { requiresAuth: true }
       },
       {
         path: 'sunnahs',
@@ -117,9 +130,10 @@ const routes = [
           right: DetailStats
         },
         props: {
-          right: (route) => ({ 
-            habitId: route.params.habitId, 
-            timestamp: route.params.timestamp})
+          right: (route) => ({
+            habitId: route.params.habitId,
+            timestamp: route.params.timestamp
+          })
         },
         meta: { requiresAuth: true }
       },
@@ -206,24 +220,28 @@ router.beforeEach((to, from, next) => {
   // Handle refreshing the page returns to parent (due to no data in store)
   if (to.name === 'detail-habit' && !from.name) {
     next({ name: 'home' });
-  } 
+  }
   else if (to.name === 'edit-habit' && !from.name) {
     next({ name: 'home' });
-  } 
+  }
   else if (to.name === 'detail-sunnah' && !from.name) {
     next({ name: 'sunnahs' });
-  } 
+  }
   else if (to.name === 'add-sunnah' && !from.name) {
     next({ name: 'sunnahs' });
   }
   else if (to.name === 'detail-stats' && !from.name) {
     next({ name: 'stats' });
   }
+  else if (to.name === 'calendar-p2' && !from.name) {
+    next({ name: 'calendar' });
+  }
   // Handle authentication check
   else if (requiresAuth && !isAuthenticated) {
     // If the route requires authentication and the user is not authenticated, redirect to login
     next({ name: 'login' });
-  } 
+  }
+
   // Allow navigation if authenticated or if the route doesn't require authentication
   else {
     next();

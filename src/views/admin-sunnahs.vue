@@ -46,7 +46,7 @@
             <!-- Description -->
             <div>
               <label for="notes" class="text-left block text-sm font-medium text-gray-700">Description</label>
-              <textarea v-model="formData.description" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-16" placeholder="Optional"></textarea>
+              <textarea v-model="formData.description" id="notes" class="bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-32" placeholder="Optional"></textarea>
             </div>
             
             <!-- Reference URL -->

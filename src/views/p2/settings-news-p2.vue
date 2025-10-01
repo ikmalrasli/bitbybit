@@ -35,12 +35,14 @@
 
 <script>
 import { db } from "../../firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, getDoc, setDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 export default {
   data() {
     return {
       newsList: [],
+      lastReadTimestamp: null,
     };
   },
   methods: {
@@ -52,8 +54,30 @@ export default {
           ...doc.data(),
           date: doc.data().date.toDate(),
         }));
+        
+        // Mark news as read
+        await this.markNewsAsRead();
       } catch (error) {
         console.error("Error fetching news:", error);
+      }
+    },
+    async markNewsAsRead() {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+
+      const userId = auth.currentUser.uid;
+      const userNewsRef = doc(db, "users", userId, "metadata", "news");
+      
+      try {
+        // Update last read timestamp
+        await setDoc(userNewsRef, {
+          lastRead: new Date()
+        }, { merge: true });
+        
+        // Update store
+        this.$store.commit('setHasNewNews', false);
+      } catch (error) {
+        console.error("Error marking news as read:", error);
       }
     },
     goBack() {

@@ -18,7 +18,7 @@
       <!-- Fixed Overall Progress -->
       <div class="w-full p-2 bg-white border rounded-lg flex items-center h-24 md:h-28 shadow-sm sticky z-10">
         <template v-if="fetched">
-          <h2 class="p-2 font-semibold w-3/4 leading-tight">{{ mainText }}</h2>
+          <h2 class="p-2 w-3/4 leading-tight">{{ mainText }}</h2>
           <div class="w-1/4 h-full">
             <RadialProgressbar
               :progress="Number(overallProgress)"
@@ -89,7 +89,7 @@
       </div>
 
       <!-- Scrollable Habits List -->
-      <div class="flex-grow overflow-y-auto md:overflow-y-scroll pb-2" style="scrollbar-width: thin;">
+      <div class="flex-grow overflow-y-auto pb-2" style="scrollbar-width: thin;">
         <div v-if="fetched && habitsMonth.length !== 0" class="space-y-1">
           <div v-if="showHabitsList" class="flex flex-col space-y-1">
             <div
@@ -107,7 +107,7 @@
                     <circle cx="50" cy="50" r="40" />
                   </svg>
                 </div>
-                <h2 class="p-2 font-semibold w-full">{{ habit.name }}</h2>
+                <h2 class="p-2 w-full">{{ habit.name }}</h2>
               </div>
               <div class="flex flex-row items-center">
                 <span
@@ -314,7 +314,9 @@ export default {
         const termEnd = habit.termEnd ? new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate() : null;
         if (habit.repeat && habit.repeat[dayOfWeek] &&
             termStart.setHours(0, 0, 0, 0) <= date &&
-            (habit.termEnd == null || termEnd > date)) {
+          (habit.termEnd == null || termEnd > date)
+            && !this.isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
+          ) {
           dayCounts++;
         }
       }
@@ -350,7 +352,9 @@ export default {
 
         // Only keep the latest document for each day
         if (!dailyProgressMap[dayKey]) {
-          dailyProgressMap[dayKey] = Number(data.progress); // Save the first (latest) document per day
+          if (!this.isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
+            dailyProgressMap[dayKey] = Number(data.progress);
+          }
         }
       });
       //console.log(habit.name+':',dailyProgressMap)
@@ -371,6 +375,26 @@ export default {
       });
 
       return goals ? (progress * 100 / goals).toFixed(0) : 0;
+    },
+    isHabitPausedOnDay(habitId, day, pauses) {
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(day);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      return pauses?.some(pause => {
+        if (pause.habitId !== habitId) return false;
+        const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
+        const end = pause.end
+          ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
+          : null;
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          return dayStart >= start && dayEnd <= end;
+        } else {
+          return dayStart >= start;
+        }
+      });
     },
     openDetail(habit) {
       this.statStore.selectStat(habit);

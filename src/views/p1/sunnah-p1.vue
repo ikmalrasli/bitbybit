@@ -17,7 +17,7 @@
             :key="sunnah.id"
           >
             <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
                 <span class="material-icons">chevron_right</span>
               </div>
@@ -44,7 +44,7 @@
             :key="sunnah.sunnahId"
           >
             <div class="w-full p-5 bg-white border rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 active:bg-gray-100" @click="openDetail(sunnah)">
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-left font-normal text-black">{{ sunnah.name }}</span>
                 <span class="material-icons">chevron_right</span>
               </div>

@@ -13,27 +13,19 @@
 
       <!-- Calendar Days -->
       <div v-if="!loading" class="grid grid-cols-7 text-center gap-x-1">
-        <div
-          v-for="(day, index) in calendarDays"
-          :key="index"
-          :class="[ 
-            day.isToday ? 'text-purple-500' : '', 
-            'relative', 'p-2', 'rounded-full', 
-            'transition-colors duration-300' 
-          ]"
-        >
+        <div v-for="(day, index) in calendarDays" :key="index" :class="[
+          day.isToday ? 'text-purple-500' : '',
+          'relative', 'p-2', 'rounded-full',
+          'transition-colors duration-300'
+        ]">
           <div class="flex flex-col items-center">
             <!-- Show RadialProgressBar for current month and days up to today -->
             <RadialProgressbar
               :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
-              :progress="day.progress"
-              :radius="40"
-              :text="String(day.day)"
-              :textcolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
-              :textsize="36"
-              :strokeWidth="5"
+              :progress="day.progress" :radius="40" :text="String(day.day)"
+              :textcolor="day.isCurrentMonth ? '#000000' : '#9ca3af'" :textsize="36" :strokeWidth="5"
               :color="statStore.textColor"
-            />
+              :isPaused="isHabitPausedOnDay(statStore.selectedStat.habitId, new Date(currentYear, currentMonth, day.day), $store.state.pauses)" />
             <div class="h-1 w-1 md:h-2 md:w-2" :class="[{ 'invisible': !day.isToday }, fillClass]">
               <svg class="h-full w-full" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" />
@@ -44,26 +36,16 @@
       </div>
       <!-- Default Calendar Days (Loading) -->
       <div v-else class="grid grid-cols-7 text-center gap-x-1">
-        <div
-          v-for="(day, index) in calendarDays"
-          :key="index"
-          :class="[ 
-            day.isToday ? 'text-purple-500' : '', 
-            'relative', 'p-2', 'rounded-full', 
-            'transition-colors duration-300' 
-          ]"
-        >
+        <div v-for="(day, index) in calendarDays" :key="index" :class="[
+          day.isToday ? 'text-purple-500' : '',
+          'relative', 'p-2', 'rounded-full',
+          'transition-colors duration-300'
+        ]">
           <div class="flex flex-col items-center">
             <!-- Show RadialProgressBar for current month and days up to today -->
-            <RadialProgressbar
-              :show="false"
-              :progress="day.progress"
-              :radius="40"
-              :text="String(day.day)"
-              :textcolor="day.isCurrentMonth? '#000000' : '#9ca3af'"
-              :textsize="36"
-              :color="statStore.textColor"
-            />
+            <RadialProgressbar :show="false" :progress="day.progress" :radius="40" :text="String(day.day)"
+              :textcolor="day.isCurrentMonth ? '#000000' : '#9ca3af'" :textsize="36" :color="statStore.textColor"
+              :isPaused="isHabitPausedOnDay(statStore.selectedStat.habitId, new Date(currentYear, currentMonth, day.day), $store.state.pauses)" />
             <div class="h-1 w-1 md:h-2 md:w-2 invisible">
               <svg class="h-full w-full" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" />
@@ -179,7 +161,7 @@ export default {
       // Process documents to get the latest entry per day
       const dailyProgressMap = {};
       this.dailyProgressData = {}; // Reset daily progress data
-      
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const progressDate = new Date(data.timestamp.toDate());
@@ -190,11 +172,11 @@ export default {
         // Only keep the latest document for each day
         if (!dailyProgressMap[dayKey]) {
           const progressPercent = Number((data.progress * 100 / dailyGoal).toFixed(0));
-          dailyProgressMap[dayKey] = {progress: data.progress, timestamp: data.timestamp, progressPercent: progressPercent}; // Save the first (latest) document per day
+          dailyProgressMap[dayKey] = { progress: data.progress, timestamp: data.timestamp, progressPercent: progressPercent }; // Save the first (latest) document per day
           // console.log(dayKey,dailyProgressMap[dayKey])
         }
       });
-      
+
       this.generateDaysWithProgress(dailyProgressMap);
       this.computeLongestStreak(dailyProgressMap);
     },
@@ -217,7 +199,7 @@ export default {
 
       // Add current month's days with progress
       for (let i = 1; i <= totalDaysInMonth; i++) {
-        const dayDate = new Date(this.statStore.selectedYear, this.statStore.selectedMonth, i+1);
+        const dayDate = new Date(this.statStore.selectedYear, this.statStore.selectedMonth, i + 1);
         const progressPercent = this.getProgressPercent(dayDate, dailyProgressMap);
 
         days.push({
@@ -243,7 +225,7 @@ export default {
       this.calendarDays = days;
       this.loading = false; // Set loading to false after fetching
     },
-    getProgressPercent(dayDate, dailyProgressMap){
+    getProgressPercent(dayDate, dailyProgressMap) {
       const dayKey = dayDate.toISOString().split("T")[0];
       let dayProgress = 0;
       if (dailyProgressMap[dayKey]) {
@@ -325,6 +307,27 @@ export default {
       });
 
       this.streak = longestStreak;  // Update the streak value
+    },
+    isHabitPausedOnDay(habitId, day, pauses) {
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(day);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      return pauses?.some(pause => {
+        if (pause.habitId !== habitId) return false;
+        const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
+        start.setHours(0, 0, 0, 0);
+        const end = pause.end
+          ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
+          : null;
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          return dayStart >= start && dayEnd <= end;
+        } else {
+          return dayStart >= start;
+        }
+      });
     },
   },
   watch: {

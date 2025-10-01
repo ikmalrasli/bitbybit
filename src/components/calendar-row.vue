@@ -1,54 +1,38 @@
 <template>
   <div class="w-full flex items-center">
     <!-- Left Chevron (previous week) -->
-    <button 
-      class="text-gray-500 hover:text-gray-700 material-icons mr-1" 
-      :class="{ 'invisible': currentWeek === 'lastWeek' }" 
-      @click="showLastWeek"
-    >
+    <button class="text-gray-500 hover:text-gray-700 material-icons mr-1"
+      :class="{ 'invisible': currentWeek === 'lastWeek' }" @click="showLastWeek">
       chevron_left
     </button>
 
     <!-- Days display -->
     <div class="flex flex-row flex-grow">
-      <div
-        v-for="day in days"
-        :key="day.date"
-        :class="['flex-auto', 'cursor-pointer']"
-        @click="day.dateobj <= new Date().setHours(23, 59, 59, 999) ? selectDay(day) : null"
-      >
-        <div 
-          :class="[ 
-            'rounded-full p-1 pb-2', 
-            this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 bg-violet-400' : 'border-slate-200 bg-white',
-            day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default border-gray-50 bg-gray-50',
-          ]"
-        >
+      <div v-for="day in days" :key="day.date" :class="['flex-auto', 'cursor-pointer']"
+        @click="day.dateobj <= new Date().setHours(23, 59, 59, 999) ? selectDay(day) : null">
+        <div :class="[
+          'rounded-full p-1 pb-2',
+          this.selectedDay?.getDate() === day.dateobj.getDate() ? 'border-violet-400 bg-violet-400' : 'border-slate-200 bg-white',
+          day.dateobj <= new Date().setHours(23, 59, 59, 999) ? 'cursor-pointer hover:border-violet-400' : 'cursor-default border-gray-50 bg-gray-50',
+        ]">
           <div class="flex flex-col items-center">
             <span class="min-w-8 text-center font-semibold text-xs sm:text-sm"
-            :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : '', day.dateobj < new Date().setHours(23, 59, 59, 999) ? 'text-black' : 'text-gray-400']">{{ day.name }}</span>
-            <RadialProgressbar
-              :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
-              :progress="habitsProgress(day.dateobj)"
-              :radius="40"
-              :text="String(day.date)"
-              :strokeWidth="5"
+              :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : '', day.dateobj < new Date().setHours(23, 59, 59, 999) ? 'text-black' : 'text-gray-400']">{{
+              day.name }}</span>
+            <RadialProgressbar :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
+              :progress="habitsProgress(day.dateobj)" :radius="40" :text="String(day.date)" :strokeWidth="5"
               :textcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? '#ffffff' : '#000000'"
               :bgcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white opacity-25' : 'text-black opacity-10'"
               class="pt-2"
-              :color="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : 'text-violet-400'"
-            />
+              :color="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : 'text-violet-400'" />
           </div>
         </div>
       </div>
     </div>
 
     <!-- Right Chevron (next week) -->
-    <button 
-      class="text-gray-500 hover:text-gray-700 material-icons ml-1" 
-      :class="{ 'invisible': currentWeek === 'thisWeek' }" 
-      @click="showThisWeek"
-    >
+    <button class="text-gray-500 hover:text-gray-700 material-icons ml-1"
+      :class="{ 'invisible': currentWeek === 'thisWeek' }" @click="showThisWeek(true)">
       chevron_right
     </button>
   </div>
@@ -75,20 +59,21 @@ export default {
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
-    
+
     if (this.selectedDay < startOfWeek) {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek');
+      this.$store.dispatch('showLastWeek');
     } else if (this.selectedDay >= startOfWeek) {
-      this.showThisWeek();
+      this.showThisWeek(false);
     }
   },
   computed: {
-    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay']),
+    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay', 'pauses']),
   },
   methods: {
     ...mapActions(['updateSelectedDay']),
-    
+
     generateWeekDays(week) {
       const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
       const today = new Date();
@@ -124,19 +109,21 @@ export default {
       if (!this.habits.empty) {
         this.$store.dispatch('getDayHabits', selectedDate);
       }
-      this.$store.dispatch('getDayMemos', selectedDate)
+      this.$store.dispatch('getDayMemos', selectedDate);
       this.$router.push('/');
     },
 
     habitsProgress(day) {
-      const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits);
+      const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits, this.$store.state.pauses);
       return totalProgress;
     },
 
     showLastWeek() {
       this.currentWeek = 'lastWeek';
-      this.days = this.generateWeekDays('lastWeek'); // Generate days for last week
-      // Set the selected day to Saturday
+      this.days = this.generateWeekDays('lastWeek');
+      // Fetch last week's data
+      this.$store.dispatch('fetchWeekProgress', 'lastWeek');
+      // Set the selected day to Saturday of last week
       const today = new Date();
       const currentDayOfWeek = today.getDay();
       const lastSat = new Date(today);
@@ -146,13 +133,17 @@ export default {
         this.selectDay(lastSaturday);
       }
     },
-    showThisWeek() {
+
+    showThisWeek(showToday) {
       this.currentWeek = 'thisWeek';
-      this.days = this.generateWeekDays('thisWeek'); // Generate days for this week
-      // Set the selected day to today
-      const today = this.days.find(day => day.isToday);
-      if (today) {
-        this.selectDay(today);
+      this.days = this.generateWeekDays('thisWeek');
+      // Fetch this week's data
+      if (showToday) {
+        // Set the selected day to today
+        const today = this.days.find(day => day.isToday);
+        if (today) {
+          this.selectDay(today);
+        }
       }
     },
   },
