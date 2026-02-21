@@ -590,7 +590,7 @@ export default {
         'Pause Habit',
         'Are you sure you want to pause this habit?',
         'default',
-        () => {
+        async () => {
           try {
             const auth = getAuth();
             const user = auth.currentUser;
@@ -599,31 +599,32 @@ export default {
               throw new Error("User not authenticated. Please log in.");
             }
 
-            const habitRef = addDoc(collection(db, "pauses"), {
+            const docRef = await addDoc(collection(db, "pauses"), {
               habitId: this.selectedHabit.habitId,
               start: Timestamp.fromDate(new Date()),
               end: null
             });
 
-            habitRef.then((docRef) => {
-              this.isPaused = true;
-              this.pauseId = docRef.id;
-              this.pauseStart = Timestamp.fromDate(new Date());
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
-              updateDoc(habitDocRef, {
-                isPaused: true
-              }).then(() => {
-                console.log("HabitDoc updated pause successfully");
-              })
+            this.isPaused = true;
+            this.pauseId = docRef.id;
+            this.pauseStart = Timestamp.fromDate(new Date());
+
+            // Update the habit's isPaused flag
+            const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+            await updateDoc(habitDocRef, {
+              isPaused: true
             });
+
+            console.log("Habit paused successfully");
+
+            // Refresh the pauses in the store
+            await this.$store.dispatch('fetchPauses');
+
           } catch (error) {
-            console.log(error);
-            this.$toast.error({
-              message: 'Error pausing habit. Please try again.',
-              duration: 2000
-            });
+            console.error("Error pausing habit:", error);
+            // Handle error appropriately
           }
-        }, 'OK', 'text-gray-700'
+        }
       );
     },
     resumeHabit() {
@@ -648,42 +649,40 @@ export default {
                 startDate.getMonth() === now.getMonth() &&
                 startDate.getDate() === now.getDate()
               ) {
-                // Same day: delete pause doc
-                const pauseDocRef = doc(db, 'pauses', this.pauseId);
-                await deleteDoc(pauseDocRef);
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
-                await updateDoc(habitDocRef, { isPaused: false });
-                this.isPaused = false;
-                console.log("Pause doc deleted, habit resumed (same day)");
+                // If pausing and resuming on the same day, just delete the pause record
+                await deleteDoc(doc(db, "pauses", this.pauseId));
               } else {
-                // Different day: update end time
-                const pauseDocRef = doc(db, 'pauses', this.pauseId);
-                // Set end to yesterday at 23:59:59.999
-                const yesterday = new Date();
-                yesterday.setDate(now.getDate() - 1);
-                yesterday.setHours(23, 59, 59, 999);
-                await updateDoc(pauseDocRef, { end: Timestamp.fromDate(yesterday) });
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
-                await updateDoc(habitDocRef, { isPaused: false });
-                this.$store.dispatch('fetchPauses');
-                this.isPaused = false;
-                console.log("Pause doc end updated, habit resumed");
+                // Otherwise, update the end time of the pause
+                await updateDoc(doc(db, "pauses", this.pauseId), {
+                  end: Timestamp.fromDate(now)
+                });
               }
-            } else {
-              // Fallback: just update habit
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
-              await updateDoc(habitDocRef, { isPaused: false });
-              this.isPaused = false;
-              console.log("HabitDoc updated resume fallback");
             }
+
+            // Update the habit's isPaused flag
+            const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+            await updateDoc(habitDocRef, {
+              isPaused: false
+            });
+
+            // Reset local state
+            this.isPaused = false;
+            this.pauseId = null;
+            this.pauseStart = null;
+
+            console.log("Habit resumed successfully");
+
+            // Refresh the pauses in the store
+            await this.$store.dispatch('fetchPauses');
+
           } catch (error) {
-            console.log(error);
+            console.error("Error resuming habit:", error);
             this.$toast.error({
               message: 'Error resuming habit. Please try again.',
               duration: 2000
             });
           }
-        }, 'OK', 'text-gray-700'
+        }
       );
     },
     editHabit() {

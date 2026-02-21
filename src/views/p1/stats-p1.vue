@@ -269,13 +269,36 @@ export default {
       this.fetched = false;
       this.showHabitsList = false;
       const fetchedHabits = await this.getMonthStats();
-      //this.habitsMonth = fetchedHabits;
       this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
       this.overallProgress = this.calcOverallProgress(fetchedHabits);
       this.fetched = true;
       setTimeout(() => {
         this.showHabitsList = true;
       }, 50)
+    },
+    async refreshHabitsMonthInBackground() {
+      const fetchedHabits = await this.getMonthStats();
+      this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
+      this.overallProgress = this.calcOverallProgress(fetchedHabits);
+      this.updateMainText();
+    },
+    ensureMonthDataLoaded() {
+      const cached = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
+      const needsRefresh = this.statStore.progressUpdated;
+
+      if (cached) {
+        this.fetched = true;
+        this.showHabitsList = true;
+        this.overallProgress = this.calcOverallProgress(cached);
+        this.updateMainText();
+        if (needsRefresh) {
+          this.statStore.resetProgressUpdated();
+          this.refreshHabitsMonthInBackground();
+        }
+      } else {
+        this.statStore.resetProgressUpdated();
+        this.fetchHabitsMonth();
+      }
     },
     async getMonthStats() {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
@@ -465,13 +488,8 @@ export default {
     },
   },
   watch: {
-    currentMonthYear(newVal, oldVal) {
-      if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
-        this.fetchHabitsMonth();
-        this.statStore.resetProgressUpdated();
-      } else {
-        this.overallProgress = this.calcOverallProgress(this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear));
-      }
+    currentMonthYear() {
+      this.ensureMonthDataLoaded();
     },
     overallProgress(newVal) {
       this.updateMainText();
@@ -479,17 +497,7 @@ export default {
   },
   mounted() {
     this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
-    
-    if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
-      this.fetchHabitsMonth();
-      this.statStore.resetProgressUpdated();
-    }else{
-      //this.habitsMonth = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
-      this.overallProgress = this.calcOverallProgress(this.habitsMonth);
-      this.updateMainText();
-      this.fetched = true;
-      this.showHabitsList = true;
-    }
+    this.ensureMonthDataLoaded();
   }
 }
 </script>

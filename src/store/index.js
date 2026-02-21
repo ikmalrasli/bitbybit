@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from
 import { db } from '../firebase'; // Import your Firestore instance
 import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp, getDocs, limit, startAfter, getDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
+import { useStatStore } from './statStore';
 import * as Sentry from "@sentry/vue";
 
 const loadTimeout = 1000;
@@ -165,6 +166,7 @@ export default createStore({
       // Wait for all promises to resolve
       Promise.all(updatePromises)
         .then(() => {
+          useStatStore().setProgressUpdated();
           toast.success({
             message: 'Habits completed!',
             duration: 1000
@@ -520,7 +522,74 @@ export default createStore({
         commit('setLoadingHome', false);
       }
     },
-    async getDayHabits({ commit, state }, day) {
+    async ensureDayProgressLoaded({ state, dispatch }, day) {
+      const dayDate = new Date(day);
+      const dayStart = new Date(dayDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const timestamps = state.weekProgress.map(p => {
+        const ts = p.timestamp;
+        return ts?.toDate ? ts.toDate() : new Date(ts?.seconds * 1000 || 0);
+      });
+      const minTs = timestamps.length ? Math.min(...timestamps.map(d => d.getTime())) : 0;
+      const maxTs = timestamps.length ? Math.max(...timestamps.map(d => d.getTime())) : 0;
+      const isCovered = timestamps.length > 0 &&
+        dayEnd.getTime() >= minTs &&
+        dayStart.getTime() <= maxTs;
+
+      if (isCovered) return;
+
+      if (!state.habits?.length) return;
+
+      const habitIds = state.habits.map(h => h.habitId);
+      const batchSize = 30;
+      const allBatchProgress = [];
+
+      for (let i = 0; i < habitIds.length; i += batchSize) {
+        const batchIds = habitIds.slice(i, i + batchSize);
+        const q = query(
+          collection(db, 'progress'),
+          where('habitId', 'in', batchIds),
+          where('timestamp', '>=', dayStart),
+          where('timestamp', '<=', dayEnd),
+          orderBy('timestamp', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        const batchProgress = snapshot.docs.map(d => ({
+          ...d.data(),
+          progressId: d.id
+        }));
+        allBatchProgress.push(...batchProgress);
+      }
+
+      if (allBatchProgress.length > 0) {
+        const merged = [...state.weekProgress, ...allBatchProgress];
+        const outputArray = merged.reduce((acc, curr) => {
+          const currentDate = curr.timestamp?.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
+          const currentDay = new Date(currentDate).setHours(0, 0, 0, 0);
+
+          const existingHabit = acc.find(habit => {
+            const habitDate = habit.timestamp?.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
+            const existingDay = new Date(habitDate).setHours(0, 0, 0, 0);
+            return habit.habitId === curr.habitId && existingDay === currentDay;
+          });
+
+          if (existingHabit) {
+            if (curr.timestamp >= existingHabit.timestamp) {
+              acc[acc.indexOf(existingHabit)] = curr;
+            }
+          } else {
+            acc.push(curr);
+          }
+          return acc;
+        }, []);
+        dispatch('updateWeekProgress', outputArray);
+      }
+    },
+    async getDayHabits({ commit, state, dispatch }, day) {
+      await dispatch('ensureDayProgressLoaded', day);
       const { endHabits } = getTotalProgressDay(day, state.weekProgress, state.habits, state.pauses);
       commit('SET_DAY_HABITS', endHabits);
       commit('setLoadingHome', false);
@@ -558,19 +627,6 @@ export default createStore({
       }, (error) => {
         console.error('Error fetching real-time memos:', error);
       });
-    },
-    async getDayMemos({ commit, state }, day) {
-      const startOfDay = new Date(day);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(day);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const dayMemos = state.weekMemos.filter(memo => {
-        const memoDate = new Timestamp(memo.timestamp.seconds, memo.timestamp.nanoseconds).toDate();
-        return memoDate >= startOfDay && memoDate <= endOfDay;
-      })
-
-      commit('SET_DAY_MEMOS', dayMemos);
     },
     async getDayMemos({ commit, state }, day) {
       const startOfDay = new Date(day);

@@ -296,9 +296,9 @@ export default {
                   where('timestamp', '<=', endDate)
                 );
                 const progressSnapshot = await getDocs(progressQuery);
-                const batchProgress = progressSnapshot.docs.map(doc => ({
-                  id: doc.id,
-                  ...doc.data()
+                const batchProgress = progressSnapshot.docs.map(d => ({
+                  ...d.data(),
+                  progressId: d.id
                 }));
                 progressData = [...progressData, ...batchProgress];
               }
@@ -324,9 +324,9 @@ export default {
                   where('timestamp', '<=', endDate)
                 );
                 const progressSnapshot = await getDocs(progressQuery);
-                const batchProgress = progressSnapshot.docs.map(doc => ({
-                  id: doc.id,
-                  ...doc.data()
+                const batchProgress = progressSnapshot.docs.map(d => ({
+                  ...d.data(),
+                  progressId: d.id
                 }));
                 this.$store.dispatch('updateWeekProgress', [...this.$store.state.weekProgress, ...batchProgress]);
                 progressData = [...progressData, ...batchProgress];

@@ -47,21 +47,24 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
     return habit.termEnd === null
   });
 
-  
-
   let progress = 0;
   let totalDailyGoal = 0;
-  // Filter out paused habits first
-  const notPausedHabits = endHabits.filter(habit => !isHabitPausedOnDay(habit.habitId, day, pauses));
-  console.log('Not paused habits for day', day, ':', notPausedHabits);
-
-  notPausedHabits.forEach(habit => {
-    const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
-    if (habitDate && habitDate <= endDay && habitDate >= startDay) {
-      progress += Number(habit.progress);
+  
+  endHabits.forEach(habit => {
+    const isPaused = isHabitPausedOnDay(habit.habitId, day, pauses);
+    
+    if (!isPaused) {
+      // Only calculate progress for non-paused habits
+      const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
+      if (habitDate && habitDate <= endDay && habitDate >= startDay) {
+        progress += Number(habit.progress);
+      }
+      // Only add to daily goal for non-paused habits
+      // console.log('Adding daily goal for habit:', habit.habitId, 'with daily goal:', habit.dailyGoal);
+      totalDailyGoal += Number(habit.dailyGoal) || 0;
+    } else {
+      console.log('Skipping paused habit:', habit.habitId);
     }
-    console.log('Adding daily goal for habit:', habit.habitId, 'with daily goal:', habit.dailyGoal);
-    totalDailyGoal += habit.dailyGoal || 0;
   });
   // const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
   
@@ -83,22 +86,31 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
 }
 
 function isHabitPausedOnDay(habitId, day, pauses) {
-  const dayStart = new Date(day);
-  dayStart.setHours(0, 0, 0, 0);
+  // 1. Normalize the day being checked to the very last millisecond of that day
   const dayEnd = new Date(day);
   dayEnd.setHours(23, 59, 59, 999);
+  
+  // 2. Normalize the day being checked to the very first millisecond
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
 
   return pauses?.some(pause => {
     if (pause.habitId !== habitId) return false;
+
+    // 3. Convert Database Timestamps to JS Dates
     const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
     const end = pause.end
       ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
       : null;
+
     if (end) {
-      return dayStart <= end && dayEnd >= start;
+      // 4. Overlap Check: 
+      // Does the pause start before the day ends AND end after the day begins?
+      return start <= dayEnd && end >= dayStart;
     } else {
-      console.log('Checking ongoing pause for habit:', habitId, 'on day:', dayStart, 'with pause start:', start);
-      return dayStart >= start;
+      // 5. Ongoing Pause Check:
+      // If the pause started ANYTIME before this day is over, the habit is paused.
+      return start <= dayEnd; 
     }
   });
 }
