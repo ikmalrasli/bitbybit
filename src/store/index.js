@@ -2,6 +2,7 @@ import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db } from '../firebase'; // Import your Firestore instance
+import { migrateUserFromFirebase } from '../utils/migrateFromFirebase';
 import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp, getDocs, limit, startAfter, getDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 import { useStatStore } from './statStore';
@@ -319,8 +320,14 @@ export default createStore({
       commit('setLoading', true);
       return new Promise((resolve) => {
         const auth = getAuth();
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
           if (user) {
+            try {
+              await migrateUserFromFirebase(user);
+            } catch (err) {
+              console.error('[Migration]', err);
+              Sentry.captureException(err, { tags: { action: 'migrateUserFromFirebase' } });
+            }
             commit('SET_USER', user);
             commit('setLoading', false);
           } else {
