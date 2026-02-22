@@ -6,6 +6,37 @@ import store from './store';
 import { createPinia } from 'pinia';
 import ToastPlugin from './plugins/toast';
 import * as Sentry from "@sentry/vue";
+import { db } from './db';
+
+/**
+ * Step 1 verification: ensures Dexie schema is created and read/write works.
+ * Remove or disable before production if desired.
+ */
+async function verifyDexie() {
+  try {
+    await db.open();
+    const tableNames = db.tables.map((t) => t.name).join(', ');
+    console.log('[Dexie] ✅ Connected. Tables:', tableNames);
+
+    // Test write + read on settings
+    await db.settings.put({ key: 'step1_test', value: Date.now() });
+    const row = await db.settings.get('step1_test');
+    if (row && row.value) {
+      console.log('[Dexie] ✅ Settings read/write OK');
+    } else {
+      console.warn('[Dexie] ⚠ Settings read returned unexpected:', row);
+    }
+
+    // Expose db in dev for manual verification (e.g. in browser console: window.db.settings.toArray())
+    if (import.meta.env.DEV) {
+      window.__dexieDb = db;
+      console.log('[Dexie] 💡 Dev: use window.__dexieDb to inspect (e.g. __dexieDb.settings.toArray())');
+    }
+  } catch (e) {
+    console.error('[Dexie] ❌ Verification failed:', e);
+  }
+}
+verifyDexie();
 
 const pinia = createPinia();
 
