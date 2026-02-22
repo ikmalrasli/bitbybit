@@ -82,8 +82,7 @@
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../db'; // Dexie IndexedDB
 import { useStatStore } from '../store/statStore.js';
 
 export default {
@@ -143,42 +142,46 @@ export default {
     async fetchProgress() {
       const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
+      const startOfMonthMs = startOfMonth.getTime();
+      const endOfMonthMs = endOfMonth.getTime();
       const habitId = this.statStore.selectedStat.habitId;
       const dailyGoal = this.statStore.selectedStat.dailyGoal;
 
-      // Query all progress documents for this habit within the month
-      const q = query(
-        collection(db, "progress"),
-        where("timestamp", ">=", startOfMonth),
-        where("timestamp", "<=", endOfMonth),
-        where("habitId", "==", habitId),
-        orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
-      );
+      try {
+        // Query Dexie for progress documents for this habit
+        const progressDocs = await db.progress
+          .where('habitId')
+          .equals(habitId)
+          .toArray();
 
-      // Fetch all documents in the range
-      const querySnapshot = await getDocs(q);
+        // Filter by timestamp range
+        const filteredDocs = progressDocs.filter(doc => 
+          doc.timestamp >= startOfMonthMs && doc.timestamp <= endOfMonthMs
+        );
 
-      // Process documents to get the latest entry per day
-      const dailyProgressMap = {};
-      this.dailyProgressData = {}; // Reset daily progress data
+        // Process documents to get the latest entry per day
+        const dailyProgressMap = {};
+        this.dailyProgressData = {}; // Reset daily progress data
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const progressDate = new Date(data.timestamp.toDate());
-        //const dayKey = progressDate.toISOString().split("T")[0]; // Extract the day in YYYY-MM-DD format (cannot use this because of timezones, date is different)
-        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
-        //console.log('date:'+progressDate, 'daykey:'+dayKey)
+        // Sort by timestamp descending to get latest entries first
+        filteredDocs.sort((a, b) => b.timestamp - a.timestamp);
 
-        // Only keep the latest document for each day
-        if (!dailyProgressMap[dayKey]) {
-          const progressPercent = Number((data.progress * 100 / dailyGoal).toFixed(0));
-          dailyProgressMap[dayKey] = { progress: data.progress, timestamp: data.timestamp, progressPercent: progressPercent }; // Save the first (latest) document per day
-          // console.log(dayKey,dailyProgressMap[dayKey])
-        }
-      });
+        filteredDocs.forEach((doc) => {
+          const progressDate = new Date(doc.timestamp);
+          const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
 
-      this.generateDaysWithProgress(dailyProgressMap);
-      this.computeLongestStreak(dailyProgressMap);
+          // Only keep the latest document for each day
+          if (!dailyProgressMap[dayKey]) {
+            const progressPercent = Number((doc.progress * 100 / dailyGoal).toFixed(0));
+            dailyProgressMap[dayKey] = { progress: doc.progress, timestamp: { seconds: Math.floor(doc.timestamp / 1000), nanoseconds: 0 }, progressPercent: progressPercent };
+          }
+        });
+
+        this.generateDaysWithProgress(dailyProgressMap);
+        this.computeLongestStreak(dailyProgressMap);
+      } catch (error) {
+        console.error('Error fetching progress from Dexie:', error);
+      }
     },
     generateDaysWithProgress(dailyProgressMap) {
       const totalDaysInMonth = new Date(this.statStore.selectedYear, this.statStore.selectedMonth + 1, 0).getDate();

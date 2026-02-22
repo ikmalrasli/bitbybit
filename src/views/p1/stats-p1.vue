@@ -134,8 +134,8 @@
 
 <script>
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
-import { query, collection, where, getDocs, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../../db'; // Dexie IndexedDB
+import { toMillis } from '../../utils/timestampUtils';
 import { mapState } from 'vuex';
 import { useStatStore } from '../../store/statStore.js';
 
@@ -304,7 +304,7 @@ export default {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
       
       const validHabits = this.habits.filter(habit => {
-        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
+        const termStart = new Date(habit.termStart);
         return termStart <= endOfMonth
       });
 
@@ -333,8 +333,8 @@ export default {
       for (let day = 1; day <= endDate; day++) {
         const date = new Date(this.currentYear, this.currentMonth, day);
         const dayOfWeek = date.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
-        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
-        const termEnd = habit.termEnd ? new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate() : null;
+        const termStart = new Date(habit.termStart);
+        const termEnd = habit.termEnd ? new Date(habit.termEnd) : null;
         if (habit.repeat && habit.repeat[dayOfWeek] &&
             termStart.setHours(0, 0, 0, 0) <= date &&
           (habit.termEnd == null || termEnd > date)
@@ -348,39 +348,36 @@ export default {
     async getProgressInMonth(habit) {
       let totalProgress = 0;
 
-      // Define the start and end of the month
+      // Define the start and end of the month (in milliseconds for Dexie)
       const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
+      const startOfMonthMs = startOfMonth.getTime();
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
+      const endOfMonthMs = endOfMonth.getTime();
 
-      // Query all progress documents for this habit within the month
-      const q = query(
-        collection(db, "progress"),
-        where("timestamp", ">=", startOfMonth),
-        where("timestamp", "<=", endOfMonth),
-        where("habitId", "==", habit.habitId),
-        orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
-      );
+      // Query Dexie for progress documents for this habit within the month
+      const progressDocs = await db.progress
+        .where('habitId')
+        .equals(habit.habitId)
+        .toArray();
 
-      // Fetch all documents in the range
-      const querySnapshot = await getDocs(q);
-
-      // Process documents to get the latest entry per day
+      // Filter by timestamp range and process
       const dailyProgressMap = {};
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const progressDate = new Date(data.timestamp.toDate());
-        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
+      progressDocs
+        .filter(doc => doc.timestamp >= startOfMonthMs && doc.timestamp <= endOfMonthMs)
+        .sort((a, b) => b.timestamp - a.timestamp) // Sort descending by timestamp
+        .forEach((doc) => {
+          const progressDate = new Date(doc.timestamp);
+          const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
 
-
-        // Only keep the latest document for each day
-        if (!dailyProgressMap[dayKey]) {
-          if (!this.isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
-            dailyProgressMap[dayKey] = Number(data.progress);
+          // Only keep the latest document for each day
+          if (!dailyProgressMap[dayKey]) {
+            if (!this.isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
+              dailyProgressMap[dayKey] = Number(doc.progress);
+            }
           }
-        }
-      });
-      //console.log(habit.name+':',dailyProgressMap)
+        });
+
       // Sum up the daily progress values
       totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
 

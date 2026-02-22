@@ -45,8 +45,8 @@
 import { mapState } from 'vuex';
 import RadialProgressbar from './RadialProgressbar.vue';
 import { getTotalProgressDayForMonth } from '../utils/getTotalProgressDayForMonth';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../db'; // Dexie IndexedDB
+import { toMillis } from '../utils/timestampUtils';
 
 export default {
   components: {
@@ -102,56 +102,48 @@ export default {
       this.setupMonthDays();
       this.fetchProgress();
     },
-    fetchProgress() {
+    async fetchProgress() {
       const firstDayOfCurrentMonth = new Date(this.currentYear, this.currentMonth, 1);
       const lastDayOfCurrentMonth = new Date(this.currentYear, this.currentMonth + 1, 0);
       firstDayOfCurrentMonth.setHours(0, 0, 0, 0);
       lastDayOfCurrentMonth.setHours(23, 59, 59, 999);
+      
+      const startOfMonthMs = firstDayOfCurrentMonth.getTime();
+      const endOfMonthMs = lastDayOfCurrentMonth.getTime();
 
-      // Split habits into batches of 30
+      // Get habit IDs
       const habitIds = this.habits.map(habit => habit.habitId);
-      const batchSize = 30;
-      const habitBatches = [];
 
-      for (let i = 0; i < habitIds.length; i += batchSize) {
-        habitBatches.push(habitIds.slice(i, i + batchSize));
+      try {
+        // Query Dexie for progress documents
+        const progressDocs = await db.progress
+          .where('habitId')
+          .anyOf(habitIds)
+          .toArray();
+
+        // Filter by timestamp range and convert to Firestore-like format
+        const progressArray = progressDocs
+          .filter(doc => doc.timestamp >= startOfMonthMs && doc.timestamp <= endOfMonthMs)
+          .map(doc => ({
+            ...doc,
+            progressId: doc.id,
+            timestamp: { seconds: Math.floor(doc.timestamp / 1000), nanoseconds: 0 }
+          }));
+
+        this.processProgressData(progressArray);
+      } catch (error) {
+        console.error('Error fetching progress from Dexie:', error);
       }
-
-      // Clear existing unsubscribe if any
-      if (this.unsubscribeProgress) {
-        this.unsubscribeProgress();
-      }
-
-      // Create a listener for each batch
-      const unsubscribes = habitBatches.map(batchIds => {
-        const q = query(
-          collection(db, 'progress'),
-          where('habitId', 'in', batchIds),
-          where('timestamp', '>=', firstDayOfCurrentMonth),
-          where('timestamp', '<=', lastDayOfCurrentMonth),
-          orderBy('timestamp', 'desc')
-        );
-
-        return onSnapshot(q, (querySnapshot) => {
-          const progressArray = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            progressArray.push({ ...data, progressId: doc.id });
-          });
-          this.processProgressData(progressArray);
-        });
-      });
-
-      // Store unsubscribe functions
-      this.$store.commit('setUnsubscribeProgress', () => unsubscribes.forEach(unsub => unsub()));
     },
     processProgressData(progressArray) {
       const outputArray = progressArray.reduce((acc, curr) => {
-        const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
+        const currentDateMs = toMillis(curr.timestamp) || 0;
+        const currentDate = new Date(currentDateMs);
         const currentDay = currentDate.setHours(0, 0, 0, 0);
 
         const existingHabit = acc.find(habit => {
-          const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
+          const habitDateMs = toMillis(habit.timestamp) || 0;
+          const habitDate = new Date(habitDateMs);
           const existingDay = habitDate.setHours(0, 0, 0, 0);
           return habit.habitId === curr.habitId && existingDay === currentDay;
         });
@@ -167,8 +159,6 @@ export default {
       }, []);
 
       this.progressArray = outputArray;
-      // Update Vuex Week Progress
-      // this.$store.dispatch('updateWeekProgress', outputArray);
       // Update the existing calendar days with progress data
       this.updateProgressValues();
     },
@@ -246,7 +236,8 @@ export default {
       if (selectedDate >= startOfThisWeek) {
         // Date is in this week
         if (!this.$store.state.weekProgress.some(progress => {
-          const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
+          const progressDateMs = toMillis(progress.timestamp) || 0;
+          const progressDate = new Date(progressDateMs);
           return progressDate >= startOfThisWeek;
         })) {
           // This week's data not fetched yet, fetch it
@@ -261,7 +252,8 @@ export default {
       } else if (selectedDate >= startOfLastWeek && selectedDate < endOfLastWeek) {
         // Date is in last week
         if (!this.$store.state.weekProgress.some(progress => {
-          const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
+          const progressDateMs = toMillis(progress.timestamp) || 0;
+          const progressDate = new Date(progressDateMs);
           return progressDate >= startOfLastWeek && progressDate < endOfLastWeek;
         })) {
           // Last week's data not fetched yet, fetch it

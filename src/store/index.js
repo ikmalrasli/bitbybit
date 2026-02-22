@@ -1,8 +1,10 @@
 import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { db } from '../firebase'; // Import your Firestore instance
+import { db as firestoreDb } from '../firebase'; // Firestore instance (renamed to avoid conflict)
+import { db } from '../db'; // Dexie IndexedDB instance
 import { migrateUserFromFirebase } from '../utils/migrateFromFirebase';
+import { toTimestampLike, toMillis } from '../utils/timestampUtils';
 import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp, getDocs, limit, startAfter, getDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 import { useStatStore } from './statStore';
@@ -45,7 +47,6 @@ export default createStore({
     hasNewNews: false,
     unsubscribeHabits: null,
     pauses: [],
-    // loadingMoreHabits: false
   },
   mutations: {
     setPushNotiGranted(state, granted) {
@@ -148,14 +149,14 @@ export default createStore({
         const habit = state.dayHabits.find(h => h.habitId === habitId);
 
         if (habit.progressId !== '') {
-          const docRef = doc(db, 'progress', habit.progressId);
-          return updateDoc(docRef, {
+          const docRef = db.progress.get(habit.progressId);
+          return db.progress.update(habit.progressId, {
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
             onTime: onTime
           });
         } else {
-          return addDoc(collection(db, "progress"), {
+          return db.progress.add({
             habitId: habit.habitId,
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
@@ -246,9 +247,6 @@ export default createStore({
     SET_PAUSES(state, pauses) {
       state.pauses = pauses;
     },
-    // setLoadingMoreHabits(state, value) {
-    //   state.loadingMoreHabits = value;
-    // }
   },
   actions: {
     setSortType({ commit }, type) {
@@ -342,50 +340,43 @@ export default createStore({
       try {
         if (!state.user) return;
 
-        // Query Firestore for habits belonging to the authenticated user
-        const q = query(
-          collection(db, 'habits'),
-          where('userId', '==', state.user.uid),
-          orderBy(state.sortType === 'name' ? 'name' : 'index')
-        );
+        // Read habits from Dexie (IndexedDB) instead of Firestore
+        const habitsRaw = await db.habits
+          .where('userId')
+          .equals(state.user.uid)
+          .toArray();
 
-        // Set up a real-time listener
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const habits = [];
-          querySnapshot.forEach((doc) => {
-            habits.push({ habitId: doc.id, ...doc.data() });
-          });
-          commit('SET_HABITS', habits);
-          commit('sortHabits');
+        // Convert timestamps back to Firestore-like format for compatibility
+        const habits = habitsRaw.map(h => ({
+          ...h,
+          habitId: h.id, // Ensure habitId is set (already in migration)
+          termStart: toTimestampLike(h.termStart),
+          termEnd: toTimestampLike(h.termEnd),
+          createdAt: toTimestampLike(h.createdAt),
+        }));
 
-          if (habits.length > 0) {
-            if (!state.firstFetchHabits) {
-              commit('setLoadingWeekProgress', true);
-              this.dispatch('fetchWeekProgress', 'thisWeek');
-              // Instead, chain pauses and day habits:
-              this.dispatch('fetchPauses').then(() => {
-                this.dispatch('getDayHabits', state.selectedDay || new Date());
-              });
-            } else {
-              // Always get day habits when habits change
-              this.dispatch('fetchPauses').then(() => {
-                this.dispatch('getDayHabits', state.selectedDay || new Date());
-              });
-            }
+        commit('SET_HABITS', habits);
+        commit('sortHabits');
+
+        if (habits.length > 0) {
+          if (!state.firstFetchHabits) {
+            commit('setLoadingWeekProgress', true);
+            this.dispatch('fetchWeekProgress', 'thisWeek');
+            this.dispatch('fetchPauses').then(() => {
+              this.dispatch('getDayHabits', state.selectedDay || new Date());
+            });
           } else {
-            // If no habits, clear week progress and set loading states to false
-            commit('SET_WEEK_PROGRESS', []);
-            commit('setLoadingWeekProgress', false);
-            commit('setLoadingHome', false);
+            this.dispatch('fetchPauses').then(() => {
+              this.dispatch('getDayHabits', state.selectedDay || new Date());
+            });
           }
+        } else {
+          commit('SET_WEEK_PROGRESS', []);
+          commit('setLoadingWeekProgress', false);
+          commit('setLoadingHome', false);
+        }
 
-          // Mark first fetch as complete
-          commit('setFirstFetchHabits', true);
-        });
-
-        // Store unsubscribe function
-        commit('setUnsubscribeHabits', unsubscribe);
-
+        commit('setFirstFetchHabits', true);
       } catch (error) {
         console.error('Error in fetchHabits:', error);
         commit('setLoadingWeekProgress', false);
@@ -415,113 +406,72 @@ export default createStore({
           startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
         }
         startOfWeek.setHours(0, 0, 0, 0);
+        const startOfWeekMs = startOfWeek.getTime();
 
         // Calculate end date
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 7);
         endOfWeek.setHours(23, 59, 59, 999);
+        const endOfWeekMs = endOfWeek.getTime();
 
-        // Split habits into batches of 30
-        const habitBatches = [];
-        for (let i = 0; i < state.habits.length; i += 30) {
-          habitBatches.push(state.habits.slice(i, i + 30).map(h => h.habitId));
-        }
+        // Get all habit IDs
+        const habitIds = state.habits.map(h => h.habitId);
 
-        // Clean up existing listeners if any
-        if (state.unsubscribeProgress) {
-          state.unsubscribeProgress();
-        }
+        // Query Dexie for progress in the week range
+        // Use anyOf on habitId and filter by timestamp
+        const progressRaw = await db.progress
+          .where('habitId')
+          .anyOf(habitIds)
+          .toArray();
 
-        // Create a listener for each batch
-        const unsubscribes = habitBatches.map(habitIds => {
-          const q = query(
-            collection(db, 'progress'),
-            where('habitId', 'in', habitIds),
-            where('timestamp', '>=', startOfWeek),
-            where('timestamp', '<', endOfWeek),
-            orderBy('timestamp', 'desc')
-          );
+        // Filter by timestamp range (timestamps are stored as milliseconds)
+        const filteredProgress = progressRaw.filter(p =>
+          p.timestamp >= startOfWeekMs && p.timestamp < endOfWeekMs
+        );
 
-          return onSnapshot(q, (querySnapshot) => {
-            const progressArray = [];
-            querySnapshot.forEach((doc) => {
-              progressArray.push({ ...doc.data(), progressId: doc.id });
-            });
+        // Convert timestamps back to Firestore-like format
+        const progressArray = filteredProgress.map(p => ({
+          ...p,
+          progressId: p.id,
+          timestamp: toTimestampLike(p.timestamp),
+        }));
 
-            // Merge with existing progress data
-            const existingProgress = state.weekProgress.filter(progress => {
-              if (weekType === 'lastWeek') {
-                // Keep this week's data when viewing last week
-                const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
-                return progressDate >= endOfWeek || !habitIds.includes(progress.habitId);
-              } else {
-                // When viewing this week, only keep progress for habits not in current batch
-                return !habitIds.includes(progress.habitId);
-              }
-            });
+        // Deduplicate entries keeping only the latest progress for each habit per day
+        const outputArray = progressArray.reduce((acc, curr) => {
+          const currentDateMs = toMillis(curr.timestamp);
+          const currentDay = new Date(currentDateMs).setHours(0, 0, 0, 0);
 
-            const newProgress = [...existingProgress, ...progressArray];
-
-            // Deduplicate entries keeping only the latest progress for each habit per day
-            const outputArray = newProgress.reduce((acc, curr) => {
-              const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
-              const currentDay = currentDate.setHours(0, 0, 0, 0);
-
-              const existingHabit = acc.find(habit => {
-                const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
-                const existingDay = habitDate.setHours(0, 0, 0, 0);
-                return habit.habitId === curr.habitId && existingDay === currentDay;
-              });
-
-              if (existingHabit) {
-                if (curr.timestamp >= existingHabit.timestamp) {
-                  acc[acc.indexOf(existingHabit)] = curr;
-                }
-              } else {
-                acc.push(curr);
-              }
-
-              return acc;
-            }, []);
-
-            commit('SET_WEEK_PROGRESS', outputArray);
-            this.dispatch('getDayHabits', state.selectedDay);
-
-            commit('setLoadingWeekProgress', false);
-            commit('setLoadingHome', false);
-          }, (error) => {
-            Sentry.captureException(error, {
-              tags: {
-                action: 'fetchWeekProgress',
-                weekType: weekType,
-                userId: state.user?.uid,
-                query: 'progress_habitId_timestamp'
-              },
-              extra: {
-                fullError: error.toString(),
-                indexUrl: error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/)?.[0] || 'No URL found'
-              }
-            });
-            console.error("Error fetching progress:", error);
-            commit('setLoadingWeekProgress', false);
-            commit('setLoadingHome', false);
+          const existingHabit = acc.find(habit => {
+            const habitDateMs = toMillis(habit.timestamp);
+            const existingDay = new Date(habitDateMs).setHours(0, 0, 0, 0);
+            return habit.habitId === curr.habitId && existingDay === currentDay;
           });
-        });
 
-        // Store unsubscribe functions
-        commit('setUnsubscribeProgress', () => unsubscribes.forEach(unsub => unsub()));
+          if (existingHabit) {
+            const currTs = toMillis(curr.timestamp);
+            const existingTs = toMillis(existingHabit.timestamp);
+            if (currTs >= existingTs) {
+              acc[acc.indexOf(existingHabit)] = curr;
+            }
+          } else {
+            acc.push(curr);
+          }
 
+          return acc;
+        }, []);
+
+        commit('SET_WEEK_PROGRESS', outputArray);
+        this.dispatch('getDayHabits', state.selectedDay);
+
+        commit('setLoadingWeekProgress', false);
+        commit('setLoadingHome', false);
       } catch (error) {
         Sentry.captureException(error, {
           tags: {
             action: 'fetchWeekProgress',
             weekType: weekType,
             userId: state.user?.uid,
-            query: 'progress_habitId_timestamp'
-          },
-          extra: {
-            fullError: error.toString(),
-            indexUrl: error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/)?.[0] || 'No URL found'
+            source: 'Dexie'
           }
         });
         console.error("Error in fetchWeekProgress:", error);
@@ -533,58 +483,58 @@ export default createStore({
       const dayDate = new Date(day);
       const dayStart = new Date(dayDate);
       dayStart.setHours(0, 0, 0, 0);
+      const dayStartMs = dayStart.getTime();
       const dayEnd = new Date(dayDate);
       dayEnd.setHours(23, 59, 59, 999);
+      const dayEndMs = dayEnd.getTime();
 
-      const timestamps = state.weekProgress.map(p => {
-        const ts = p.timestamp;
-        return ts?.toDate ? ts.toDate() : new Date(ts?.seconds * 1000 || 0);
-      });
-      const minTs = timestamps.length ? Math.min(...timestamps.map(d => d.getTime())) : 0;
-      const maxTs = timestamps.length ? Math.max(...timestamps.map(d => d.getTime())) : 0;
+      // Check if the day is already covered by weekProgress
+      const timestamps = state.weekProgress.map(p => toMillis(p.timestamp) || 0);
+      const minTs = timestamps.length ? Math.min(...timestamps) : 0;
+      const maxTs = timestamps.length ? Math.max(...timestamps) : 0;
       const isCovered = timestamps.length > 0 &&
-        dayEnd.getTime() >= minTs &&
-        dayStart.getTime() <= maxTs;
+        dayEndMs >= minTs &&
+        dayStartMs <= maxTs;
 
       if (isCovered) return;
 
       if (!state.habits?.length) return;
 
+      // Query Dexie for progress in the day range
       const habitIds = state.habits.map(h => h.habitId);
-      const batchSize = 30;
-      const allBatchProgress = [];
+      const progressRaw = await db.progress
+        .where('habitId')
+        .anyOf(habitIds)
+        .toArray();
 
-      for (let i = 0; i < habitIds.length; i += batchSize) {
-        const batchIds = habitIds.slice(i, i + batchSize);
-        const q = query(
-          collection(db, 'progress'),
-          where('habitId', 'in', batchIds),
-          where('timestamp', '>=', dayStart),
-          where('timestamp', '<=', dayEnd),
-          orderBy('timestamp', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        const batchProgress = snapshot.docs.map(d => ({
-          ...d.data(),
-          progressId: d.id
+      // Filter by day range
+      const dayProgress = progressRaw.filter(p =>
+        p.timestamp >= dayStartMs && p.timestamp <= dayEndMs
+      );
+
+      if (dayProgress.length > 0) {
+        // Convert timestamps and merge
+        const newProgress = dayProgress.map(p => ({
+          ...p,
+          progressId: p.id,
+          timestamp: toTimestampLike(p.timestamp),
         }));
-        allBatchProgress.push(...batchProgress);
-      }
 
-      if (allBatchProgress.length > 0) {
-        const merged = [...state.weekProgress, ...allBatchProgress];
+        const merged = [...state.weekProgress, ...newProgress];
         const outputArray = merged.reduce((acc, curr) => {
-          const currentDate = curr.timestamp?.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
-          const currentDay = new Date(currentDate).setHours(0, 0, 0, 0);
+          const currentDateMs = toMillis(curr.timestamp) || 0;
+          const currentDay = new Date(currentDateMs).setHours(0, 0, 0, 0);
 
           const existingHabit = acc.find(habit => {
-            const habitDate = habit.timestamp?.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
-            const existingDay = new Date(habitDate).setHours(0, 0, 0, 0);
+            const habitDateMs = toMillis(habit.timestamp) || 0;
+            const existingDay = new Date(habitDateMs).setHours(0, 0, 0, 0);
             return habit.habitId === curr.habitId && existingDay === currentDay;
           });
 
           if (existingHabit) {
-            if (curr.timestamp >= existingHabit.timestamp) {
+            const currTs = toMillis(curr.timestamp) || 0;
+            const existingTs = toMillis(existingHabit.timestamp) || 0;
+            if (currTs >= existingTs) {
               acc[acc.indexOf(existingHabit)] = curr;
             }
           } else {
@@ -603,55 +553,67 @@ export default createStore({
       this.dispatch('fetchWeekMemos');
     },
     async fetchWeekMemos({ commit, state }) {
-      const today = new Date();
-      const currentDayOfWeek = today.getDay();
-      const currentDate = today.getDate();
+      if (!state.user?.uid) return;
 
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
-      startOfWeek.setHours(0, 0, 0, 0);
-      const userId = state.user.uid;
+      try {
+        const today = new Date();
+        const currentDayOfWeek = today.getDay();
+        const currentDate = today.getDate();
 
-      // Query Firestore for habits belonging to the authenticated user
-      const q = query(
-        collection(db, 'memos'),
-        where('userId', '==', userId),
-        where('timestamp', '>=', startOfWeek),
-        orderBy('memo', 'asc')
-      );
-      const memos = [];
+        // Get memos for the last 2 weeks (this week + last week)
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const startOfWeekMs = startOfWeek.getTime();
 
-      // Set up a real-time listener
-      onSnapshot(q, (querySnapshot) => {
-        memos.length = 0; // Clear array to avoid duplicates on re-renders
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          memos.push({ ...data, memoId: doc.id });
-        });
+        // Query Dexie for memos
+        const memosRaw = await db.memos
+          .where('userId')
+          .equals(state.user.uid)
+          .toArray();
+
+        // Filter by timestamp (last 2 weeks) and convert timestamps
+        const memos = memosRaw
+          .filter(m => m.timestamp >= startOfWeekMs)
+          .map(m => ({
+            ...m,
+            memoId: m.id,
+            timestamp: toTimestampLike(m.timestamp),
+          }));
 
         commit('SET_WEEK_MEMOS', memos);
         this.dispatch('getDayMemos', this.state.selectedDay);
-      }, (error) => {
-        console.error('Error fetching real-time memos:', error);
-      });
+      } catch (error) {
+        console.error('Error fetching memos from Dexie:', error);
+        Sentry.captureException(error, {
+          tags: {
+            action: 'fetchWeekMemos',
+            userId: state.user?.uid,
+            source: 'Dexie'
+          }
+        });
+      }
     },
     async getDayMemos({ commit, state }, day) {
       const startOfDay = new Date(day);
       startOfDay.setHours(0, 0, 0, 0);
+      const startOfDayMs = startOfDay.getTime();
       const endOfDay = new Date(day);
       endOfDay.setHours(23, 59, 59, 999);
+      const endOfDayMs = endOfDay.getTime();
 
       const dayMemos = state.weekMemos.filter(memo => {
-        const memoDate = new Timestamp(memo.timestamp.seconds, memo.timestamp.nanoseconds).toDate();
-        return memoDate >= startOfDay && memoDate <= endOfDay;
-      })
+        const memoDateMs = toMillis(memo.timestamp) || 0;
+        return memoDateMs >= startOfDayMs && memoDateMs <= endOfDayMs;
+      });
 
       commit('SET_DAY_MEMOS', dayMemos);
     },
     fetchSunnahs({ commit }) {
       const sunnahs = [];
-      // Fetch sunnahs from Firestore
-      onSnapshot(query(collection(db, 'sunnahs')), (snapshot) => {
+      // Fetch sunnahs from Firestore (admin/shared data - keep Firebase for now)
+      onSnapshot(query(collection(firestoreDb, 'sunnahs')), (snapshot) => {
+        sunnahs.length = 0; // Clear to avoid duplicates
         snapshot.forEach(doc => {
           sunnahs.push({ sunnahId: doc.id, ...doc.data() });
         });
@@ -670,20 +632,20 @@ export default createStore({
       if (!auth.currentUser) return;
 
       try {
-        // Get user's last read timestamp
-        const userNewsRef = doc(db, "users", auth.currentUser.uid, "metadata", "news");
-        const userNewsDoc = await getDoc(userNewsRef);
-        const lastRead = userNewsDoc.exists() ? userNewsDoc.data().lastRead : null;
+        // Get user's last read timestamp from Dexie
+        const userMeta = await db.user_metadata.get(`news_${auth.currentUser.uid}`);
+        const lastReadMs = userMeta?.lastRead || null;
 
-        // Get latest news timestamp
-        const newsQuery = query(collection(db, "news"), orderBy("date", "desc"), limit(1));
+        // Get latest news timestamp from Firestore (admin data - keep Firebase)
+        const newsQuery = query(collection(firestoreDb, "news"), orderBy("date", "desc"), limit(1));
         const newsSnapshot = await getDocs(newsQuery);
 
         if (!newsSnapshot.empty) {
-          const latestNews = newsSnapshot.docs[0].data().date;
+          const latestNewsTs = newsSnapshot.docs[0].data().date;
+          const latestNewsMs = toMillis(latestNewsTs);
 
           // If no lastRead or if there's newer news, show indicator
-          const hasNewNews = !lastRead || latestNews > lastRead;
+          const hasNewNews = !lastReadMs || (latestNewsMs && latestNewsMs > lastReadMs);
           commit('setHasNewNews', hasNewNews);
         }
       } catch (error) {
@@ -703,21 +665,35 @@ export default createStore({
         commit('SET_PAUSES', []);
         return;
       }
-      // Firestore only allows 'in' queries for up to 30 items
-      const pauseDocs = [];
-      for (let i = 0; i < habitIds.length; i += 30) {
-        const batchIds = habitIds.slice(i, i + 30);
-        const q = query(
-          collection(db, 'pauses'),
-          where('habitId', 'in', batchIds)
-        );
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-          pauseDocs.push({ pauseId: doc.id, ...doc.data() });
+
+      try {
+        // Query Dexie for pauses (no batch limit needed for IndexedDB)
+        const pausesRaw = await db.pauses
+          .where('habitId')
+          .anyOf(habitIds)
+          .toArray();
+
+        // Convert timestamps back to Firestore-like format
+        const pauses = pausesRaw.map(p => ({
+          ...p,
+          pauseId: p.id,
+          start: toTimestampLike(p.start),
+          end: toTimestampLike(p.end),
+        }));
+
+        console.log('Fetched pauses from Dexie:', pauses);
+        commit('SET_PAUSES', pauses);
+      } catch (error) {
+        console.error('Error fetching pauses from Dexie:', error);
+        Sentry.captureException(error, {
+          tags: {
+            action: 'fetchPauses',
+            userId: state.user?.uid,
+            source: 'Dexie'
+          }
         });
+        commit('SET_PAUSES', []);
       }
-      console.log('Fetched pauses:', pauseDocs);
-      commit('SET_PAUSES', pauseDocs);
     },
   },
   getters: {

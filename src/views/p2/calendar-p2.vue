@@ -127,8 +127,8 @@
 </template>
 
 <script>
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../../db'; // Dexie IndexedDB
+import { toMillis } from '../../utils/timestampUtils';
 import { mapState } from 'vuex';
 import HomeProgress from '../../components/habitpb.vue';
 import { getTotalProgressDay } from '../../utils/getTotalProgressDay';
@@ -241,9 +241,11 @@ export default {
       handler: async function (newDate) {
         const startDate = new Date(newDate);
         startDate.setHours(0, 0, 0, 0);
+        const startDateMs = startDate.getTime();
 
         const endDate = new Date(newDate);
         endDate.setHours(23, 59, 59, 999);
+        const endDateMs = endDate.getTime();
 
         try {
           this.loading = true;
@@ -256,59 +258,53 @@ export default {
           const startOfThisWeek = new Date(today);
           startOfThisWeek.setDate(currentDate - currentDayOfWeek);
           startOfThisWeek.setHours(0, 0, 0, 0);
+          const startOfThisWeekMs = startOfThisWeek.getTime();
 
           const startOfLastWeek = new Date(startOfThisWeek);
           startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+          const startOfLastWeekMs = startOfLastWeek.getTime();
 
           const endOfLastWeek = new Date(startOfThisWeek);
           endOfLastWeek.setHours(0, 0, 0, 0);
+          const endOfLastWeekMs = endOfLastWeek.getTime();
 
           let progressData = [];
           const habitIds = this.habits.map(habit => habit.habitId);
-          const batchSize = 30;
-          const habitBatches = [];
-
-          for (let i = 0; i < habitIds.length; i += batchSize) {
-            habitBatches.push(habitIds.slice(i, i + batchSize));
-          }
 
           // Check if selected date is within this week or last week
-          if (startDate >= startOfThisWeek) {
+          if (startDateMs >= startOfThisWeekMs) {
             console.log('using this week data')
             progressData = this.$store.state.weekProgress;
-          } else if (startDate >= startOfLastWeek && startDate < endOfLastWeek) {
-            // Check if we have last week's data in Vuex store
+          } else if (startDateMs >= startOfLastWeekMs && startDateMs < endOfLastWeekMs) {
             console.log('using last week data')
             const hasLastWeekData = this.$store.state.weekProgress.some(progress => {
-              const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
-              return progressDate >= startOfLastWeek && progressDate < endOfLastWeek;
+              const progressDateMs = toMillis(progress.timestamp) || 0;
+              return progressDateMs >= startOfLastWeekMs && progressDateMs < endOfLastWeekMs;
             });
 
             if (hasLastWeekData) {
               progressData = this.$store.state.weekProgress;
             } else {
-              // Fetch data from Firestore if not in store
-              for (const batchIds of habitBatches) {
-                const progressQuery = query(
-                  collection(db, 'progress'),
-                  where('habitId', 'in', batchIds),
-                  where('timestamp', '>=', startDate),
-                  where('timestamp', '<=', endDate)
-                );
-                const progressSnapshot = await getDocs(progressQuery);
-                const batchProgress = progressSnapshot.docs.map(d => ({
-                  ...d.data(),
-                  progressId: d.id
+              // Fetch data from Dexie if not in store
+              const progressDocs = await db.progress
+                .where('habitId')
+                .anyOf(habitIds)
+                .toArray();
+              
+              progressData = progressDocs
+                .filter(doc => doc.timestamp >= startDateMs && doc.timestamp <= endDateMs)
+                .map(doc => ({
+                  ...doc,
+                  progressId: doc.id,
+                  timestamp: { seconds: Math.floor(doc.timestamp / 1000), nanoseconds: 0 }
                 }));
-                progressData = [...progressData, ...batchProgress];
-              }
             }
           } else {
             console.log('checking store for data outside this week and last week')
             // For dates outside this week and last week, check Vuex store first
             const hasProgressData = this.$store.state.weekProgress.some(progress => {
-              const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
-              return progressDate >= startDate && progressDate <= endDate;
+              const progressDateMs = toMillis(progress.timestamp) || 0;
+              return progressDateMs >= startDateMs && progressDateMs <= endDateMs;
             });
 
             if (hasProgressData) {
@@ -316,50 +312,49 @@ export default {
               progressData = this.$store.state.weekProgress;
             } else {
               console.log('no progress data');
-              for (const batchIds of habitBatches) {
-                const progressQuery = query(
-                  collection(db, 'progress'),
-                  where('habitId', 'in', batchIds),
-                  where('timestamp', '>=', startDate),
-                  where('timestamp', '<=', endDate)
-                );
-                const progressSnapshot = await getDocs(progressQuery);
-                const batchProgress = progressSnapshot.docs.map(d => ({
-                  ...d.data(),
-                  progressId: d.id
+              const progressDocs = await db.progress
+                .where('habitId')
+                .anyOf(habitIds)
+                .toArray();
+              
+              const batchProgress = progressDocs
+                .filter(doc => doc.timestamp >= startDateMs && doc.timestamp <= endDateMs)
+                .map(doc => ({
+                  ...doc,
+                  progressId: doc.id,
+                  timestamp: { seconds: Math.floor(doc.timestamp / 1000), nanoseconds: 0 }
                 }));
-                this.$store.dispatch('updateWeekProgress', [...this.$store.state.weekProgress, ...batchProgress]);
-                progressData = [...progressData, ...batchProgress];
-              }
+              
+              this.$store.dispatch('updateWeekProgress', [...this.$store.state.weekProgress, ...batchProgress]);
+              progressData = batchProgress;
             }
-
           }
-
 
           // Process progress data
           const { endHabits } = getTotalProgressDay(startDate, progressData, this.habits, this.$store.state.pauses);
           this.dayHabits = endHabits;
 
           // Use Vuex store data for memos if available
-          if ((startDate >= startOfThisWeek) ||
-            (startDate >= startOfLastWeek && startDate < endOfLastWeek && this.$store.state.weekMemos.length > 0)) {
+          if ((startDateMs >= startOfThisWeekMs) ||
+            (startDateMs >= startOfLastWeekMs && startDateMs < endOfLastWeekMs && this.$store.state.weekMemos.length > 0)) {
             this.memos = this.$store.state.weekMemos.filter(memo => {
-              const memoDate = memo.timestamp.toDate ? memo.timestamp.toDate() : new Date(memo.timestamp);
-              return memoDate >= startDate && memoDate <= endDate;
+              const memoDateMs = toMillis(memo.timestamp) || 0;
+              return memoDateMs >= startDateMs && memoDateMs <= endDateMs;
             });
           } else {
-            // Fetch memos from Firestore if not in store
-            const memosQuery = query(
-              collection(db, 'memos'),
-              where('userId', '==', this.user.uid),
-              where('timestamp', '>=', startDate),
-              where('timestamp', '<=', endDate)
-            );
-            const memosSnapshot = await getDocs(memosQuery);
-            this.memos = memosSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
+            // Fetch memos from Dexie if not in store
+            const memoDocs = await db.memos
+              .where('userId')
+              .equals(this.user.uid)
+              .toArray();
+            
+            this.memos = memoDocs
+              .filter(doc => doc.timestamp >= startDateMs && doc.timestamp <= endDateMs)
+              .map(doc => ({
+                ...doc,
+                memoId: doc.id,
+                timestamp: { seconds: Math.floor(doc.timestamp / 1000), nanoseconds: 0 }
+              }));
           }
         } catch (error) {
           console.error('Error fetching data:', error);

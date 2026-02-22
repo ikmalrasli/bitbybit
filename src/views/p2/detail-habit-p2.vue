@@ -214,7 +214,8 @@
 
 <script>
 import { mapState } from 'vuex';
-import { db } from "../../firebase"; // Firestore instance
+import { db as firestoreDb } from "../../firebase"; // Firestore instance (renamed)
+import { db } from "../../db"; // Dexie IndexedDB
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc, or, limit } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { useDialogStore } from '../../store/dialogStore';
@@ -410,7 +411,7 @@ export default {
         const habitId = this.selectedHabit.habitId;
 
         const q = query(
-          collection(db, 'progress'),
+          collection(firestoreDb, 'progress'),
           where('habitId', '==', habitId),
           where('timestamp', '>=', Timestamp.fromDate(dayStart)),
           where('timestamp', '<=', Timestamp.fromDate(dayEnd))
@@ -450,30 +451,28 @@ export default {
     },
     checkPause() {
       console.log("Checking pause status for habit:", this.selectedHabit?.habitId);
-      const q = query(
-        collection(db, 'pauses'),
-        where('habitId', '==', this.selectedHabit.habitId),
-        orderBy('start', 'desc'),
-        limit(1)
-      );
-      getDocs(q).then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          if (querySnapshot.docs[0].data().end === null) {
+      // Read from Dexie instead of Firestore
+      db.pauses
+        .where('habitId')
+        .equals(this.selectedHabit.habitId)
+        .toArray()
+        .then((pauses) => {
+          // Sort by start timestamp descending
+          pauses.sort((a, b) => (b.start || 0) - (a.start || 0));
+          
+          if (pauses.length > 0 && pauses[0].end === null) {
             this.isPaused = true;
-            this.pauseId = querySnapshot.docs[0].id;
-            this.pauseStart = querySnapshot.docs[0].data().start;
+            this.pauseId = pauses[0].id;
+            this.pauseStart = { seconds: Math.floor(pauses[0].start / 1000), nanoseconds: 0 };
             console.log("Habit is paused");
           } else {
             this.isPaused = false;
-            console.log("Habit is not paused, end is set");
+            console.log("Habit is not paused", pauses.length > 0 ? "(end is set)" : "(never paused)");
           }
-        } else {
-          this.isPaused = false;
-          console.log("Habit is never paused");
-        }
-      }).catch((error) => {
-        console.error("Error checking pause status: ", error);
-      });
+        })
+        .catch((error) => {
+          console.error("Error checking pause status: ", error);
+        });
     },
     checkProgress() {
       if (this.selectedHabit?.progressId !== '') {
@@ -491,7 +490,7 @@ export default {
       }
 
       this.loading = true; // Start loading
-      const habitRef = addDoc(collection(db, "progress"), {
+      const habitRef = addDoc(collection(firestoreDb, "progress"), {
         habitId: this.selectedHabit.habitId,
         progress: this.addProgress,
         timestamp: this.setTimestamp,
@@ -535,7 +534,7 @@ export default {
       if (this.docId) {
         this.loading = true; // Start loading
         try {
-          const docRef = doc(db, 'progress', this.docId);
+          const docRef = doc(firestoreDb, 'progress', this.docId);
           updateDoc(docRef, {
             progress: this.addProgress,
             timestamp: this.setTimestamp,
@@ -599,7 +598,7 @@ export default {
               throw new Error("User not authenticated. Please log in.");
             }
 
-            const docRef = await addDoc(collection(db, "pauses"), {
+            const docRef = await addDoc(collection(firestoreDb, "pauses"), {
               habitId: this.selectedHabit.habitId,
               start: Timestamp.fromDate(new Date()),
               end: null
@@ -610,7 +609,7 @@ export default {
             this.pauseStart = Timestamp.fromDate(new Date());
 
             // Update the habit's isPaused flag
-            const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+            const habitDocRef = doc(firestoreDb, 'habits', this.selectedHabit.habitId);
             await updateDoc(habitDocRef, {
               isPaused: true
             });
@@ -650,17 +649,17 @@ export default {
                 startDate.getDate() === now.getDate()
               ) {
                 // If pausing and resuming on the same day, just delete the pause record
-                await deleteDoc(doc(db, "pauses", this.pauseId));
+                await deleteDoc(doc(firestoreDb, "pauses", this.pauseId));
               } else {
                 // Otherwise, update the end time of the pause
-                await updateDoc(doc(db, "pauses", this.pauseId), {
+                await updateDoc(doc(firestoreDb, "pauses", this.pauseId), {
                   end: Timestamp.fromDate(now)
                 });
               }
             }
 
             // Update the habit's isPaused flag
-            const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+            const habitDocRef = doc(firestoreDb, 'habits', this.selectedHabit.habitId);
             await updateDoc(habitDocRef, {
               isPaused: false
             });
@@ -702,7 +701,7 @@ export default {
             if (user) {
               //delete all progress from firestore with the habit id
               const q = query(
-                collection(db, 'progress'),
+                collection(firestoreDb, 'progress'),
                 where('habitId', '==', this.selectedHabit.habitId)
               );
               getDocs(q).then((querySnapshot) => {
@@ -712,7 +711,7 @@ export default {
               });
 
               //delete habit from firestore
-              const docRef = doc(db, "habits", this.selectedHabit.habitId);
+              const docRef = doc(firestoreDb, "habits", this.selectedHabit.habitId);
               deleteDoc(docRef);
 
               this.$toast.info({
