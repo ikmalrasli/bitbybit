@@ -220,6 +220,8 @@ import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderB
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
+import { generateId } from "../../utils/generateId";
+import { toMillis } from "../../utils/timestampUtils";
 
 export default {
   data() {
@@ -410,29 +412,26 @@ export default {
 
         const habitId = this.selectedHabit.habitId;
 
-        const q = query(
-          collection(firestoreDb, 'progress'),
-          where('habitId', '==', habitId),
-          where('timestamp', '>=', Timestamp.fromDate(dayStart)),
-          where('timestamp', '<=', Timestamp.fromDate(dayEnd))
-        );
+        // Delete progress entries from Dexie for the specific day range
+        await db.progress
+          .where('habitId')
+          .equals(habitId)
+          .and(progress => {
+            const timestamp = progress.timestamp;
+            return timestamp >= toMillis(dayStart) && timestamp <= toMillis(dayEnd);
+          })
+          .delete();
 
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach(async (doc) => {
-          await deleteDoc(doc.ref);
-        });
-
-        // this.$store.dispatch('fetchWeekProgress');
         this.addProgress = 0;
         this.$store.state.selectedHabit.progress = 0;
         this.docId = null;
         this.statStore.setProgressUpdated();
 
-        // if (this.firstFetchWeekProgress===false){
-        //   this.$store.dispatch('fetchWeekProgress');
-        //   this.$store.commit('setFirstFetchWeekProgress', true);
-        // }
+        // Refresh week progress from Dexie
+        await this.$store.dispatch('fetchWeekProgress');
+        
       } catch (error) {
+        console.error(error);
         this.$toast.error({
           message: 'Error resetting progress. Please try again.',
           duration: 2000
@@ -481,30 +480,31 @@ export default {
         this.docId = null;
       }
     },
-    createProgress() {
-      const auth = getAuth();
-      const user = auth.currentUser;
+    async createProgress() {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
 
-      if (!user) {
-        throw new Error("User not authenticated. Please log in.");
-      }
+        if (!user) {
+          throw new Error("User not authenticated. Please log in.");
+        }
 
-      this.loading = true; // Start loading
-      const habitRef = addDoc(collection(firestoreDb, "progress"), {
-        habitId: this.selectedHabit.habitId,
-        progress: this.addProgress,
-        timestamp: this.setTimestamp,
-        onTime: this.onTime
-      });
+        this.loading = true; // Start loading
+        
+        // Generate local ID for progress entry
+        const progressId = generateId();
+        
+        // Add progress to Dexie (IndexedDB)
+        await db.progress.add({
+          id: progressId,
+          habitId: this.selectedHabit.habitId,
+          progress: this.addProgress,
+          timestamp: toMillis(this.setTimestamp),
+          onTime: this.onTime
+        });
 
-      habitRef.then((docRef) => {
         this.loading = false; // End loading
-        this.docId = docRef.id;
-
-        // if (this.firstFetchWeekProgress===false){
-        //   this.$store.dispatch('fetchWeekProgress');
-        //   this.$store.commit('setFirstFetchWeekProgress', true);
-        // }
+        this.docId = progressId;
 
         if (this.addProgress === this.selectedHabit.dailyGoal) {
           this.$toast.success({
@@ -521,56 +521,61 @@ export default {
           });
         }
         this.selectedHabit.progress = this.addProgress;
-      }).catch((error) => {
+        
+        // Refresh week progress from Dexie
+        await this.$store.dispatch('fetchWeekProgress');
+        
+      } catch (error) {
         this.loading = false; // End loading on error
         console.error(error);
         this.$toast.error({
           message: 'Error. Please try again.',
           duration: 2000
         });
-      });
+      }
     },
-    updateProgress() {
+    async updateProgress() {
       if (this.docId) {
         this.loading = true; // Start loading
         try {
-          const docRef = doc(firestoreDb, 'progress', this.docId);
-          updateDoc(docRef, {
+          // Update progress in Dexie (IndexedDB)
+          await db.progress.update(this.docId, {
             progress: this.addProgress,
-            timestamp: this.setTimestamp,
+            timestamp: toMillis(this.setTimestamp),
             onTime: this.onTime
-          }).then(() => {
-            this.loading = false; // End loading
-
-            // if (this.firstFetchWeekProgress===false){
-            //   this.$store.dispatch('fetchWeekProgress');
-            //   this.$store.commit('setFirstFetchWeekProgress', true);
-            // }
-
-            if (this.addProgress === this.selectedHabit.dailyGoal) {
-              this.$toast.success({
-                message: 'Habit completed!',
-                duration: 2500
-              });
-              setTimeout(() => {
-                this.$router.push('/'), 1000;
-              })
-            } else if (this.addProgress > this.selectedHabit.progress) {
-              this.$toast.info({
-                message: 'Habit progress increased!',
-                duration: 2500
-              });
-            }
-            this.selectedHabit.progress = this.addProgress;
-          }).catch(error => {
-            this.loading = false; // End loading on error
-            console.error(error);
           });
+
+          this.loading = false; // End loading
+
+          if (this.addProgress === this.selectedHabit.dailyGoal) {
+            this.$toast.success({
+              message: 'Habit completed!',
+              duration: 2500
+            });
+            setTimeout(() => {
+              this.$router.push('/'), 1000;
+            })
+          } else if (this.addProgress > this.selectedHabit.progress) {
+            this.$toast.info({
+              message: 'Habit progress increased!',
+              duration: 2500
+            });
+          }
+          this.selectedHabit.progress = this.addProgress;
+          
+          // Refresh week progress from Dexie
+          await this.$store.dispatch('fetchWeekProgress');
+          
         } catch (error) {
-          console.log(error);
+          this.loading = false; // End loading on error
+          console.error(error);
+          this.$toast.error({
+            message: 'Error updating progress. Please try again.',
+            duration: 2000
+          });
         }
       } else {
-        this.createProgress();
+        await this.createProgress();
       }
     },
     confirmProgress() {
@@ -598,30 +603,39 @@ export default {
               throw new Error("User not authenticated. Please log in.");
             }
 
-            const docRef = await addDoc(collection(firestoreDb, "pauses"), {
+            // Generate local ID for pause
+            const pauseId = generateId();
+            const now = new Date();
+            
+            // Add pause to Dexie (IndexedDB)
+            await db.pauses.add({
+              id: pauseId,
               habitId: this.selectedHabit.habitId,
-              start: Timestamp.fromDate(new Date()),
+              start: toMillis(now),
               end: null
             });
 
             this.isPaused = true;
-            this.pauseId = docRef.id;
-            this.pauseStart = Timestamp.fromDate(new Date());
+            this.pauseId = pauseId;
+            this.pauseStart = { seconds: Math.floor(toMillis(now) / 1000), nanoseconds: 0 };
 
-            // Update the habit's isPaused flag
-            const habitDocRef = doc(firestoreDb, 'habits', this.selectedHabit.habitId);
-            await updateDoc(habitDocRef, {
+            // Update the habit's isPaused flag in Dexie
+            await db.habits.update(this.selectedHabit.habitId, {
               isPaused: true
             });
 
             console.log("Habit paused successfully");
 
-            // Refresh the pauses in the store
+            // Refresh the pauses and habits from Dexie
             await this.$store.dispatch('fetchPauses');
+            await this.$store.dispatch('fetchHabits');
 
           } catch (error) {
             console.error("Error pausing habit:", error);
-            // Handle error appropriately
+            this.$toast.error({
+              message: 'Error pausing habit. Please try again.',
+              duration: 2000
+            });
           }
         }
       );
@@ -649,18 +663,17 @@ export default {
                 startDate.getDate() === now.getDate()
               ) {
                 // If pausing and resuming on the same day, just delete the pause record
-                await deleteDoc(doc(firestoreDb, "pauses", this.pauseId));
+                await db.pauses.delete(this.pauseId);
               } else {
                 // Otherwise, update the end time of the pause
-                await updateDoc(doc(firestoreDb, "pauses", this.pauseId), {
-                  end: Timestamp.fromDate(now)
+                await db.pauses.update(this.pauseId, {
+                  end: toMillis(now)
                 });
               }
             }
 
-            // Update the habit's isPaused flag
-            const habitDocRef = doc(firestoreDb, 'habits', this.selectedHabit.habitId);
-            await updateDoc(habitDocRef, {
+            // Update the habit's isPaused flag in Dexie
+            await db.habits.update(this.selectedHabit.habitId, {
               isPaused: false
             });
 
@@ -671,8 +684,9 @@ export default {
 
             console.log("Habit resumed successfully");
 
-            // Refresh the pauses in the store
+            // Refresh the pauses and habits from Dexie
             await this.$store.dispatch('fetchPauses');
+            await this.$store.dispatch('fetchHabits');
 
           } catch (error) {
             console.error("Error resuming habit:", error);
@@ -694,32 +708,25 @@ export default {
         'Delete Habit',
         'Are you sure you want to delete this habit?',
         'default',
-        () => {
+        async () => {
           try {
             const auth = getAuth();
             const user = auth.currentUser;
             if (user) {
-              //delete all progress from firestore with the habit id
-              const q = query(
-                collection(firestoreDb, 'progress'),
-                where('habitId', '==', this.selectedHabit.habitId)
-              );
-              getDocs(q).then((querySnapshot) => {
-                querySnapshot.forEach((doc) => {
-                  deleteDoc(doc.ref);
-                });
-              });
+              // Delete all progress entries from Dexie with the habit id
+              await db.progress.where('habitId').equals(this.selectedHabit.habitId).delete();
 
-              //delete habit from firestore
-              const docRef = doc(firestoreDb, "habits", this.selectedHabit.habitId);
-              deleteDoc(docRef);
+              // Delete habit from Dexie
+              await db.habits.delete(this.selectedHabit.habitId);
 
               this.$toast.info({
                 message: 'Habit deleted successfully!',
                 duration: 2000
               });
 
-              this.$store.dispatch('fetchHabits');
+              // Refresh habits from Dexie
+              await this.$store.dispatch('fetchHabits');
+              
               setTimeout(() => {
                 this.$router.push('/');
               }, 300);
