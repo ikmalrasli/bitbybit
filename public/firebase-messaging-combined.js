@@ -1,9 +1,11 @@
+// Import the generated Workbox service worker
+importScripts('./sw.js');
+
+// Import Firebase messaging scripts
 importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js');
 
-// Workbox injection point - this will be replaced by Vite PWA plugin
-self.__WB_MANIFEST;
-
+// Initialize Firebase for messaging
 firebase.initializeApp({
   apiKey: 'AIzaSyA-n1tc08oL-pk4sQb4dpMDUH4rGMJV2f8',
   authDomain: 'bitbybit-5afe4.firebaseapp.com',
