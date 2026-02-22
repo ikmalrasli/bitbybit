@@ -147,8 +147,7 @@
 
 <script>
 import { mapState } from 'vuex';
-import { deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase"; // import your Firestore instance
+import { db } from "../../db"; // Dexie IndexedDB
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
@@ -285,11 +284,17 @@ export default {
     async deleteMemo(memoId, index) {
       this.showDeleteButton[index] = !this.showDeleteButton[index];
       try {
-        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
-        await deleteDoc(memoRef);
-        this.$store.dispatch('getDayMemos', this.selectedDay); // Refetch memos after deletion if needed
+        // Delete memo from Dexie (IndexedDB)
+        await db.memos.delete(memoId);
+        
+        // Refresh day memos from Dexie
+        await this.$store.dispatch('getDayMemos', this.selectedDay);
       } catch (error) {
         console.error("Error deleting memo:", error);
+        this.$toast.error({
+          message: "Error deleting memo: " + error.message,
+          duration: 2000,
+        });
       }
     },
     toggleSection(section) {

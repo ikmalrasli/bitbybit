@@ -319,8 +319,11 @@
 </template>
 
 <script>
-import { db } from "../../firebase"; // Firestore instance
-import { collection, addDoc, updateDoc, doc, Timestamp } from "firebase/firestore"; // Firestore methods
+import { db as firestoreDb } from "../../firebase"; // Firestore instance (renamed)
+import { db } from "../../db"; // Dexie IndexedDB instance
+import { collection, addDoc, updateDoc, doc, Timestamp } from "firebase/firestore"; // Firestore methods (kept for Storage)
+import { generateId } from "../../utils/generateId";
+import { toMillis } from "../../utils/timestampUtils";
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
 import { mapState } from "vuex";
@@ -660,22 +663,35 @@ export default {
 
         const imageUrl = await this.uploadImage();
         const photoUrls = await this.uploadPhotos();
+        
+        // Convert Vue Proxy objects to plain objects for IndexedDB compatibility
+        const plainRepeat = JSON.parse(JSON.stringify(this.formData.repeatDays));
+        const plainColor = JSON.parse(JSON.stringify(this.formData.color));
+        const plainReminders = JSON.parse(JSON.stringify(this.formData.reminders || []));
+        const plainYoutubeUrls = JSON.parse(JSON.stringify(this.formData.youtubeUrls || []));
+        const plainSpotifyUrls = JSON.parse(JSON.stringify(this.formData.spotifyUrls || []));
+        
+        // Filter out File objects - only store URLs that are already uploaded
+        const cleanImageUrls = photoUrls || this.selectedPhotos
+          .filter(photo => typeof photo === 'string')
+          .map(photo => typeof photo === 'string' ? photo : photo.url);
+        
         const habitData = {
           name: this.formData.name,
           dailyGoal: this.formData.dailyGoal,
-          repeat: this.formData.repeatDays,
+          repeat: plainRepeat,
           notes: this.formData.notes,
-          termStart: this.formData.termStart ? new Date(this.formData.termStart) : null,
-          termEnd: this.formData.termEnd ? new Date(this.formData.termEnd) : null,
-          reminders: this.formData.reminders,
+          termStart: this.formData.termStart ? toMillis(new Date(this.formData.termStart)) : null,
+          termEnd: this.formData.termEnd ? toMillis(new Date(this.formData.termEnd)) : null,
+          reminders: plainReminders,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           imageUrl: imageUrl || this.formData.imageUrl,
-          color: this.formData.color,
-          imageUrls: photoUrls || this.selectedPhotos,
-          youtubeUrls: this.formData.youtubeUrls,
-          spotifyUrls: this.formData.spotifyUrls,
+          color: plainColor,
+          imageUrls: cleanImageUrls,
+          youtubeUrls: plainYoutubeUrls,
+          spotifyUrls: plainSpotifyUrls,
         };
-
+        
         if (this.$route.name === 'edit-habit') {
           await this.updateHabit(habitData);
         } else {
@@ -690,12 +706,34 @@ export default {
     },
     async updateHabit(habitData) {
       try {
-        await updateDoc(doc(db, "habits", this.selectedHabit.habitId), habitData);
+        // Convert Vue Proxy objects to plain objects for IndexedDB compatibility
+        const plainColor = JSON.parse(JSON.stringify(habitData.color));
+        const plainReminders = JSON.parse(JSON.stringify(habitData.reminders || []));
+        const plainYoutubeUrls = JSON.parse(JSON.stringify(habitData.youtubeUrls || []));
+        const plainSpotifyUrls = JSON.parse(JSON.stringify(habitData.spotifyUrls || []));
+        
+        // Filter out File objects from imageUrls for update too
+        const cleanImageUrls = habitData.imageUrls.filter(url => typeof url === 'string');
+        
+        const cleanHabitData = {
+          ...habitData,
+          color: plainColor,
+          reminders: plainReminders,
+          youtubeUrls: plainYoutubeUrls,
+          spotifyUrls: plainSpotifyUrls,
+          imageUrls: cleanImageUrls
+        };
+        
+        // Update habit in Dexie (IndexedDB)
+        await db.habits.put({
+          ...cleanHabitData,
+          id: this.selectedHabit.habitId,
+          habitId: this.selectedHabit.habitId,
+          userId: this.$store.state.user.uid,
+        });
 
-        if (!this.firstFetchHabits) {
-          this.$store.dispatch('fetchHabits');
-          this.$store.commit('setFirstFetchHabits', true);
-        }
+        // Refresh habits from Dexie
+        await this.$store.dispatch('fetchHabits');
 
         this.$toast.info({
           message: "Habit updated!",
@@ -710,14 +748,20 @@ export default {
         const user = getAuth().currentUser;
         if (!user || this.formData.name === '') throw new Error("Invalid user or empty habit name.");
 
+        // Generate local ID
+        const habitId = generateId();
+        
         // Add index for sorting
         const index = this.$store.state.habits.length;
         
-        await addDoc(collection(db, "habits"), {
+        // Add habit to Dexie (IndexedDB)
+        await db.habits.add({
           ...habitData,
+          id: habitId,
+          habitId: habitId,
           userId: user.uid,
-          createdAt: new Date(),
-          index: index, // Add index for sorting
+          createdAt: toMillis(new Date()),
+          index: index,
         });
 
         // Force a refresh of habits
