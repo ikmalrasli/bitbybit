@@ -135,7 +135,7 @@
 <script>
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
 import { db } from '../../db'; // Dexie IndexedDB
-import { toMillis } from '../../utils/timestampUtils';
+import { toMillis, toDate } from '../../utils/timestampUtils';
 import { mapState } from 'vuex';
 import { useStatStore } from '../../store/statStore.js';
 
@@ -304,7 +304,7 @@ export default {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
       
       const validHabits = this.habits.filter(habit => {
-        const termStart = new Date(habit.termStart);
+        const termStart = toDate(habit.termStart);
         return termStart <= endOfMonth
       });
 
@@ -333,8 +333,8 @@ export default {
       for (let day = 1; day <= endDate; day++) {
         const date = new Date(this.currentYear, this.currentMonth, day);
         const dayOfWeek = date.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
-        const termStart = new Date(habit.termStart);
-        const termEnd = habit.termEnd ? new Date(habit.termEnd) : null;
+        const termStart = toDate(habit.termStart);
+        const termEnd = habit.termEnd ? toDate(habit.termEnd) : null;
         if (habit.repeat && habit.repeat[dayOfWeek] &&
             termStart.setHours(0, 0, 0, 0) <= date &&
           (habit.termEnd == null || termEnd > date)
