@@ -46,6 +46,48 @@ export default defineConfig({
               },
             },
           },
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-icons',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'font-awesome',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
         ],
         navigateFallback: '/index.html',
       },
