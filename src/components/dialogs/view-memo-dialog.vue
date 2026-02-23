@@ -27,7 +27,8 @@
   
 <script>
 import { useDialogStore } from '../../store/dialogStore';
-import { db } from "../../db"; // Dexie IndexedDB
+import { db } from "../../firebase";
+import { doc, deleteDoc, Timestamp } from "firebase/firestore";
 import { mapState} from 'vuex';
   
 export default {
@@ -39,8 +40,7 @@ export default {
   computed: {
     ...mapState(['selectedDay']),
     dateA() {
-      // Convert milliseconds back to Date for display
-      return new Date(this.dialogStore.content.timestamp);
+      return new Timestamp(this.dialogStore.content.timestamp.seconds, this.dialogStore.content.timestamp.nanoseconds)
     }
   },
   methods: {
@@ -63,19 +63,15 @@ export default {
     async deleteMemo() {
       try {
         const memoId = this.dialogStore.content.memoId;
-        
-        // Delete memo from Dexie (IndexedDB)
-        await db.memos.delete(memoId);
-        
-        // Refresh week memos from Dexie
-        await this.$store.dispatch('fetchWeekMemos');
+        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
+        await deleteDoc(memoRef);
       } catch (error) {
         console.error("Error deleting memo:", error);
-        this.$toast.error({
-          message: "Error deleting memo: " + error.message,
-          duration: 2000,
-        });
       } finally {
+        if (this.$store.state.firstFetchWeekMemos===false){
+          this.$store.dispatch('fetchWeekMemos');
+          this.$store.commit('setFirstFetchWeekMemos', true);
+        }
         this.closeDialog();
       }
     },

@@ -49,9 +49,8 @@
   
 <script>
 import { useDialogStore } from '../../store/dialogStore';
-import { db } from "../../db"; // Dexie IndexedDB
-import { generateId } from "../../utils/generateId";
-import { toMillis } from "../../utils/timestampUtils";
+import { db } from "../../firebase";
+import { collection, addDoc} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { mapState} from 'vuex';
   
@@ -99,21 +98,16 @@ export default {
           throw new Error("User not authenticated. Please log in.");
         }
         
-        // Generate local ID for memo
-        const memoId = generateId();
-        
-        // Add memo to Dexie (IndexedDB)
-        await db.memos.add({
-          id: memoId,
+        await addDoc(collection(db, "memos"), {
           userId: user.uid,
           memo: this.formData.memo,
-          timestamp: toMillis(new Date(this.formData.date)),
+          timestamp: new Date(this.formData.date),
           category: this.formData.category
         });
-        
-        // Refresh week memos from Dexie
-        await this.$store.dispatch('fetchWeekMemos');
-        
+        if (this.$store.state.firstFetchWeekMemos===false){
+          this.$store.dispatch('fetchWeekMemos');
+          this.$store.commit('setFirstFetchWeekMemos', true);
+        }
         this.loading = false;
         this.$toast.success({
           message: "Memo created successfully!",
