@@ -7,6 +7,9 @@ import { createPinia } from 'pinia';
 import ToastPlugin from './plugins/toast';
 import * as Sentry from "@sentry/vue";
 import { db } from './db';
+import { migrateSyncFields } from './utils/migrateSyncFields';
+import { initializeSyncEngine } from './utils/syncEngine';
+import { exposeSyncUtils } from './utils/syncTest';
 
 /**
  * Step 1 verification: ensures Dexie schema is created and read/write works.
@@ -70,6 +73,23 @@ Sentry.init({
 });
 
 app.mount('#app');
+
+// Run sync fields migration and initialize sync engine
+migrateSyncFields()
+  .then(() => {
+    console.log('[Main] Sync fields migration completed');
+    initializeSyncEngine(store);
+  })
+  .catch(error => {
+    console.error('[Main] Sync fields migration failed:', error);
+    // Still initialize sync engine even if migration fails
+    initializeSyncEngine(store);
+  });
+
+// Expose sync test utilities in development
+if (import.meta.env.DEV) {
+  exposeSyncUtils();
+}
 
 // Register service worker for PWA functionality and offline caching
 if ('serviceWorker' in navigator) {

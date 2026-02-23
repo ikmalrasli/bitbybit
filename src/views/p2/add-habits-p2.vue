@@ -730,6 +730,8 @@ export default {
           id: this.selectedHabit.habitId,
           habitId: this.selectedHabit.habitId,
           userId: this.$store.state.user.uid,
+          syncStatus: 'pending', // Mark for sync
+          updatedAt: Date.now(), // Track modification time
         });
 
         // Refresh habits from Dexie
@@ -762,6 +764,8 @@ export default {
           userId: user.uid,
           createdAt: toMillis(new Date()),
           index: index,
+          syncStatus: 'pending', // Mark for sync
+          updatedAt: Date.now(), // Track modification time
         });
 
         // Force a refresh of habits

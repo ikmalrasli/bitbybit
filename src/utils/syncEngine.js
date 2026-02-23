@@ -1,0 +1,432 @@
+/**
+ * Synchronization Engine for BitByBit
+ * Keeps local Dexie DB in sync with Firebase Firestore while minimizing read costs
+ */
+
+import { db } from '../db';
+import { db as firestoreDb } from '../firebase';
+import { toMillis, toTimestampLike } from './timestampUtils';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  writeBatch, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy, 
+  serverTimestamp,
+  deleteDoc 
+} from 'firebase/firestore';
+import * as Sentry from '@sentry/vue';
+
+// Collections that need synchronization
+const SYNC_COLLECTIONS = ['habits', 'progress', 'memos', 'pauses'];
+
+/**
+ * Get current user ID from global variable set by initializeSyncEngine
+ */
+function getUserId() {
+  try {
+    // Use the global variable set by initializeSyncEngine
+    if (typeof window !== 'undefined' && window.__currentUserUid) {
+      return window.__currentUserUid;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return null;
+  }
+}
+async function getLastSyncTimestamp() {
+  try {
+    const setting = await db.settings.get('lastSyncTimestamp');
+    return setting?.value || null;
+  } catch (error) {
+    console.error('Error getting last sync timestamp:', error);
+    Sentry.captureException(error, { tags: { action: 'getLastSyncTimestamp' } });
+    return null;
+  }
+}
+
+/**
+ * Update the last sync timestamp in local settings
+ */
+async function setLastSyncTimestamp(timestamp) {
+  try {
+    await db.settings.put({
+      key: 'lastSyncTimestamp',
+      value: timestamp
+    });
+  } catch (error) {
+    console.error('Error setting last sync timestamp:', error);
+    Sentry.captureException(error, { tags: { action: 'setLastSyncTimestamp' } });
+    throw error;
+  }
+}
+
+/**
+ * Get pending records from a specific table
+ */
+async function getPendingRecords(tableName) {
+  try {
+    return await db[tableName].where('syncStatus').equals('pending').toArray();
+  } catch (error) {
+    console.error(`Error getting pending records from ${tableName}:`, error);
+    Sentry.captureException(error, { 
+      tags: { action: 'getPendingRecords', table: tableName } 
+    });
+    return [];
+  }
+}
+
+/**
+ * Mark records as synced in local database
+ */
+async function markRecordsSynced(tableName, recordIds, serverUpdatedAt) {
+  try {
+    const updates = recordIds.map(id => ({
+      id,
+      syncStatus: 'synced',
+      updatedAt: serverUpdatedAt
+    }));
+    
+    await db[tableName].bulkPut(updates);
+  } catch (error) {
+    console.error(`Error marking records as synced in ${tableName}:`, error);
+    Sentry.captureException(error, { 
+      tags: { action: 'markRecordsSynced', table: tableName } 
+    });
+    throw error;
+  }
+}
+
+/**
+ * Push local changes to Firebase
+ */
+export async function syncLocalChanges() {
+  console.log('[Sync] Starting local changes sync');
+  
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      console.warn('[Sync] No user ID found, skipping sync');
+      return;
+    }
+
+    for (const collectionName of SYNC_COLLECTIONS) {
+      const pendingRecords = await getPendingRecords(collectionName);
+      
+      if (pendingRecords.length === 0) {
+        console.log(`[Sync] No pending records in ${collectionName}`);
+        continue;
+      }
+
+      console.log(`[Sync] Syncing ${pendingRecords.length} pending records from ${collectionName}`);
+
+      // Process in batches of 500 (Firestore batch limit)
+      const batchSize = 500;
+      for (let i = 0; i < pendingRecords.length; i += batchSize) {
+        const batch = pendingRecords.slice(i, i + batchSize);
+        await processBatch(collectionName, batch, userId);
+      }
+    }
+
+    console.log('[Sync] Local changes sync completed');
+  } catch (error) {
+    console.error('[Sync] Error syncing local changes:', error);
+    Sentry.captureException(error, { tags: { action: 'syncLocalChanges' } });
+    throw error;
+  }
+}
+
+/**
+ * Process a batch of records for syncing
+ */
+async function processBatch(collectionName, records, userId) {
+  const batch = writeBatch(firestoreDb);
+  const recordIds = [];
+
+  for (const record of records) {
+    const docRef = doc(firestoreDb, collectionName, record.id);
+    const { syncStatus, ...dataToSync } = record;
+
+    // Add userId for user-specific collections
+    if (['habits', 'memos'].includes(collectionName)) {
+      dataToSync.userId = userId;
+    }
+
+    // Convert timestamps to Firestore format
+    if (dataToSync.timestamp) {
+      dataToSync.timestamp = toTimestampLike(dataToSync.timestamp);
+    }
+    if (dataToSync.termStart) {
+      dataToSync.termStart = toTimestampLike(dataToSync.termStart);
+    }
+    if (dataToSync.termEnd) {
+      dataToSync.termEnd = toTimestampLike(dataToSync.termEnd);
+    }
+    if (dataToSync.start) {
+      dataToSync.start = toTimestampLike(dataToSync.start);
+    }
+    if (dataToSync.end) {
+      dataToSync.end = toTimestampLike(dataToSync.end);
+    }
+
+    // Add server timestamp for updatedAt
+    dataToSync.updatedAt = serverTimestamp();
+
+    // Handle soft deletes
+    if (record._deleted) {
+      batch.delete(docRef);
+    } else {
+      batch.set(docRef, dataToSync, { merge: true });
+    }
+
+    recordIds.push(record.id);
+  }
+
+  // Commit the batch
+  await batch.commit();
+
+  // Mark records as synced with current timestamp
+  const serverUpdatedAt = Date.now();
+  await markRecordsSynced(collectionName, recordIds, serverUpdatedAt);
+
+  console.log(`[Sync] Batch synced ${recordIds.length} records from ${collectionName}`);
+}
+
+/**
+ * Pull remote changes from Firebase
+ */
+export async function pullRemoteChanges() {
+  console.log('[Sync] Starting remote changes pull');
+  
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      console.warn('[Sync] No user ID found, skipping pull');
+      return;
+    }
+
+    const lastSyncTimestamp = await getLastSyncTimestamp();
+    console.log(`[Sync] Last sync timestamp: ${lastSyncTimestamp}`);
+
+    for (const collectionName of SYNC_COLLECTIONS) {
+      await pullCollectionChanges(collectionName, userId, lastSyncTimestamp);
+    }
+
+    // Update last sync timestamp to current time
+    await setLastSyncTimestamp(Date.now());
+    console.log('[Sync] Remote changes pull completed');
+  } catch (error) {
+    console.error('[Sync] Error pulling remote changes:', error);
+    Sentry.captureException(error, { tags: { action: 'pullRemoteChanges' } });
+    throw error;
+  }
+}
+
+/**
+ * Pull changes for a specific collection
+ */
+async function pullCollectionChanges(collectionName, userId, lastSyncTimestamp) {
+  try {
+    let q;
+    
+    if (['habits', 'memos'].includes(collectionName)) {
+      // User-specific collections
+      q = query(
+        collection(firestoreDb, collectionName),
+        where('userId', '==', userId),
+        orderBy('updatedAt', 'desc')
+      );
+    } else {
+      // Collections that reference habits (progress, pauses)
+      // We need to get all user's habits first, then query related records
+      const habitsQuery = query(
+        collection(firestoreDb, 'habits'),
+        where('userId', '==', userId),
+        orderBy('updatedAt', 'desc')
+      );
+      const habitsSnapshot = await getDocs(habitsQuery);
+      const habitIds = habitsSnapshot.docs.map(doc => doc.id);
+      
+      if (habitIds.length === 0) {
+        console.log(`[Sync] No habits found for user, skipping ${collectionName}`);
+        return;
+      }
+
+      // Batch query for progress/pauses (Firestore 'in' limit is 30)
+      const allChanges = [];
+      for (let i = 0; i < habitIds.length; i += 30) {
+        const batchIds = habitIds.slice(i, i + 30);
+        const batchQuery = query(
+          collection(firestoreDb, collectionName),
+          where('habitId', 'in', batchIds),
+          orderBy('updatedAt', 'desc')
+        );
+        const batchSnapshot = await getDocs(batchQuery);
+        allChanges.push(...batchSnapshot.docs);
+      }
+
+      await processRemoteChanges(collectionName, allChanges, lastSyncTimestamp);
+      return;
+    }
+
+    const snapshot = await getDocs(q);
+    await processRemoteChanges(collectionName, snapshot.docs, lastSyncTimestamp);
+  } catch (error) {
+    console.error(`[Sync] Error pulling changes for ${collectionName}:`, error);
+    Sentry.captureException(error, { 
+      tags: { action: 'pullCollectionChanges', collection: collectionName } 
+    });
+    throw error;
+  }
+}
+
+/**
+ * Process remote changes and apply to local database
+ */
+async function processRemoteChanges(collectionName, docs, lastSyncTimestamp) {
+  const recordsToPut = [];
+  const recordsToDelete = [];
+
+  for (const docSnapshot of docs) {
+    const data = docSnapshot.data();
+    const updatedAt = toMillis(data.updatedAt);
+
+    // Skip if this record is older than our last sync
+    if (lastSyncTimestamp && updatedAt && updatedAt <= lastSyncTimestamp) {
+      continue;
+    }
+
+    const id = docSnapshot.id;
+    
+    // Handle soft deletes
+    if (data._deleted) {
+      recordsToDelete.push(id);
+      continue;
+    }
+
+    // Convert data for local storage
+    const localData = {
+      id,
+      ...data,
+      syncStatus: 'synced',
+      updatedAt: updatedAt || Date.now()
+    };
+
+    // Convert timestamps to milliseconds for local storage
+    if (data.timestamp) {
+      localData.timestamp = toMillis(data.timestamp);
+    }
+    if (data.termStart) {
+      localData.termStart = toMillis(data.termStart);
+    }
+    if (data.termEnd) {
+      localData.termEnd = toMillis(data.termEnd);
+    }
+    if (data.start) {
+      localData.start = toMillis(data.start);
+    }
+    if (data.end) {
+      localData.end = toMillis(data.end);
+    }
+
+    recordsToPut.push(localData);
+  }
+
+  // Apply changes to local database
+  if (recordsToPut.length > 0) {
+    await db[collectionName].bulkPut(recordsToPut);
+    console.log(`[Sync] Updated ${recordsToPut.length} records in ${collectionName}`);
+  }
+
+  if (recordsToDelete.length > 0) {
+    await db[collectionName].bulkDelete(recordsToDelete);
+    console.log(`[Sync] Deleted ${recordsToDelete.length} records from ${collectionName}`);
+  }
+}
+
+/**
+ * Perform full synchronization (push local changes, then pull remote changes)
+ */
+export async function performFullSync() {
+  console.log('[Sync] Starting full synchronization');
+  
+  try {
+    // First push local changes
+    await syncLocalChanges();
+    
+    // Then pull remote changes
+    await pullRemoteChanges();
+    
+    console.log('[Sync] Full synchronization completed successfully');
+  } catch (error) {
+    console.error('[Sync] Full synchronization failed:', error);
+    Sentry.captureException(error, { tags: { action: 'performFullSync' } });
+    throw error;
+  }
+}
+
+/**
+ * Mark a record as pending sync (to be called when local changes are made)
+ */
+export async function markForSync(tableName, recordId) {
+  try {
+    await db[tableName].update(recordId, { syncStatus: 'pending' });
+  } catch (error) {
+    console.error(`[Sync] Error marking record ${recordId} for sync:`, error);
+    Sentry.captureException(error, { 
+      tags: { action: 'markForSync', table: tableName } 
+    });
+  }
+}
+
+/**
+ * Initialize sync engine - set up event listeners
+ */
+export function initializeSyncEngine(store) {
+  console.log('[Sync] Initializing sync engine');
+
+  // Listen for online events
+  window.addEventListener('online', async () => {
+    console.log('[Sync] Network connection restored, triggering sync');
+    try {
+      await performFullSync();
+      // Refresh store data after sync
+      if (store.state.isAuthenticated) {
+        await store.dispatch('fetchHabits');
+      }
+    } catch (error) {
+      console.error('[Sync] Auto-sync failed:', error);
+    }
+  });
+
+  // Listen for auth state changes
+  const unsubscribe = store.subscribe((mutation, state) => {
+    if (mutation.type === 'SET_USER' && state.user) {
+      // Store user UID in a global variable for sync access
+      if (typeof window !== 'undefined') {
+        window.__currentUserUid = state.user.uid;
+      }
+      
+      // Trigger initial sync after user authentication
+      setTimeout(async () => {
+        try {
+          await performFullSync();
+        } catch (error) {
+          console.error('[Sync] Initial sync failed:', error);
+        }
+      }, 2000); // Delay to allow migration to complete
+    } else if (mutation.type === 'CLEAR_USER') {
+      // Clear user UID on logout
+      if (typeof window !== 'undefined') {
+        delete window.__currentUserUid;
+      }
+    }
+  });
+
+  return unsubscribe;
+}

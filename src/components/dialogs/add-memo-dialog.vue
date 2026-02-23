@@ -108,7 +108,9 @@ export default {
           userId: user.uid,
           memo: this.formData.memo,
           timestamp: toMillis(new Date(this.formData.date)),
-          category: this.formData.category
+          category: this.formData.category,
+          syncStatus: 'pending', // Mark for sync
+          updatedAt: Date.now(), // Track modification time
         });
         
         // Refresh week memos from Dexie

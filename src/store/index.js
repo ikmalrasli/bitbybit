@@ -5,6 +5,7 @@ import { db as firestoreDb } from '../firebase'; // Firestore instance (renamed 
 import { db } from '../db'; // Dexie IndexedDB instance
 import { migrateUserFromFirebase } from '../utils/migrateFromFirebase';
 import { toTimestampLike, toMillis } from '../utils/timestampUtils';
+import { performFullSync, markForSync, initializeSyncEngine } from '../utils/syncEngine';
 import { collection, query, where, onSnapshot, orderBy, addDoc, doc, updateDoc, Timestamp, getDocs, limit, startAfter, getDoc } from 'firebase/firestore';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 import { useStatStore } from './statStore';
@@ -153,14 +154,18 @@ export default createStore({
           return db.progress.update(habit.progressId, {
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
-            onTime: onTime
+            onTime: onTime,
+            syncStatus: 'pending',
+            updatedAt: Date.now()
           });
         } else {
           return db.progress.add({
             habitId: habit.habitId,
             progress: habit.dailyGoal,
             timestamp: setTimestamp,
-            onTime: onTime
+            onTime: onTime,
+            syncStatus: 'pending',
+            updatedAt: Date.now()
           });
         }
       });
@@ -693,6 +698,50 @@ export default createStore({
           }
         });
         commit('SET_PAUSES', []);
+      }
+    },
+    // Sync Engine Actions
+    async performSync({ commit, state }) {
+      if (!state.user) {
+        console.warn('[Store] Cannot sync: no authenticated user');
+        return;
+      }
+      
+      try {
+        commit('setLoading', true);
+        await performFullSync();
+        
+        // Refresh data after sync
+        await this.dispatch('fetchHabits');
+        
+        console.log('[Store] Sync completed successfully');
+      } catch (error) {
+        console.error('[Store] Sync failed:', error);
+        Sentry.captureException(error, {
+          tags: {
+            action: 'store_performSync',
+            userId: state.user?.uid
+          }
+        });
+        throw error;
+      } finally {
+        commit('setLoading', false);
+      }
+    },
+    async markRecordForSync({ state }, { tableName, recordId }) {
+      if (!state.user) return;
+      
+      try {
+        await markForSync(tableName, recordId);
+      } catch (error) {
+        console.error(`[Store] Failed to mark ${recordId} for sync:`, error);
+        Sentry.captureException(error, {
+          tags: {
+            action: 'markRecordForSync',
+            table: tableName,
+            userId: state.user?.uid
+          }
+        });
       }
     },
   },

@@ -500,7 +500,9 @@ export default {
           habitId: this.selectedHabit.habitId,
           progress: this.addProgress,
           timestamp: toMillis(this.setTimestamp),
-          onTime: this.onTime
+          onTime: this.onTime,
+          syncStatus: 'pending', // Mark for sync
+          updatedAt: Date.now(), // Track modification time
         });
 
         this.loading = false; // End loading
@@ -542,7 +544,9 @@ export default {
           await db.progress.update(this.docId, {
             progress: this.addProgress,
             timestamp: toMillis(this.setTimestamp),
-            onTime: this.onTime
+            onTime: this.onTime,
+            syncStatus: 'pending', // Mark for sync
+            updatedAt: Date.now(), // Track modification time
           });
 
           this.loading = false; // End loading
@@ -612,7 +616,9 @@ export default {
               id: pauseId,
               habitId: this.selectedHabit.habitId,
               start: toMillis(now),
-              end: null
+              end: null,
+              syncStatus: 'pending', // Mark for sync
+              updatedAt: Date.now(), // Track modification time
             });
 
             this.isPaused = true;
@@ -667,7 +673,9 @@ export default {
               } else {
                 // Otherwise, update the end time of the pause
                 await db.pauses.update(this.pauseId, {
-                  end: toMillis(now)
+                  end: toMillis(now),
+                  syncStatus: 'pending', // Mark for sync
+                  updatedAt: Date.now(), // Track modification time
                 });
               }
             }
@@ -716,8 +724,12 @@ export default {
               // Delete all progress entries from Dexie with the habit id
               await db.progress.where('habitId').equals(this.selectedHabit.habitId).delete();
 
-              // Delete habit from Dexie
-              await db.habits.delete(this.selectedHabit.habitId);
+              // Delete habit from Dexie (soft delete for sync)
+              await db.habits.update(this.selectedHabit.habitId, {
+                _deleted: true,
+                syncStatus: 'pending', // Mark for sync
+                updatedAt: Date.now(), // Track modification time
+              });
 
               this.$toast.info({
                 message: 'Habit deleted successfully!',
