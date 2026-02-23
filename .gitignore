@@ -24,9 +24,6 @@ dist-ssr
 *.sw?
 
 /src/firebase.js
-/public/firebase-messaging-sw.js
-/public/firebase-messaging-sw-src.js
-/public/firebase-messaging-combined.js
 .firebase/hosting.ZGlzdA.cache
 src/fetchweeklogic_reference.txt
 /AI_chats
