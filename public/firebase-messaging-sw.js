@@ -1,9 +1,6 @@
 importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js');
 
-// Workbox injection point - this will be replaced by Vite PWA plugin
-self.__WB_MANIFEST;
-
 firebase.initializeApp({
   apiKey: 'AIzaSyA-n1tc08oL-pk4sQb4dpMDUH4rGMJV2f8',
   authDomain: 'bitbybit-5afe4.firebaseapp.com',
@@ -27,6 +24,6 @@ messaging.onBackgroundMessage((payload) => {
 
   // Only show notifications if the page isn't focused
   if (!self.clients) {
-    self.registration.showNotification(title, notificationOptions);
+    self.registration.showNotification(notificationTitle, notificationOptions);
   }
 });
