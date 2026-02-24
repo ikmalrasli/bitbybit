@@ -58,6 +58,49 @@ export function exposeSyncUtils() {
         return records;
       },
       
+      // Test function to manually refresh UI after sync
+      async testRefresh() {
+        console.log('[Sync Test] Testing manual UI refresh...');
+        
+        try {
+          // Get current user ID
+          const userId = localStorage.getItem('currentUserUid');
+          if (!userId) {
+            console.warn('[Sync Test] No user ID found');
+            return;
+          }
+          
+          // Refresh all data from Dexie
+          await db.habits.where('userId').equals(userId).toArray();
+          await db.progress.where('habitId').above(0).toArray();
+          await db.memos.where('userId').equals(userId).toArray();
+          await db.pauses.where('habitId').above(0).toArray();
+          
+          console.log('[Sync Test] Manual refresh completed');
+          
+          // If store is available, dispatch refresh actions
+          if (typeof window !== 'undefined' && window.__vue_devtools_global_hook) {
+            try {
+              const vueInstance = window.__vue_devtools_global_hook.Vue;
+              if (vueInstance && vueInstance.$store) {
+                const store = vueInstance.$store;
+                
+                await store.dispatch('fetchHabits');
+                await store.dispatch('fetchWeekProgress');
+                await store.dispatch('fetchWeekMemos');
+                await store.dispatch('fetchPauses');
+                
+                console.log('[Sync Test] Store refresh completed');
+              }
+            } catch (error) {
+              console.error('[Sync Test] Error refreshing store:', error);
+            }
+          }
+        } catch (error) {
+          console.error('[Sync Test] Manual refresh failed:', error);
+        }
+      },
+      
       // Helper to create test data
       async createTestProgress() {
         const testProgress = {

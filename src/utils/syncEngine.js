@@ -24,6 +24,9 @@ import * as Sentry from '@sentry/vue';
 // Collections that need synchronization
 const SYNC_COLLECTIONS = ['habits', 'progress', 'memos', 'pauses'];
 
+// Store reference to the Vuex store for UI refresh
+let vuexStore = null;
+
 /**
  * Get current user ID from global variable set by initializeSyncEngine
  */
@@ -350,19 +353,50 @@ async function processRemoteChanges(collectionName, docs, lastSyncTimestamp) {
 }
 
 /**
- * Perform full synchronization (push local changes, then pull remote changes)
+ * Perform full synchronization (push local changes + pull remote changes)
  */
 export async function performFullSync() {
   console.log('[Sync] Starting full synchronization');
   
   try {
-    // First push local changes
+    // Push local changes first
     await syncLocalChanges();
     
     // Then pull remote changes
     await pullRemoteChanges();
     
+    // Update last sync timestamp
+    await setLastSyncTimestamp(Date.now());
+    
     console.log('[Sync] Full synchronization completed successfully');
+    
+    // Trigger UI refresh by dispatching store actions
+    if (vuexStore && vuexStore.state.isAuthenticated) {
+      console.log('[Sync] Refreshing UI data');
+      
+      // Refresh habits
+      await vuexStore.dispatch('fetchHabits').catch(error => {
+        console.error('[Sync] Error refreshing habits:', error);
+      });
+      
+      // Refresh progress
+      await vuexStore.dispatch('fetchWeekProgress').catch(error => {
+        console.error('[Sync] Error refreshing progress:', error);
+      });
+      
+      // Refresh memos
+      await vuexStore.dispatch('fetchWeekMemos').catch(error => {
+        console.error('[Sync] Error refreshing memos:', error);
+      });
+      
+      // Refresh pauses
+      await vuexStore.dispatch('fetchPauses').catch(error => {
+        console.error('[Sync] Error refreshing pauses:', error);
+      });
+      
+      console.log('[Sync] UI data refreshed successfully');
+    }
+    
   } catch (error) {
     console.error('[Sync] Full synchronization failed:', error);
     Sentry.captureException(error, { tags: { action: 'performFullSync' } });
@@ -389,16 +423,15 @@ export async function markForSync(tableName, recordId) {
  */
 export function initializeSyncEngine(store) {
   console.log('[Sync] Initializing sync engine');
+  
+  // Store the Vuex store reference for UI refresh
+  vuexStore = store;
 
   // Listen for online events
   window.addEventListener('online', async () => {
     console.log('[Sync] Network connection restored, triggering sync');
     try {
       await performFullSync();
-      // Refresh store data after sync
-      if (store.state.isAuthenticated) {
-        await store.dispatch('fetchHabits');
-      }
     } catch (error) {
       console.error('[Sync] Auto-sync failed:', error);
     }
