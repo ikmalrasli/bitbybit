@@ -54,8 +54,10 @@ import { generateId } from "../../utils/generateId";
 import { toMillis } from "../../utils/timestampUtils";
 import { getAuth } from "firebase/auth";
 import { mapState} from 'vuex';
+import { immediateSyncMixin } from '../../mixins/immediateSyncMixin';
   
 export default {
+  mixins: [immediateSyncMixin],
   data() {
     return {
       dialogStore: useDialogStore(),
@@ -115,6 +117,9 @@ export default {
         
         // Refresh week memos from Dexie
         await this.$store.dispatch('fetchWeekMemos');
+        
+        // Sync to Firestore immediately if online
+        await this.immediateSync();
         
         this.loading = false;
         this.$toast.success({
