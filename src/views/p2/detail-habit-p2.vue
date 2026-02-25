@@ -672,8 +672,11 @@ export default {
                 await db.pauses.delete(this.pauseId);
               } else {
                 // Otherwise, update the end time of the pause
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                yesterday.setHours(23, 59, 59, 999);
                 await db.pauses.update(this.pauseId, {
-                  end: toMillis(now),
+                  end: toMillis(yesterday),
                   syncStatus: 'pending', // Mark for sync
                   updatedAt: Date.now(), // Track modification time
                 });
