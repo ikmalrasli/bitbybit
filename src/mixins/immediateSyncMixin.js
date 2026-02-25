@@ -11,26 +11,14 @@ export const immediateSyncMixin = {
      * Call this after any data operation (create, update, delete)
      */
     async immediateSync() {
-      await syncToFirestoreIfOnline();
+      await syncToFirestoreIfOnline(this.$store);
     },
     
     /**
      * Enhanced version that also refreshes specific store data
      */
     async immediateSyncWithRefresh(refreshActions = []) {
-      const synced = await syncToFirestoreIfOnline();
-      
-      if (synced && refreshActions.length > 0) {
-        try {
-          for (const action of refreshActions) {
-            await this.$store.dispatch(action);
-          }
-          console.log('[Immediate Sync] UI refreshed with actions:', refreshActions);
-        } catch (error) {
-          console.error('[Immediate Sync] Error refreshing UI:', error);
-        }
-      }
-      
+      const synced = await syncToFirestoreIfOnline(this.$store, refreshActions);
       return synced;
     }
   }

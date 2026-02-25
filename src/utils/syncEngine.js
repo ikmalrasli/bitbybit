@@ -155,10 +155,8 @@ async function processBatch(collectionName, records, userId) {
     const docRef = doc(firestoreDb, collectionName, record.id);
     const { syncStatus, ...dataToSync } = record;
 
-    // Add userId for user-specific collections
-    if (['habits', 'memos'].includes(collectionName)) {
-      dataToSync.userId = userId;
-    }
+    // Add userId to all collections for direct querying
+    dataToSync.userId = userId;
 
     // Convert timestamps to Firestore format
     if (dataToSync.timestamp) {
@@ -216,9 +214,12 @@ export async function pullRemoteChanges() {
     const lastSyncTimestamp = await getLastSyncTimestamp();
     console.log(`[Sync] Last sync timestamp: ${lastSyncTimestamp}`);
 
-    for (const collectionName of SYNC_COLLECTIONS) {
-      await pullCollectionChanges(collectionName, userId, lastSyncTimestamp);
-    }
+    // Parallelize all collection pulls for better performance
+    const pullPromises = SYNC_COLLECTIONS.map(collectionName => 
+      pullCollectionChanges(collectionName, userId, lastSyncTimestamp)
+    );
+    
+    await Promise.all(pullPromises);
 
     // Update last sync timestamp to current time
     await setLastSyncTimestamp(Date.now());
@@ -235,47 +236,20 @@ export async function pullRemoteChanges() {
  */
 async function pullCollectionChanges(collectionName, userId, lastSyncTimestamp) {
   try {
-    let q;
-    
-    if (['habits', 'memos'].includes(collectionName)) {
-      // User-specific collections
-      q = query(
-        collection(firestoreDb, collectionName),
-        where('userId', '==', userId),
-        orderBy('updatedAt', 'desc')
-      );
-    } else {
-      // Collections that reference habits (progress, pauses)
-      // We need to get all user's habits first, then query related records
-      const habitsQuery = query(
-        collection(firestoreDb, 'habits'),
-        where('userId', '==', userId),
-        orderBy('updatedAt', 'desc')
-      );
-      const habitsSnapshot = await getDocs(habitsQuery);
-      const habitIds = habitsSnapshot.docs.map(doc => doc.id);
-      
-      if (habitIds.length === 0) {
-        console.log(`[Sync] No habits found for user, skipping ${collectionName}`);
-        return;
-      }
+    const queryConstraints = [
+      where('userId', '==', userId),
+      orderBy('updatedAt', 'desc')
+    ];
 
-      // Batch query for progress/pauses (Firestore 'in' limit is 30)
-      const allChanges = [];
-      for (let i = 0; i < habitIds.length; i += 30) {
-        const batchIds = habitIds.slice(i, i + 30);
-        const batchQuery = query(
-          collection(firestoreDb, collectionName),
-          where('habitId', 'in', batchIds),
-          orderBy('updatedAt', 'desc')
-        );
-        const batchSnapshot = await getDocs(batchQuery);
-        allChanges.push(...batchSnapshot.docs);
-      }
-
-      await processRemoteChanges(collectionName, allChanges, lastSyncTimestamp);
-      return;
+    // Add timestamp filter if we have a last sync timestamp
+    if (lastSyncTimestamp) {
+      queryConstraints.push(where('updatedAt', '>', new Date(lastSyncTimestamp)));
     }
+
+    const q = query(
+      collection(firestoreDb, collectionName),
+      ...queryConstraints
+    );
 
     const snapshot = await getDocs(q);
     await processRemoteChanges(collectionName, snapshot.docs, lastSyncTimestamp);
@@ -298,11 +272,6 @@ async function processRemoteChanges(collectionName, docs, lastSyncTimestamp) {
   for (const docSnapshot of docs) {
     const data = docSnapshot.data();
     const updatedAt = toMillis(data.updatedAt);
-
-    // Skip if this record is older than our last sync
-    if (lastSyncTimestamp && updatedAt && updatedAt <= lastSyncTimestamp) {
-      continue;
-    }
 
     const id = docSnapshot.id;
     
@@ -402,6 +371,14 @@ export async function performFullSync() {
     Sentry.captureException(error, { tags: { action: 'performFullSync' } });
     throw error;
   }
+}
+
+/**
+ * Perform synchronization - alias for performFullSync for backward compatibility
+ * This is the function that should be imported by other modules
+ */
+export async function performSync() {
+  return await performFullSync();
 }
 
 /**

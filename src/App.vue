@@ -9,6 +9,7 @@
 import loading from './views/loading.vue';
 import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
+import { performSync } from './utils/syncEngine';
 
 export default {
   components: { loading },
@@ -18,6 +19,9 @@ export default {
       if (user) {
         getNotifications(this.$store, this.$toast);
         
+        // Set loading to true before fetching data
+        this.$store.dispatch('updateLoading', true);
+        
         // Fetch habits first
         await this.$store.dispatch('fetchHabits');
         await this.$store.dispatch('fetchPauses');
@@ -26,6 +30,22 @@ export default {
         if (this.$route.name === 'calendar') {
           await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
         }
+        
+        // Sync immediately after fetching data, then set loading to false
+        // This eliminates the extra loading cycle
+        if (navigator.onLine) {
+          try {
+            console.log('[App] Triggering immediate sync after data fetch');
+            // Use static import instead of dynamic
+            await performSync();
+            console.log('[App] Immediate sync completed');
+          } catch (error) {
+            console.error('[App] Error in immediate sync:', error);
+          }
+        }
+        
+        // Set loading to false after data fetch and sync are complete
+        this.$store.dispatch('updateLoading', false);
       } else {
         this.$store.dispatch('updateLoading', false);
       }

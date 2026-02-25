@@ -1,14 +1,18 @@
 /**
  * Utility for immediate Firestore sync when online
+ * Note: Loading state is managed by App.vue
  */
-export async function syncToFirestoreIfOnline() {
+import { performSync } from './syncEngine';
+
+export async function syncToFirestoreIfOnline(store = null) {
   if (navigator.onLine) {
     try {
       console.log('[Immediate Sync] Triggering immediate Firestore sync');
-      const { performSync } = await import('./syncEngine');
-      await performSync();
+      
+      const result = await performSync();
+      
       console.log('[Immediate Sync] Immediate sync completed');
-      return true;
+      return result;
     } catch (error) {
       console.error('[Immediate Sync] Error during immediate sync:', error);
       return false;
@@ -21,26 +25,19 @@ export async function syncToFirestoreIfOnline() {
 
 /**
  * Enhanced version that also refreshes UI after sync
+ * Note: Loading state is managed by App.vue
  */
-export async function syncAndRefreshUI() {
-  const synced = await syncToFirestoreIfOnline();
+export async function syncAndRefreshUI(store = null, refreshActions = []) {
+  const synced = await syncToFirestoreIfOnline(store);
   
-  if (synced) {
+  if (synced && refreshActions.length > 0) {
     // Trigger UI refresh through store if available
     try {
-      if (typeof window !== 'undefined' && window.__vue_devtools_global_hook) {
-        const vueInstance = window.__vue_devtools_global_hook.Vue;
-        if (vueInstance && vueInstance.$store) {
-          const store = vueInstance.$store;
-          
-          // Refresh all relevant data
-          await store.dispatch('fetchHabits');
-          await store.dispatch('fetchWeekProgress');
-          await store.dispatch('fetchWeekMemos');
-          await store.dispatch('fetchPauses');
-          
-          console.log('[Immediate Sync] UI refreshed after sync');
+      if (store) {
+        for (const action of refreshActions) {
+          await store.dispatch(action);
         }
+        console.log('[Immediate Sync] UI refreshed with actions:', refreshActions);
       }
     } catch (error) {
       console.error('[Immediate Sync] Error refreshing UI:', error);
