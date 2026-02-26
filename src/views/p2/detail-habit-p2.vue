@@ -653,11 +653,8 @@ export default {
                 await deleteDoc(doc(db, "pauses", this.pauseId));
               } else {
                 // Otherwise, update the end time of the pause
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                yesterday.setHours(23, 59, 59, 999);
                 await updateDoc(doc(db, "pauses", this.pauseId), {
-                  end: Timestamp.fromDate(yesterday)
+                  end: Timestamp.fromDate(now)
                 });
               }
             }

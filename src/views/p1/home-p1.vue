@@ -204,6 +204,7 @@ export default {
             ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
             : null;
           if (end) {
+            end.setDate(end.getDate() - 1);
             end.setHours(23, 59, 59, 999);
             return selectedDay >= start && selectedDay <= end;
           } else {
