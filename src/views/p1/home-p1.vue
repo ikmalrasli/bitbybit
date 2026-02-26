@@ -203,6 +203,7 @@ export default {
             ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
             : null;
           if (end) {
+            end.setDate(end.getDate() - 1);
             end.setHours(23, 59, 59, 999);
             return selectedDay >= start && selectedDay <= end;
           } else {
@@ -286,7 +287,7 @@ export default {
       try {
         // Delete memo from Dexie (IndexedDB)
         await db.memos.delete(memoId);
-        
+
         // Refresh day memos from Dexie
         await this.$store.dispatch('getDayMemos', this.selectedDay);
       } catch (error) {
