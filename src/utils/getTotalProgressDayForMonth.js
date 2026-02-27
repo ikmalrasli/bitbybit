@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { isHabitPausedOnDay } from "./habitUtils.js";
 
 function getDayOfWeek(date) {
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -61,27 +62,6 @@ export function getTotalProgressDayForMonth(day, progressArray, habits, pauses =
 
     return termEndDay >= dayStart;
   }).sort((a, b) => a.name.localeCompare(b.name));
-
-  // Pause exclusion logic
-  function isHabitPausedOnDay(habitId, day, pauses) {
-    const dayStart = new Date(day);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(day);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    return pauses?.some(pause => {
-      if (pause.habitId !== habitId) return false;
-      const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-      const end = pause.end
-        ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-        : null;
-      if (end) {
-        return dayStart <= end && dayEnd >= start;
-      } else {
-        return dayStart >= start;
-      }
-    });
-  }
 
   const notPausedHabits = filteredHabits.filter(habit => !isHabitPausedOnDay(habit.habitId, targetDate, pauses));
 

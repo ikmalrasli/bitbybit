@@ -152,8 +152,10 @@ import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
 import { useDialogStore } from '../../store/dialogStore';
+import { immediateSyncMixin } from '../../mixins/immediateSyncMixin';
 
 export default {
+  mixins: [immediateSyncMixin],
   components: {
     calendarRow,
     HomeProgress,
@@ -285,8 +287,15 @@ export default {
     async deleteMemo(memoId, index) {
       this.showDeleteButton[index] = !this.showDeleteButton[index];
       try {
-        // Delete memo from Dexie (IndexedDB)
-        await db.memos.delete(memoId);
+        // Soft delete memo from Dexie (IndexedDB) for sync
+        await db.memos.update(memoId, {
+          _deleted: true,
+          syncStatus: 'pending',
+          updatedAt: Date.now()
+        });
+
+        // Sync to Firestore if online
+        await this.immediateSync();
 
         // Refresh day memos from Dexie
         await this.$store.dispatch('getDayMemos', this.selectedDay);

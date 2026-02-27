@@ -222,8 +222,10 @@ import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
 import { generateId } from "../../utils/generateId";
 import { toMillis } from "../../utils/timestampUtils";
+import { immediateSyncMixin } from '../../mixins/immediateSyncMixin';
 
 export default {
+  mixins: [immediateSyncMixin],
   data() {
     return {
       addProgress: 0,
@@ -422,6 +424,8 @@ export default {
           })
           .delete();
 
+        await this.immediateSync();
+
         this.addProgress = 0;
         this.$store.state.selectedHabit.progress = 0;
         this.docId = null;
@@ -429,7 +433,7 @@ export default {
 
         // Refresh week progress from Dexie
         await this.$store.dispatch('fetchWeekProgress');
-        
+
       } catch (error) {
         console.error(error);
         this.$toast.error({
@@ -450,6 +454,14 @@ export default {
     },
     checkPause() {
       console.log("Checking pause status for habit:", this.selectedHabit?.habitId);
+
+      // Add this guard clause
+      if (!this.selectedHabit || !this.selectedHabit.habitId) {
+        this.isPaused = false;
+        console.log("No selected habit, setting isPaused to false");
+        return;
+      }
+
       // Read from Dexie instead of Firestore
       db.pauses
         .where('habitId')
@@ -458,12 +470,12 @@ export default {
         .then((pauses) => {
           // Sort by start timestamp descending
           pauses.sort((a, b) => (b.start || 0) - (a.start || 0));
-          
+
           if (pauses.length > 0 && pauses[0].end === null) {
             this.isPaused = true;
             this.pauseId = pauses[0].id;
             this.pauseStart = { seconds: Math.floor(pauses[0].start / 1000), nanoseconds: 0 };
-            console.log("Habit is paused");
+            console.log("Habit is paused, HabitID:", this.selectedHabit.habitId);
           } else {
             this.isPaused = false;
             console.log("Habit is not paused", pauses.length > 0 ? "(end is set)" : "(never paused)");
@@ -490,10 +502,10 @@ export default {
         }
 
         this.loading = true; // Start loading
-        
+
         // Generate local ID for progress entry
         const progressId = generateId();
-        
+
         // Add progress to Dexie (IndexedDB)
         await db.progress.add({
           id: progressId,
@@ -507,6 +519,9 @@ export default {
 
         this.loading = false; // End loading
         this.docId = progressId;
+
+        // Sync to Firestore if online
+        await this.immediateSync();
 
         if (this.addProgress === this.selectedHabit.dailyGoal) {
           this.$toast.success({
@@ -523,10 +538,10 @@ export default {
           });
         }
         this.selectedHabit.progress = this.addProgress;
-        
+
         // Refresh week progress from Dexie
         await this.$store.dispatch('fetchWeekProgress');
-        
+
       } catch (error) {
         this.loading = false; // End loading on error
         console.error(error);
@@ -551,25 +566,21 @@ export default {
 
           this.loading = false; // End loading
 
+          // Sync to Firestore if online
+          await this.immediateSync();
+
           if (this.addProgress === this.selectedHabit.dailyGoal) {
-            this.$toast.success({
-              message: 'Habit completed!',
-              duration: 2500
-            });
-            setTimeout(() => {
-              this.$router.push('/'), 1000;
-            })
-          } else if (this.addProgress > this.selectedHabit.progress) {
             this.$toast.info({
               message: 'Habit progress increased!',
               duration: 2500
             });
           }
+
           this.selectedHabit.progress = this.addProgress;
-          
+
           // Refresh week progress from Dexie
           await this.$store.dispatch('fetchWeekProgress');
-          
+
         } catch (error) {
           this.loading = false; // End loading on error
           console.error(error);
@@ -610,7 +621,7 @@ export default {
             // Generate local ID for pause
             const pauseId = generateId();
             const now = new Date();
-            
+
             // Add pause to Dexie (IndexedDB)
             await db.pauses.add({
               id: pauseId,
@@ -631,6 +642,9 @@ export default {
             });
 
             console.log("Habit paused successfully");
+
+            // Sync to Firestore if online
+            await this.immediateSync();
 
             // Refresh the pauses and habits from Dexie
             await this.$store.dispatch('fetchPauses');
@@ -668,8 +682,12 @@ export default {
                 startDate.getMonth() === now.getMonth() &&
                 startDate.getDate() === now.getDate()
               ) {
-                // If pausing and resuming on the same day, just delete the pause record
-                await db.pauses.delete(this.pauseId);
+                // If pausing and resuming on the same day, mark the pause record as deleted for sync
+                await db.pauses.update(this.pauseId, {
+                  _deleted: true,
+                  syncStatus: 'pending',
+                  updatedAt: Date.now(),
+                });
               } else {
                 // Otherwise, update the end time of the pause
                 await db.pauses.update(this.pauseId, {
@@ -691,6 +709,9 @@ export default {
             this.pauseStart = null;
 
             console.log("Habit resumed successfully");
+
+            // Sync to Firestore if online
+            await this.immediateSync();
 
             // Refresh the pauses and habits from Dexie
             await this.$store.dispatch('fetchPauses');
@@ -731,6 +752,9 @@ export default {
                 updatedAt: Date.now(), // Track modification time
               });
 
+              // Sync to Firestore if online
+              await this.immediateSync();
+
               this.$toast.info({
                 message: 'Habit deleted successfully!',
                 duration: 2000
@@ -738,7 +762,7 @@ export default {
 
               // Refresh habits from Dexie
               await this.$store.dispatch('fetchHabits');
-              
+
               setTimeout(() => {
                 this.$router.push('/');
               }, 300);

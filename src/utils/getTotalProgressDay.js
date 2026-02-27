@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { isHabitPausedOnDay } from "./habitUtils.js";
 
 function getDayOfWeek(date) {
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -49,10 +50,10 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
 
   let progress = 0;
   let totalDailyGoal = 0;
-  
+
   endHabits.forEach(habit => {
     const isPaused = isHabitPausedOnDay(habit.habitId, day, pauses);
-    
+
     if (!isPaused) {
       // Only calculate progress for non-paused habits
       const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
@@ -67,7 +68,7 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
     }
   });
   // const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
-  
+
   // endHabits.forEach(habit => {
   //   const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
   //   if (habitDate && habitDate <= endDay && habitDate >= startDay) {
@@ -83,34 +84,4 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
   const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
 
   return { endHabits, totalProgress };
-}
-
-function isHabitPausedOnDay(habitId, day, pauses) {
-  // 1. Normalize the day being checked to the very last millisecond of that day
-  const dayEnd = new Date(day);
-  dayEnd.setHours(23, 59, 59, 999);
-  
-  // 2. Normalize the day being checked to the very first millisecond
-  const dayStart = new Date(day);
-  dayStart.setHours(0, 0, 0, 0);
-
-  return pauses?.some(pause => {
-    if (pause.habitId !== habitId) return false;
-
-    // 3. Convert Database Timestamps to JS Dates
-    const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-    const end = pause.end
-      ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-      : null;
-
-    if (end) {
-      // 4. Overlap Check: 
-      // Does the pause start before the day ends AND end after the day begins?
-      return start <= dayEnd && end >= dayStart;
-    } else {
-      // 5. Ongoing Pause Check:
-      // If the pause started ANYTIME before this day is over, the habit is paused.
-      return start <= dayEnd; 
-    }
-  });
 }

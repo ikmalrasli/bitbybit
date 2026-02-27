@@ -84,6 +84,7 @@
 import RadialProgressbar from './RadialProgressbar.vue';
 import { db } from '../db'; // Dexie IndexedDB
 import { useStatStore } from '../store/statStore.js';
+import { isHabitPausedOnDay } from '../utils/habitUtils.js';
 
 export default {
   components: {
@@ -311,27 +312,7 @@ export default {
 
       this.streak = longestStreak;  // Update the streak value
     },
-    isHabitPausedOnDay(habitId, day, pauses) {
-      const dayStart = new Date(day);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(day);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      return pauses?.some(pause => {
-        if (pause.habitId !== habitId) return false;
-        const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-        start.setHours(0, 0, 0, 0);
-        const end = pause.end
-          ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-          : null;
-        if (end) {
-          end.setHours(23, 59, 59, 999);
-          return dayStart >= start && dayEnd <= end;
-        } else {
-          return dayStart >= start;
-        }
-      });
-    },
+    isHabitPausedOnDay,
   },
   watch: {
     selectedStats() {

@@ -138,6 +138,7 @@ import { db } from '../../db'; // Dexie IndexedDB
 import { toMillis, toDate } from '../../utils/timestampUtils';
 import { mapState } from 'vuex';
 import { useStatStore } from '../../store/statStore.js';
+import { isHabitPausedOnDay } from '../../utils/habitUtils.js';
 
 export default {
   components: {
@@ -338,7 +339,7 @@ export default {
         if (habit.repeat && habit.repeat[dayOfWeek] &&
             termStart.setHours(0, 0, 0, 0) <= date &&
           (habit.termEnd == null || termEnd > date)
-            && !this.isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
+            && !isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
           ) {
           dayCounts++;
         }
@@ -372,7 +373,7 @@ export default {
 
           // Only keep the latest document for each day
           if (!dailyProgressMap[dayKey]) {
-            if (!this.isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
+            if (!isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
               dailyProgressMap[dayKey] = Number(doc.progress);
             }
           }
@@ -395,26 +396,6 @@ export default {
       });
 
       return goals ? (progress * 100 / goals).toFixed(0) : 0;
-    },
-    isHabitPausedOnDay(habitId, day, pauses) {
-      const dayStart = new Date(day);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(day);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      return pauses?.some(pause => {
-        if (pause.habitId !== habitId) return false;
-        const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-        const end = pause.end
-          ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-          : null;
-        if (end) {
-          end.setHours(23, 59, 59, 999);
-          return dayStart >= start && dayEnd <= end;
-        } else {
-          return dayStart >= start;
-        }
-      });
     },
     openDetail(habit) {
       this.statStore.selectStat(habit);
