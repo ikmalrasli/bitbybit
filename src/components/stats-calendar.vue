@@ -12,19 +12,18 @@
       </div>
 
       <!-- Calendar Days -->
-      <div v-if="!loading" class="grid grid-cols-7 text-center gap-x-1">
+      <div v-if="!loading" class="grid grid-cols-7 text-center gap-x-1 gap-y-1">
         <div v-for="(day, index) in calendarDays" :key="index" :class="[
-          day.isToday ? 'text-purple-500' : '',
-          'relative', 'p-2', 'rounded-full',
+          day.isToday ? 'text-purple-500 border-violet-500' : '',
+          'relative', 'rounded-full',
           'transition-colors duration-300'
         ]">
-          <div class="flex flex-col items-center">
+          <div class="flex flex-col items-center rounded-lg border p-1"
+            :class="[day.isToday ? 'border-violet-500' : '']">
             <!-- Show RadialProgressBar for current month and days up to today -->
-            <RadialProgressbar
-              :show="day.isCurrentMonth && (day.day <= today || currentMonth < todayMonth || currentYear < todayYear)"
-              :progress="day.progress" :radius="40" :text="String(day.day)"
-              :textcolor="day.isCurrentMonth ? '#000000' : '#9ca3af'" :textsize="36" :strokeWidth="5"
-              :color="statStore.textColor"
+            <RadialProgressbar :show="day.isCurrentMonth && isDayWithinHabitTerm(day)" :progress="day.progress"
+              :radius="40" :text="String(day.day)" :textcolor="day.isCurrentMonth ? '#000000' : '#9ca3af'"
+              :textsize="36" :strokeWidth="5" :color="statStore.textColor"
               :isPaused="isHabitPausedOnDay(statStore.selectedStat.habitId, new Date(currentYear, currentMonth, day.day), $store.state.pauses)" />
             <div class="h-1 w-1 md:h-2 md:w-2" :class="[{ 'invisible': !day.isToday }, fillClass]">
               <svg class="h-full w-full" viewBox="0 0 100 100">
@@ -41,7 +40,7 @@
           'relative', 'p-2', 'rounded-full',
           'transition-colors duration-300'
         ]">
-          <div class="flex flex-col items-center">
+          <div class="flex flex-col items-center rounded-lg border">
             <!-- Show RadialProgressBar for current month and days up to today -->
             <RadialProgressbar :show="false" :progress="day.progress" :radius="40" :text="String(day.day)"
               :textcolor="day.isCurrentMonth ? '#000000' : '#9ca3af'" :textsize="36" :color="statStore.textColor"
@@ -130,6 +129,9 @@ export default {
     },
     termStart() {
       return this.statStore.selectedStat.termStart;
+    },
+    termEnd() {
+      return this.statStore.selectedStat.termEnd;
     }
   },
   methods: {
@@ -156,7 +158,7 @@ export default {
           .toArray();
 
         // Filter by timestamp range
-        const filteredDocs = progressDocs.filter(doc => 
+        const filteredDocs = progressDocs.filter(doc =>
           doc.timestamp >= startOfMonthMs && doc.timestamp <= endOfMonthMs
         );
 
@@ -313,6 +315,19 @@ export default {
       this.streak = longestStreak;  // Update the streak value
     },
     isHabitPausedOnDay,
+    isDayWithinHabitTerm(day) {
+      const dayDate = new Date(this.currentYear, this.currentMonth, day.day);
+      const termStartDate = this.termStart ? new Date(this.termStart.seconds * 1000) : null;
+      const termEndDate = this.termEnd ? new Date(this.termEnd.seconds * 1000) : null;
+
+      // Check if day is on or after term start
+      const afterTermStart = !termStartDate || dayDate >= termStartDate;
+
+      // Check if day is before or on term end, or if term end is null (no end date)
+      const beforeTermEnd = !termEndDate || dayDate <= termEndDate;
+
+      return afterTermStart && beforeTermEnd;
+    }
   },
   watch: {
     selectedStats() {

@@ -59,7 +59,7 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
   <div class="h-full w-full flex items-center justify-center relative">
     <svg class="w-full h-full" :viewBox="`0 0 ${viewBoxSize} ${viewBoxSize}`" preserveAspectRatio="xMidYMid meet"
       :style="props.isPaused ? 'opacity:0.5; filter: grayscale(1);' : ''">
-      <circle v-if="props.show" class="stroke-current" :class="props.bgcolor" :stroke-width="strokeWidth"
+      <circle v-if="props.show" class="stroke-current" :class="[props.isPaused ? 'text-gray-500' : props.bgcolor]" :stroke-width="strokeWidth"
         :cx="viewBoxSize / 2" :cy="viewBoxSize / 2" :r="props.radius" fill="transparent" />
       <circle v-if="props.show" class="progress-ring_circle stroke-current" :class="color" :stroke-width="strokeWidth"
         stroke-linecap="round" :cx="viewBoxSize / 2" :cy="viewBoxSize / 2" :r="props.radius" fill="transparent"
@@ -70,8 +70,8 @@ const viewBoxSize = computed(() => props.radius * 2 + strokeWidth * 2);
       </text>
     </svg>
     <div v-if="props.isPaused" class="absolute inset-0 flex items-center justify-center pointer-events-none"
-      style="z-index:2;">
-      <span class="text-xs text-gray-500 bg-white bg-opacity-80 rounded px-2 py-1 material-icons">pause</span>
+      style="z-index:0;">
+      <span class="text-xs text-gray-500 bg-white rounded p-1 material-icons">pause</span>
     </div>
   </div>
 </template>
