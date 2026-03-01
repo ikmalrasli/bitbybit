@@ -18,13 +18,12 @@
           <div class="flex flex-col items-center">
             <span class="min-w-8 text-center font-semibold text-xs sm:text-sm"
               :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : '', day.dateobj < new Date().setHours(23, 59, 59, 999) ? 'text-black' : 'text-gray-400']">{{
-              day.name }}</span>
-            <RadialProgressbar :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
+                day.name }}</span>
+            <RadialProgressbar class="pt-2" :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
               :progress="habitsProgress(day.dateobj)" :radius="40" :text="String(day.date)" :strokeWidth="5"
-              :textcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? '#ffffff' : '#000000'"
-              :bgcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white opacity-25' : 'text-black opacity-10'"
-              class="pt-2"
-              :color="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : 'text-violet-400'" />
+              :bgcolor="this.selectedDay && this.selectedDay.getDate() === day.dateobj.getDate() ? 'text-white opacity-25' : 'text-black opacity-10'"
+              :textcolor="this.selectedDay && this.selectedDay.getDate() === day.dateobj.getDate() ? '#ffffff' : '#000000'"
+              :color="this.selectedDay && this.selectedDay.getDate() === day.dateobj.getDate() ? 'text-white' : 'text-violet-400'" />
           </div>
         </div>
       </div>
@@ -138,6 +137,8 @@ export default {
       this.currentWeek = 'thisWeek';
       this.days = this.generateWeekDays('thisWeek');
       // Fetch this week's data
+      this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+
       if (showToday) {
         // Set the selected day to today
         const today = this.days.find(day => day.isToday);
