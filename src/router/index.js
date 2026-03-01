@@ -236,6 +236,9 @@ router.beforeEach((to, from, next) => {
   else if (to.name === 'calendar-p2' && !from.name) {
     next({ name: 'calendar' });
   }
+  else if (to.name === 'stats' && !from.name) {
+    next({ name: 'home' });
+  }
   // Handle authentication check
   else if (requiresAuth && !isAuthenticated) {
     // If the route requires authentication and the user is not authenticated, redirect to login
