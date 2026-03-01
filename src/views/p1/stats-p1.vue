@@ -4,11 +4,8 @@
     <header class="bg-white pt-1 pb-2 px-4 flex flex-row justify-between sticky top-0 z-20">
       <button class="material-icons rounded-full active:bg-gray-200" @click="previousMonth">chevron_left</button>
       <h1 class="text-xl text-black font-semibold">{{ currentMonthName }} {{ currentYear }}</h1>
-      <button
-        class="material-icons rounded-full active:bg-gray-200 disabled:text-gray-400"
-        :disabled="currentMonth == todayMonth && currentYear == todayYear"
-        @click="nextMonth"
-      >
+      <button class="material-icons rounded-full active:bg-gray-200 disabled:text-gray-400"
+        :disabled="currentMonth == todayMonth && currentYear == todayYear" @click="nextMonth">
         chevron_right
       </button>
     </header>
@@ -20,14 +17,8 @@
         <template v-if="fetched">
           <h2 class="p-2 w-3/4 leading-tight">{{ mainText }}</h2>
           <div class="w-1/4 h-full">
-            <RadialProgressbar
-              :progress="Number(overallProgress)"
-              :radius="40"
-              :text="String(displayValue)"
-              color="text-violet-400"
-              class="cursor-pointer"
-              @click="toggleGrade"
-            />
+            <RadialProgressbar :progress="Number(overallProgress)" :radius="40" :text="String(displayValue)"
+              color="text-violet-400" class="cursor-pointer" @click="toggleGrade" />
           </div>
         </template>
         <template v-else>
@@ -47,42 +38,29 @@
           <span class="material-icons rounded-full">sort</span>
           <span class="font-semibold">Sort</span>
         </div>
-        <div
-          v-if="isDropdownOpen"
+        <div v-if="isDropdownOpen"
           class="absolute right-0 z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-          style="position: absolute; top: 100%;"
-          @click.stop
-        >
+          style="position: absolute; top: 100%;" @click.stop>
           <ul class="py-1 text-gray-700">
-            <li
-              @click="sortName"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortName"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Name</span>
-              <span
-                v-if="currentSort === 'name'"
-                class="material-icons"
-              >{{ sortNameAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'name'" class="material-icons">{{ sortNameAsc ? 'arrow_upward' :
+                'arrow_downward'
+                }}</span>
             </li>
-            <li
-              @click="sortProgress"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortProgress"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Progress</span>
-              <span
-                v-if="currentSort === 'progress'"
-                class="material-icons"
-              >{{ sortProgressAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'progress'" class="material-icons">{{ sortProgressAsc ? 'arrow_upward' :
+                'arrow_downward' }}</span>
             </li>
-            <li
-              @click="sortColor"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortColor"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Color</span>
-              <span
-                v-if="currentSort === 'color'"
-                class="material-icons"
-              >{{ sortColorAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'color'" class="material-icons">{{ sortColorAsc ? 'arrow_upward' :
+                'arrow_downward'
+                }}</span>
             </li>
           </ul>
         </div>
@@ -92,17 +70,12 @@
       <div class="flex-grow overflow-y-auto pb-2" style="scrollbar-width: thin;">
         <div v-if="fetched && habitsMonth.length !== 0" class="space-y-1">
           <div v-if="showHabitsList" class="flex flex-col space-y-1">
-            <div
-              v-for="habit in habitsMonth"
-              :key="habit.id"
+            <div v-for="habit in habitsMonth" :key="habit.id"
               class="w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
-              @click="openDetail(habit)"
-            >
+              @click="openDetail(habit)">
               <div class="flex flex-row items-center">
-                <div
-                  class="h-3 w-3 md:h-4 md:w-4"
-                  :class="habit.color ? `fill-${habit.color.default}` : 'fill-violet-400'"
-                >
+                <div class="h-3 w-3 md:h-4 md:w-4"
+                  :class="habit.color ? `fill-${habit.color.default}` : 'fill-violet-400'">
                   <svg class="h-full w-full" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" />
                   </svg>
@@ -110,10 +83,8 @@
                 <h2 class="p-2 w-full">{{ habit.name }}</h2>
               </div>
               <div class="flex flex-row items-center">
-                <span
-                  class="material-icons p-1"
-                  :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'"
-                >pie_chart</span>
+                <span class="material-icons p-1"
+                  :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'">pie_chart</span>
                 <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
                 <span class="material-icons">chevron_right</span>
               </div>
@@ -184,21 +155,21 @@ export default {
       }
       return this.overallProgress; // Otherwise, show progress
     },
-    habitsMonth(){
+    habitsMonth() {
       return this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
     },
   },
   methods: {
-    clicked(){
+    clicked() {
       //console log habits cache from statStore
       console.log(this.statStore.habitsCache)
     },
     previousMonth() {
       if (this.currentMonth === 0) {
-          this.currentMonth = 11;
-          this.currentYear--;
+        this.currentMonth = 11;
+        this.currentYear--;
       } else {
-          this.currentMonth--;
+        this.currentMonth--;
       }
       this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
       this.$router.push('/stats');
@@ -303,7 +274,7 @@ export default {
     },
     async getMonthStats() {
       const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
-      
+
       const validHabits = this.habits.filter(habit => {
         const termStart = toDate(habit.termStart);
         return termStart <= endOfMonth
@@ -319,7 +290,7 @@ export default {
           }
 
           const progressPercent = totalGoals > 0 ? Number((totalProgress * 100 / totalGoals).toFixed(0)) : 0;
-          
+
           return { ...habit, totalGoals, totalProgress, progressPercent };
         })
       );
@@ -337,10 +308,10 @@ export default {
         const termStart = toDate(habit.termStart);
         const termEnd = habit.termEnd ? toDate(habit.termEnd) : null;
         if (habit.repeat && habit.repeat[dayOfWeek] &&
-            termStart.setHours(0, 0, 0, 0) <= date &&
+          termStart.setHours(0, 0, 0, 0) <= date &&
           (habit.termEnd == null || termEnd > date)
-            && !isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
-          ) {
+          && !isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
+        ) {
           dayCounts++;
         }
       }
@@ -454,7 +425,7 @@ export default {
       this.habitsMonth.sort((a, b) => {
         const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
         const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
-        
+
         return this.sortColorAsc ? colorA - colorB : colorB - colorA;
       });
 
@@ -472,6 +443,14 @@ export default {
     overallProgress(newVal) {
       this.updateMainText();
     },
+    habits: {
+      immediate: true,
+      handler(newHabits) {
+        if (newHabits && newHabits.length > 0 && !this.fetched) {
+          this.ensureMonthDataLoaded();
+        }
+      }
+    }
   },
   mounted() {
     this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
@@ -483,10 +462,13 @@ export default {
 <style scoped>
 .spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #a78bfa; /* Change color as needed */
+  border-left-color: #a78bfa;
+  /* Change color as needed */
   border-radius: 50%;
-  width: 28px; /* Spinner size */
-  height: 28px; /* Spinner size */
+  width: 28px;
+  /* Spinner size */
+  height: 28px;
+  /* Spinner size */
   animation: spin 1s linear infinite;
 }
 
@@ -494,6 +476,7 @@ export default {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -506,28 +489,37 @@ export default {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.4;
   }
 }
 
 /* Transition for slide-fade */
-.slide-fade-enter-active, .slide-fade-leave-active {
+.slide-fade-enter-active,
+.slide-fade-leave-active {
   transition: all 0.3s ease;
 }
-.slide-fade-enter-from, .slide-fade-leave-to {
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
   transform: translateY(-10px);
   opacity: 0;
 }
 
 /* Transition for expand-collapse */
-.expand-collapse-enter-active, .expand-collapse-leave-active {
+.expand-collapse-enter-active,
+.expand-collapse-leave-active {
   transition: all 0.3s ease;
 }
-.expand-collapse-enter, .expand-collapse-leave-to {
+
+.expand-collapse-enter,
+.expand-collapse-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }
