@@ -50,12 +50,21 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from 'vuex';
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../store/authStore';
+import store from '../../store'; // Direct import of Vuex store
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getNotifications } from '../../utils/pushNotifications';
 import * as Sentry from "@sentry/vue";
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+const email = ref("");
+const password = ref("");
 
 // Define ignored errors
 const IGNORED_AUTH_ERRORS = [
@@ -101,99 +110,95 @@ const getAuthErrorMessage = (error) => {
   }
 };
 
-export default {
-  data() {
-    return {
-      email: "",
-      password: ""
-    };
-  },
-  methods: {
-    ...mapActions(['login']),
-    async handleLogin() {
-      try {
-        const user = await this.login({ email: this.email, password: this.password });
+const handleLogin = async () => {
+  try {
+    const user = await authStore.login({ email: email.value, password: password.value });
 
-        this.$store.dispatch('updateLoading', true);
-        this.$store.commit('SET_USER', user)
-        this.$store.dispatch('fetchUser').then((user) => {
-          if (user) {
-            getNotifications(this.$store, this.$toast);
-            this.$store.dispatch('fetchHabits');
-          } else {
-            this.$store.dispatch('updateLoading', false);
-          }
-        });
-
-        this.$router.push("/");
-
-      } catch (error) {
-        this.$store.dispatch('updateLoading', false);
-        
-        // Only report non-ignored errors to Sentry
-        if (shouldReportError(error)) {
-          Sentry.captureException(error, {
-            tags: {
-              action: 'handleLogin',
-              email: this.email
-            }
-          });
-          console.error("Login error:", error);
-        }
-
-        // Show user-friendly error message
-        this.$toast.error(getAuthErrorMessage(error));
+    // Note: We'll need to update these store calls when we migrate other modules
+    // For now, we keep the existing Vuex calls for non-auth functionality
+    store.dispatch('updateLoading', true);
+    store.commit('SET_USER', user)
+    store.dispatch('fetchUser').then((user) => {
+      if (user) {
+        getNotifications(store, router.app.config.globalProperties.$toast);
+        store.dispatch('fetchHabits');
+      } else {
+        store.dispatch('updateLoading', false);
       }
-    },
-    async signInWithGoogle() {
-      const auth = getAuth();
-      const provider = new GoogleAuthProvider();
-      const db = getFirestore();
+    });
 
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+    router.push("/");
 
-        const displayName = user.displayName;
-        const email = user.email;
-        const uid = user.uid;
-
-        await setDoc(doc(db, "users", uid), {
-          email: email,
-          nickname: displayName,
-          uid: uid
-        });
-        
-        this.$store.dispatch('updateLoading', true);
-        this.$store.commit('SET_USER', user)
-        this.$store.dispatch('fetchUser').then((user) => {
-          if (user) {
-            getNotifications(this.$store, this.$toast);
-            this.$store.dispatch('fetchHabits');
-          } else {
-            this.$store.dispatch('updateLoading', false);
-          }
-        });
-
-        this.$router.push("/")
-        
-      } catch (error) {
-        this.$store.dispatch('updateLoading', false);
-        
-        // Only report non-ignored errors to Sentry
-        if (shouldReportError(error)) {
-          Sentry.captureException(error, {
-            tags: {
-              action: 'signInWithGoogle'
-            }
-          });
-          console.error("Google login error:", error);
+  } catch (error) {
+    store.dispatch('updateLoading', false);
+    
+    // Only report non-ignored errors to Sentry
+    if (shouldReportError(error)) {
+      Sentry.captureException(error, {
+        tags: {
+          action: 'handleLogin',
+          email: email.value
         }
-
-        // Show user-friendly error message
-        this.$toast.error(getAuthErrorMessage(error));
-      }
+      });
+      console.error("Login error:", error);
     }
+
+    // Show user-friendly error message
+    router.app.config.globalProperties.$toast.error(getAuthErrorMessage(error));
+  }
+};
+
+const signInWithGoogle = async () => {
+  const auth = getAuth();
+  const provider = new GoogleAuthProvider();
+  const db = getFirestore();
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const displayName = user.displayName;
+    const userEmail = user.email;
+    const uid = user.uid;
+
+    await setDoc(doc(db, "users", uid), {
+      email: userEmail,
+      nickname: displayName,
+      uid: uid
+    });
+    
+    // Set user in authStore
+    authStore.setUser(user);
+    
+    // Note: We'll need to update these store calls when we migrate other modules
+    store.dispatch('updateLoading', true);
+    store.commit('SET_USER', user)
+    store.dispatch('fetchUser').then((user) => {
+      if (user) {
+        getNotifications(store, router.app.config.globalProperties.$toast);
+        store.dispatch('fetchHabits');
+      } else {
+        store.dispatch('updateLoading', false);
+      }
+    });
+
+    router.push("/")
+    
+  } catch (error) {
+    store.dispatch('updateLoading', false);
+    
+    // Only report non-ignored errors to Sentry
+    if (shouldReportError(error)) {
+      Sentry.captureException(error, {
+        tags: {
+          action: 'signInWithGoogle'
+        }
+      });
+      console.error("Google login error:", error);
+    }
+
+    // Show user-friendly error message
+    router.app.config.globalProperties.$toast.error(getAuthErrorMessage(error));
   }
 };
 </script>

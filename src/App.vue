@@ -1,34 +1,40 @@
 <template>
   <div class="flex justify-center h-full">
-    <router-view v-if="!$store.state.loading" />
+    <router-view v-if="!authStore.loading" />
     <loading v-else />
   </div>
 </template>
 
-<script>
+<script setup>
+import { onMounted, onBeforeUnmount } from 'vue';
 import loading from './views/loading.vue';
+import { useAuthStore } from './store/authStore';
+import store from './store'; // Direct import of Vuex store
 import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
 import { performSync } from './utils/syncEngine';
 
-export default {
-  components: { loading },
-  async created() {
+const authStore = useAuthStore();
+
+onMounted(() => {
+  // Wrap async operations in an immediately invoked async function
+  (async () => {
     try {
-      const user = await this.$store.dispatch('fetchUser');
+      const user = await authStore.fetchUser();
       if (user) {
-        getNotifications(this.$store, this.$toast);
+        getNotifications(store, { error: (msg) => console.error(msg) }); // Simple toast fallback
         
         // Set loading to true before fetching data
-        this.$store.dispatch('updateLoading', true);
+        store.dispatch('updateLoading', true);
         
         // Fetch habits first
-        await this.$store.dispatch('fetchHabits');
-        await this.$store.dispatch('fetchPauses');
+        await store.dispatch('fetchHabits');
+        await store.dispatch('fetchPauses');
         
         // If we're on the calendar route, fetch week progress
-        if (this.$route.name === 'calendar') {
-          await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+        // Note: We'll need to update router access when fully migrated
+        if (window.location.pathname === '/calendar') {
+          await store.dispatch('fetchWeekProgress', 'thisWeek');
         }
         
         // Sync immediately after fetching data, then set loading to false
@@ -45,28 +51,28 @@ export default {
         }
         
         // Set loading to false after data fetch and sync are complete
-        this.$store.dispatch('updateLoading', false);
+        store.dispatch('updateLoading', false);
       } else {
-        this.$store.dispatch('updateLoading', false);
+        store.dispatch('updateLoading', false);
       }
     } catch (error) {
       console.error('Error in App created:', error);
-      this.$store.dispatch('updateLoading', false);
+      store.dispatch('updateLoading', false);
     }
-  },
-  async mounted() {
-    // If user is already logged in
-    const auth = getAuth();
-    if (auth.currentUser) {
-      await this.$store.dispatch('checkForNewNews');
-    }
-  },
-  beforeDestroy() {
-    if (this.$store.state.unsubscribeHabits) {
-      this.$store.state.unsubscribeHabits();
-    }
+  })();
+
+  // If user is already logged in
+  const auth = getAuth();
+  if (auth.currentUser) {
+    store.dispatch('checkForNewNews');
   }
-};
+});
+
+onBeforeUnmount(() => {
+  if (store.state.unsubscribeHabits) {
+    store.state.unsubscribeHabits();
+  }
+});
 </script>
 
 <style>
