@@ -10,6 +10,7 @@ export const useUserStore = defineStore('userStore', {
   getters: {
     // This makes checking auth status in components very easy
     isAuthenticated: (state) => !!state.user,
+    getUserId: (state) => state.user ? state.user.uid : null,
   },
   actions: {
     async login(email, password) {
