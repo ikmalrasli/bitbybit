@@ -1,39 +1,33 @@
 import { db } from '../db';
-import { getUserId } from '../stores/UserStore';
 
-// TODO: recheck and rewrite these methods
 export const habitService = {
-  // Get habits for a specific day
-  async getHabitsByDate(date) {
-    const dayTimestamp = new Date(date).setHours(0, 0, 0, 0);
-    return await db.habits
-      .where('userId')
-      .equals(getUserId()) // TODO: check if you need to useStore here instead of getUserId() directly
-      .and(habit => habit.termStart <= dayTimestamp)
-      .and(habit => habit.termEnd >= dayTimestamp)
-      .orderBy('name') // TODO: Add sorting options later
-      .toArray();
-  },
+  async getWeeklyData(userId, startDate, endDate) {
+    // 1. Get all raw data for the week in 3 quick local calls
+    const [habits, allProgress] = await Promise.all([
+      db.habits.where('userId').equals(userId).toArray(),                         
+      db.progress.where('timestamp').between(startDate, endDate).toArray()
+    ]);
 
-  // Replacement for fetchWeekProgress() logic
-  async getWeekProgress(habitIds, startDate, endDate) {
-    return await db.progress
-      .where('timestamp')
-      .between(startDate, endDate)
-      .and(p => habitIds.includes(p.habitId))
-      .toArray();
-  },
+    // 2. Map the data into a "Day-by-Day" object
+    const calendarMap = {};
+    
+    // Iterate through the date range
+    let current = new Date(startDate);
+    while (current <= endDate) {
+      const dateKey = current.toISOString().split('T')[0];
+      const dayTimestamp = current;
 
-  // Save progress (Logic moved from markHabitsCompleted mutation)
-  async updateProgress(habitId, value, date) {
-    const timestamp = new Date(date);
-    return await db.progress.put({
-      id: `${habitId}_${timestamp.getTime()}`, // unique ID
-      habitId,
-      timestamp,
-      progress: value,
-      syncStatus: 'pending',
-      updatedAt: new Date()
-    });
+      // Filter habits valid for THIS specific day
+      calendarMap[dateKey] = habits.filter(habit => {
+        const isStarted = habit.termStart <= dayTimestamp;
+        const isNotEnded = !habit.termEnd || habit.termEnd >= dayTimestamp;
+
+        return isStarted && isNotEnded;
+      });
+
+      current.setDate(current.getDate() + 1);
+    }
+    return { calendarMap, allProgress };
   }
 };
+
