@@ -53,14 +53,14 @@ export function getTotalProgressDay(day, weekProgress, habits, pauses) {
   let totalDailyGoal = 0;
   // Filter out paused habits first
   const notPausedHabits = endHabits.filter(habit => !isHabitPausedOnDay(habit.habitId, day, pauses));
-  console.log('Not paused habits for day', day, ':', notPausedHabits);
+  // console.log('Not paused habits for day', day, ':', notPausedHabits);
 
   notPausedHabits.forEach(habit => {
     const habitDate = habit.timestamp ? new Timestamp(habit.timestamp.seconds, habit.timestamp.nanoseconds).toDate() : null;
     if (habitDate && habitDate <= endDay && habitDate >= startDay) {
       progress += Number(habit.progress);
     }
-    console.log('Adding daily goal for habit:', habit.habitId, 'with daily goal:', habit.dailyGoal);
+    // console.log('Adding daily goal for habit:', habit.habitId, 'with daily goal:', habit.dailyGoal);
     totalDailyGoal += habit.dailyGoal || 0;
   });
   // const totalProgress = totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
@@ -97,7 +97,7 @@ function isHabitPausedOnDay(habitId, day, pauses) {
     if (end) {
       return dayStart <= end && dayEnd >= start;
     } else {
-      console.log('Checking ongoing pause for habit:', habitId, 'on day:', dayStart, 'with pause start:', start);
+      // console.log('Checking ongoing pause for habit:', habitId, 'on day:', dayStart, 'with pause start:', start);
       return dayStart >= start;
     }
   });
