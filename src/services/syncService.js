@@ -10,6 +10,12 @@ const convertToDate = (value) => {
   if (value instanceof Date) return value;
   if (typeof value === 'string') return new Date(value);
   if (typeof value === 'number') return new Date(value);
+  if (typeof value === 'object' && value !== null) {
+    // Handle object with seconds and nanoseconds properties
+    if (value.seconds && value.nanoseconds) {
+      return new Date(value.seconds * 1000 + value.nanoseconds / 1000000);
+    }
+  }
   return null;
 };
 
