@@ -2,7 +2,6 @@
   <div class="flex justify-center h-full">
     <router-view v-if="!loadingStore.isLoading" />
     <loading v-else />
-    <button @click="refreshData">Refresh</button>
   </div>
 </template>
 
@@ -36,7 +35,7 @@ export default {
 
         // await syncService.fetchAllFromFirebase(userStore.getUserId);
 
-        await this.$store.dispatch('fetchPauses');
+        // await this.$store.dispatch('fetchPauses');
         
         // If we're on the calendar route, fetch week progress
         if (this.$route.name === 'calendar') {
@@ -61,12 +60,6 @@ export default {
       this.$store.state.unsubscribeHabits();
     }
   },
-  methods: {
-    refreshData() {
-      console.log('weekProgress:', this.habitStore.weekProgress);
-      console.log('activeHabitsByDay:', this.habitStore.activeHabitsByDay);
-    }
-  }
 };
 </script>
 
