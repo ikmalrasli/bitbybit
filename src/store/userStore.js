@@ -40,7 +40,7 @@ export const useUserStore = defineStore('userStore', {
         throw error;
       }
     },
-    
+
     fetchUser() {
       const loading = useLoadingStore();
       loading.setLoading(true);
@@ -48,8 +48,13 @@ export const useUserStore = defineStore('userStore', {
       return new Promise((resolve) => {
         const auth = getAuth();
         onAuthStateChanged(auth, (user) => {
-          this.user = user;
-          loading.setLoading(false);
+          if (user) {
+            this.user = user;
+            loading.setLoading(false);
+          } else {
+            this.user = null;
+            loading.setLoading(false);
+          }
           resolve(user);
         });
       });
