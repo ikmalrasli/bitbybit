@@ -1,12 +1,7 @@
 <template>
   <div class=" w-full flex flex-row flex-grow px-4">
-    <!-- Loading spinner -->
-    <div v-if="loadingHome || !firstFetchHabits" class="w-full flex justify-center items-center py-8">
-      <div class="spinner"></div>
-    </div>
-
     <!-- Main content -->
-    <div v-else class="flex-auto justify-center ">
+    <div class="flex-auto justify-center ">
       <!-- if no habits-->
       <div v-if="habits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
@@ -40,8 +35,8 @@
           <transition name="slide-fade">
             <div v-if="showUncompleted" class="py-4 space-y-1">
               <div v-for="(habit, index) in uncompletedHabits" :key="index">
-                <HomeProgress :percent="habit.progress * 100 / habit.dailyGoal" :text="habit.name"
-                  :timesdone="habit.progress + '/' + habit.dailyGoal"
+                <HomeProgress :percent="habit.actualProgress * 100 / habit.dailyGoal" :text="habit.name"
+                  :timesdone="habit.actualProgress + '/' + habit.dailyGoal"
                   :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
                   :selectionMode="$store.state.selectionMode"
                   :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
@@ -96,8 +91,8 @@
           <transition name="slide-fade">
             <div v-if="showCompleted" class="py-4 space-y-1">
               <div v-for="(habit, index) in completedHabits" :key="index">
-                <HomeProgress :percent="habit.progress * 100 / habit.dailyGoal" :text="habit.name"
-                  :timesdone="habit.progress + '/' + habit.dailyGoal"
+                <HomeProgress :percent="habit.actualProgress * 100 / habit.dailyGoal" :text="habit.name"
+                  :timesdone="habit.actualProgress + '/' + habit.dailyGoal"
                   :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
                   @click="openDetail(habit)" />
               </div>
@@ -105,7 +100,7 @@
           </transition>
         </div>
 
-        <!-- Memos (expand/collapse) -->
+        <!-- Memos (expand/collapse) 
         <div v-if="dayMemos.length !== 0">
           <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Memos')">
             <div class="flex items-center">
@@ -119,7 +114,7 @@
           </div>
 
 
-          <!-- Memos List with Transition -->
+         
           <transition name="slide-fade">
             <div v-if="showMemos" class="py-4 space-y-1">
               <div v-for="(memo, index) in dayMemos" :key="index">
@@ -127,7 +122,7 @@
                   class="flex flex-col p-2 bg-white border rounded-lg shadow-sm space-y-1 cursor-pointer hover:bg-gray-50"
                   @click="viewMemo(memo)">
                   <div class="flex w-full p-2 flex-row justify-between">
-                    <!-- Memo content -->
+                    
                     <span class="truncate-text">{{ memo.memo }}</span>
                   </div>
                   <div class="flex w-full justify-end">
@@ -139,20 +134,20 @@
               </div>
             </div>
           </transition>
-        </div>
+        </div>-->
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapState } from 'vuex';
 import { deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase"; // import your Firestore instance
+import { db } from "../../firebase";
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
 import { useDialogStore } from '../../store/dialogStore';
+import { useHabitStore } from '../../store/habitStore';
 
 export default {
   components: {
@@ -164,56 +159,54 @@ export default {
     return {
       showUncompleted: true,
       showCompleted: true,
-      showPaused: true, // Add this
+      showPaused: true,
       showMemos: true,
       showDeleteButton: {},
       dialogStore: useDialogStore(),
     };
   },
+  mounted() {
+    // Get habit metrics for this week and last week
+    const today = new Date();
+    const startOfLastWeek = new Date(today);
+    startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
+    startOfLastWeek.setHours(0, 0, 0, 0);
+
+    this.habitStore.getHabitMetrics(startOfLastWeek, today);
+  },
   computed: {
-    ...mapState(['habits', 'weekHabits', 'dayHabits', 'selectedDay', 'dayMemos', 'loadingHome', 'firstFetchHabits']),
+    //Get data from habitStore
+    habitStore() {
+      return useHabitStore();
+    },
+    // Get selected date from habitStore (which is passed from calendar-row component)
+    selectedDay() {
+      return this.habitStore.selectedDate;
+    },
+    habits() {
+      const dateKey = this.selectedDay.toISOString().split('T')[0];
+      return this.habitStore.dayHabitMetrics[dateKey] || [];
+    },
     // completedHabits: only habits that are completed and NOT paused
     completedHabits() {
-      const pausedIds = this.pausedHabits.map(h => h.habitId);
-      return this.dayHabits?.filter(habit =>
-        habit.progress >= habit.dailyGoal && !pausedIds.includes(habit.habitId)
+      return this.habits.filter(habit =>
+        habit.actualProgress >= habit.dailyGoal && !habit.isPausedOnDay && habit.isScheduled
       ) || [];
     },
 
     // uncompletedHabits: only habits that are not completed and NOT paused
     uncompletedHabits() {
-      const pausedIds = this.pausedHabits.map(h => h.habitId);
-      return this.dayHabits?.filter(habit =>
-        habit.progress < habit.dailyGoal && !pausedIds.includes(habit.habitId)
+      return this.habits.filter(habit =>
+        habit.actualProgress < habit.dailyGoal && !habit.isPausedOnDay && habit.isScheduled
       ) || [];
     },
+
+    // pausedHabits
     pausedHabits() {
-      // selectedDay should be a Date object
-      const selectedDay = this.selectedDay instanceof Date ? this.selectedDay : new Date(this.selectedDay);
-      selectedDay.setHours(0, 0, 0, 0);
-
-      // Use Vuex pauses array
-      return this.dayHabits.filter(habit => {
-        // Find all pauses for this habit
-        const pauses = this.$store.state.pauses.filter(pause => pause.habitId === habit.habitId);
-        // Check if selectedDay is within any pause period
-        return pauses.some(pause => {
-          const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-          start.setHours(0, 0, 0, 0);
-          const end = pause.end
-            ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-            : null;
-          if (end) {
-            end.setHours(23, 59, 59, 999);
-            return selectedDay >= start && selectedDay <= end;
-          } else {
-            // Ongoing pause, treat as paused from start date onwards
-            return selectedDay >= start;
-          }
-        });
-      });
-    },
-
+      return this.habits.filter(habit =>
+        habit.isPausedOnDay && habit.isScheduled
+      ) || [];
+    }
   },
   methods: {
     showDot(habit) {
@@ -232,7 +225,7 @@ export default {
         reminderTime.setMinutes(minutes);
         reminderTime.setSeconds(0);
 
-        return reminderTime <= now && habit.progress === 0;
+        return reminderTime <= now && habit.actualProgress === 0;
       });
     },
     formatReminderTimes(reminderTimes) {
@@ -262,36 +255,36 @@ export default {
 
       return `${hours}:${minutes} ${period}`;
     },
-    memoCategory(category) {
-      if (category === 'feeling') {
-        return 'How I feel today'
-      } else if (category === 'gratitude') {
-        return 'Words of gratitude'
-      } else if (category === 'deeds') {
-        return 'Good deeds today'
-      } else if (category === 'highlight') {
-        return 'Hightlight of the day'
-      } else {
-        return 'Other'
-      }
-    },
+    // memoCategory(category) {
+    //   if (category === 'feeling') {
+    //     return 'How I feel today'
+    //   } else if (category === 'gratitude') {
+    //     return 'Words of gratitude'
+    //   } else if (category === 'deeds') {
+    //     return 'Good deeds today'
+    //   } else if (category === 'highlight') {
+    //     return 'Hightlight of the day'
+    //   } else {
+    //     return 'Other'
+    //   }
+    // },
     toggleDeleteButton(index) {
       // Directly toggle the value in the showDeleteButton object
       this.showDeleteButton[index] = !this.showDeleteButton[index];
     },
-    viewMemo(memoContent) {
-      this.dialogStore.openViewMemoDialog(memoContent);
-    },
-    async deleteMemo(memoId, index) {
-      this.showDeleteButton[index] = !this.showDeleteButton[index];
-      try {
-        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
-        await deleteDoc(memoRef);
-        this.$store.dispatch('getDayMemos', this.selectedDay); // Refetch memos after deletion if needed
-      } catch (error) {
-        console.error("Error deleting memo:", error);
-      }
-    },
+    // viewMemo(memoContent) {
+    //   this.dialogStore.openViewMemoDialog(memoContent);
+    // },
+    // async deleteMemo(memoId, index) {
+    //   this.showDeleteButton[index] = !this.showDeleteButton[index];
+    //   try {
+    //     const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
+    //     await deleteDoc(memoRef);
+    //     this.$store.dispatch('getDayMemos', this.selectedDay); // Refetch memos after deletion if needed
+    //   } catch (error) {
+    //     console.error("Error deleting memo:", error);
+    //   }
+    // },
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
