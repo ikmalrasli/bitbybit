@@ -1,7 +1,8 @@
 <template>
   <div class="flex justify-center h-full">
-    <router-view v-if="!$store.state.loading" />
+    <router-view v-if="!loadingStore.isLoading" />
     <loading v-else />
+    <button @click="refreshData">Refresh</button>
   </div>
 </template>
 
@@ -9,29 +10,43 @@
 import loading from './views/loading.vue';
 import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
+import { syncService } from './services/syncService';
+import { useUserStore } from './store/userStore';
+import { useLoadingStore } from './store/loadingStore';
+import { useHabitStore } from './store/habitStore';
 
 export default {
   components: { loading },
+  computed: {
+    loadingStore() {
+      return useLoadingStore();
+    },
+    habitStore() {
+      return useHabitStore();
+    }
+  },
   async created() {
+    this.loadingStore.setLoading(true);
+
     try {
-      const user = await this.$store.dispatch('fetchUser');
-      if (user) {
+      const userStore = useUserStore();
+      await userStore.fetchUser();
+      if (userStore.user) {
         getNotifications(this.$store, this.$toast);
-        
-        // Fetch habits first
-        await this.$store.dispatch('fetchHabits');
+
+        // await syncService.fetchAllFromFirebase(userStore.getUserId);
+
         await this.$store.dispatch('fetchPauses');
         
         // If we're on the calendar route, fetch week progress
         if (this.$route.name === 'calendar') {
           await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
         }
-      } else {
-        this.$store.dispatch('updateLoading', false);
       }
+      this.loadingStore.setLoading(false);
     } catch (error) {
       console.error('Error in App created:', error);
-      this.$store.dispatch('updateLoading', false);
+      this.loadingStore.setLoading(false);
     }
   },
   async mounted() {
@@ -44,6 +59,12 @@ export default {
   beforeDestroy() {
     if (this.$store.state.unsubscribeHabits) {
       this.$store.state.unsubscribeHabits();
+    }
+  },
+  methods: {
+    refreshData() {
+      console.log('weekProgress:', this.habitStore.weekProgress);
+      console.log('activeHabitsByDay:', this.habitStore.activeHabitsByDay);
     }
   }
 };
