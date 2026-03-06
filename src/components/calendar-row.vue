@@ -18,9 +18,9 @@
           <div class="flex flex-col items-center">
             <span class="min-w-8 text-center font-semibold text-xs sm:text-sm"
               :class="[this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white' : '', day.dateobj < new Date().setHours(23, 59, 59, 999) ? 'text-black' : 'text-gray-400']">{{
-              day.name }}</span>
+                day.name }}</span>
             <RadialProgressbar :show="day.dateobj <= new Date().setHours(23, 59, 59, 999)"
-              :progress="habitsProgress(day.dateobj)" :radius="40" :text="String(day.date)" :strokeWidth="5"
+              :progress="dayProgress(day.dateobj)" :radius="40" :text="String(day.date)" :strokeWidth="5"
               :textcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? '#ffffff' : '#000000'"
               :bgcolor="this.selectedDay?.getDate() === day.dateobj.getDate() ? 'text-white opacity-25' : 'text-black opacity-10'"
               class="pt-2"
@@ -41,8 +41,6 @@
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
-import { mapActions, mapState } from 'vuex';
-import { getTotalProgressDay } from '../utils/getTotalProgressDay';
 import { useHabitStore } from '../store/habitStore';
 
 export default {
@@ -56,7 +54,6 @@ export default {
     };
   },
   mounted() {
-    window.habitStore = useHabitStore();
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
@@ -69,18 +66,22 @@ export default {
     } else if (this.selectedDay >= startOfWeek) {
       this.showThisWeek(false);
     }
-
-    this.habitStore.fetchWeek(startOfWeek, today);
   },
   computed: {
-    ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay', 'pauses']),
     habitStore() {
       return useHabitStore();
     },
+
+    habitMetrics() {
+      return this.habitStore.dayHabitMetrics;
+    },
+
+    selectedDay() {
+      return this.habitStore.selectedDate;
+    }
+
   },
   methods: {
-    ...mapActions(['updateSelectedDay']),
-
     generateWeekDays(week) {
       const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
       const today = new Date();
@@ -112,33 +113,50 @@ export default {
 
     selectDay(day) {
       const selectedDate = new Date(day.dateobj);
-      this.habitStore.selectedDate = selectedDate;
-      this.updateSelectedDay(selectedDate);
-      if (!this.habits.empty) {
-        this.$store.dispatch('getDayHabits', selectedDate);
-      }
-      this.$store.dispatch('getDayMemos', selectedDate);
+      this.habitStore.setSelectedDate(selectedDate);
       this.$router.push('/');
     },
 
-    habitsProgress(day) {
-      const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits, this.$store.state.pauses);
-      return totalProgress;
+    dayProgress(day) {
+      const dateKey = day.toISOString().split('T')[0];
+      const habitMetrics = this.habitMetrics[dateKey];
+
+      // Return 0 if no metrics available yet (loading state)
+      if (!habitMetrics || !Array.isArray(habitMetrics)) {
+        return 0;
+      }
+
+      // Filter for habits that are scheduled and not paused
+      const activeHabits = habitMetrics.filter(habit => {
+        return habit.isScheduled && !habit.isPausedOnDay;
+      });
+
+      // Calculate total progress
+      let progress = 0;
+      let totalDailyGoal = 0;
+
+      activeHabits.forEach(habit => {
+        progress += Number(habit.actualProgress || 0);
+        totalDailyGoal += habit.dailyGoal || 0;
+      });
+
+
+      return totalDailyGoal > 0 ? (progress / totalDailyGoal) * 100 : 0;
     },
 
     showLastWeek() {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek');
-      // Fetch last week's data
-      this.$store.dispatch('fetchWeekProgress', 'lastWeek');
-      // Set the selected day to Saturday of last week
+
       const today = new Date();
       const currentDayOfWeek = today.getDay();
-      const lastSat = new Date(today);
-      lastSat.setDate(today.getDate() - currentDayOfWeek - 1);
-      const lastSaturday = this.days.find(day => day.date === lastSat.getDate());
-      if (lastSaturday) {
-        this.selectDay(lastSaturday);
+      const lastSun = new Date(today);
+      lastSun.setDate(today.getDate() - currentDayOfWeek - 7);
+      const lastSunday = this.days.find(day => day.date === lastSun.getDate());
+
+      // Set the selected day to Sunday of last week
+      if (lastSunday) {
+        this.selectDay(lastSunday);
       }
     },
 
