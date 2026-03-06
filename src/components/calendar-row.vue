@@ -43,6 +43,7 @@
 import RadialProgressbar from './RadialProgressbar.vue';
 import { mapActions, mapState } from 'vuex';
 import { getTotalProgressDay } from '../utils/getTotalProgressDay';
+import { useHabitStore } from '../store/habitStore';
 
 export default {
   components: {
@@ -55,6 +56,7 @@ export default {
     };
   },
   mounted() {
+    window.habitStore = useHabitStore();
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
@@ -67,9 +69,14 @@ export default {
     } else if (this.selectedDay >= startOfWeek) {
       this.showThisWeek(false);
     }
+
+    this.habitStore.fetchWeek(startOfWeek, today);
   },
   computed: {
     ...mapState(['habits', 'weekHabits', 'dayHabits', 'weekProgress', 'selectedDay', 'pauses']),
+    habitStore() {
+      return useHabitStore();
+    },
   },
   methods: {
     ...mapActions(['updateSelectedDay']),
@@ -105,6 +112,7 @@ export default {
 
     selectDay(day) {
       const selectedDate = new Date(day.dateobj);
+      this.habitStore.selectedDate = selectedDate;
       this.updateSelectedDay(selectedDate);
       if (!this.habits.empty) {
         this.$store.dispatch('getDayHabits', selectedDate);
