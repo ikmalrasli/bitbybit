@@ -153,6 +153,7 @@ import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
 import { useDialogStore } from '../../store/dialogStore';
 import { useHabitStore } from '../../store/habitStore';
+import { useUIStore } from '../../store/uiStore';
 
 export default {
   components: {
@@ -168,6 +169,8 @@ export default {
       showMemos: true,
       showDeleteButton: {},
       dialogStore: useDialogStore(),
+      uiStore: useUIStore(),
+      habitStore: useHabitStore(),
     };
   },
   mounted() {
@@ -181,13 +184,9 @@ export default {
     this.habitStore.checkIfAnyHabitExists();
   },
   computed: {
-    //Get data from habitStore
-    habitStore() {
-      return useHabitStore();
-    },
     // Get selected date from habitStore (which is passed from calendar-row component)
     selectedDay() {
-      return this.habitStore.selectedDate;
+      return this.uiStore.selectedDate;
     },
     hasAnyHabit() {
       return this.habitStore.hasAnyHabit;

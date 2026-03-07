@@ -4,14 +4,10 @@ import { useUserStore } from '../store/userStore';
 
 export const useHabitStore = defineStore('habitStore', {
   state: () => ({
-    selectedDate: new Date(),
     dayHabitMetrics: {},
     hasAnyHabit: false
   }),
   actions: {
-    setSelectedDate(date) {
-      this.selectedDate = date;
-    },
     async getHabitMetrics(start, end) {
       const userStore = useUserStore();
       const uid = userStore.getUserId;

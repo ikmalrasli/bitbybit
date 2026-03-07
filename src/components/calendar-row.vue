@@ -41,6 +41,7 @@
 
 <script>
 import RadialProgressbar from './RadialProgressbar.vue';
+import { useUIStore } from '../store/uiStore';
 import { useHabitStore } from '../store/habitStore';
 
 export default {
@@ -51,6 +52,8 @@ export default {
     return {
       currentWeek: 'thisWeek', // Tracks the currently viewed week
       days: this.generateWeekDays('thisWeek'), // Initially show this week's days
+      habitStore: useHabitStore(),
+      uiStore: useUIStore(),
     };
   },
   mounted() {
@@ -68,20 +71,17 @@ export default {
     }
   },
   computed: {
-    habitStore() {
-      return useHabitStore();
-    },
-
     habitMetrics() {
       return this.habitStore.dayHabitMetrics;
     },
 
     selectedDay() {
-      return this.habitStore.selectedDate;
+      return this.uiStore.selectedDate;
     }
 
   },
   methods: {
+    // TODO: create a dynamic way to generate week days (user can keep scrolling back to previous weeks)
     generateWeekDays(week) {
       const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
       const today = new Date();
@@ -113,7 +113,7 @@ export default {
 
     selectDay(day) {
       const selectedDate = new Date(day.dateobj);
-      this.habitStore.setSelectedDate(selectedDate);
+      this.uiStore.setSelectedDate(selectedDate);
       this.$router.push('/');
     },
 
