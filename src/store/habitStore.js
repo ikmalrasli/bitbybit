@@ -5,7 +5,8 @@ import { useUserStore } from '../store/userStore';
 export const useHabitStore = defineStore('habitStore', {
   state: () => ({
     selectedDate: new Date(),
-    dayHabitMetrics: {}
+    dayHabitMetrics: {},
+    hasAnyHabit: false
   }),
   actions: {
     setSelectedDate(date) {
@@ -15,7 +16,11 @@ export const useHabitStore = defineStore('habitStore', {
       const userStore = useUserStore();
       const uid = userStore.getUserId;
       this.dayHabitMetrics = { ...this.dayHabitMetrics, ...await habitService.fetchHabitMetrics(uid, start, end) };
+    },
+    async checkIfAnyHabitExists() {
+      const userStore = useUserStore();
+      const uid = userStore.getUserId;
+      this.hasAnyHabit = await habitService.checkIfAnyHabitExists(uid);
     }
-
   }
 });

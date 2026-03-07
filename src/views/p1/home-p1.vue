@@ -2,8 +2,8 @@
   <div class=" w-full flex flex-row flex-grow px-4">
     <!-- Main content -->
     <div class="flex-auto justify-center ">
-      <!-- if no habits-->
-      <div v-if="habits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
+      <!-- if no habits exist (user first time)-->
+      <div v-if="!hasAnyHabit" class="w-full p-4 mt-4 mb-4 text-gray-700">
         <p class="text-center">No Habits</p>
         <p class="text-center">
           Tap the
@@ -12,6 +12,11 @@
           </span>
           button
         </p>
+      </div>
+
+      <!-- if no habits exist but user selected date before any habits started-->
+      <div v-if="hasAnyHabit && habits.length === 0" class="w-full p-4 mt-4 mb-4 text-gray-700">
+        <p class="text-center">No Habits started yet for this date</p>
       </div>
 
       <!-- Habits exist-->
@@ -173,6 +178,7 @@ export default {
     startOfLastWeek.setHours(0, 0, 0, 0);
 
     this.habitStore.getHabitMetrics(startOfLastWeek, today);
+    this.habitStore.checkIfAnyHabitExists();
   },
   computed: {
     //Get data from habitStore
@@ -182,6 +188,9 @@ export default {
     // Get selected date from habitStore (which is passed from calendar-row component)
     selectedDay() {
       return this.habitStore.selectedDate;
+    },
+    hasAnyHabit() {
+      return this.habitStore.hasAnyHabit;
     },
     habits() {
       const dateKey = this.selectedDay.toISOString().split('T')[0];
