@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useLoadingStore } from './loadingStore';
+import { useUIStore } from './uiStore';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import * as Sentry from "@sentry/vue";
 
@@ -14,7 +14,7 @@ export const useUserStore = defineStore('userStore', {
   },
   actions: {
     async login(email, password) {
-      const loading = useLoadingStore(); // Call loadingStore
+      const loading = useUIStore(); // Call loadingStore
       loading.setLoading(true);
 
       const auth = getAuth();
@@ -42,7 +42,7 @@ export const useUserStore = defineStore('userStore', {
     },
 
     fetchUser() {
-      const loading = useLoadingStore();
+      const loading = useUIStore();
       loading.setLoading(true);
 
       return new Promise((resolve) => {

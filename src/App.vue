@@ -1,6 +1,6 @@
 <template>
   <div class="flex justify-center h-full">
-    <router-view v-if="!loadingStore.isLoading" />
+    <router-view v-if="!uiStore.isLoading" />
     <loading v-else />
   </div>
 </template>
@@ -11,21 +11,21 @@ import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
 import { syncService } from './services/syncService';
 import { useUserStore } from './store/userStore';
-import { useLoadingStore } from './store/loadingStore';
+import { useUIStore } from './store/uiStore';
 import { useHabitStore } from './store/habitStore';
 
 export default {
   components: { loading },
   computed: {
-    loadingStore() {
-      return useLoadingStore();
+    uiStore() {
+      return useUIStore();
     },
     habitStore() {
       return useHabitStore();
     }
   },
   async created() {
-    this.loadingStore.setLoading(true);
+    this.uiStore.setLoading(true);
 
     try {
       const userStore = useUserStore();
@@ -42,10 +42,10 @@ export default {
           await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
         }
       }
-      this.loadingStore.setLoading(false);
+      this.uiStore.setLoading(false);
     } catch (error) {
       console.error('Error in App created:', error);
-      this.loadingStore.setLoading(false);
+      this.uiStore.setLoading(false);
     }
   },
   async mounted() {
