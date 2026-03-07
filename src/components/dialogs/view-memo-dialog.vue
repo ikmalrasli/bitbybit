@@ -6,7 +6,7 @@
         <!-- Header -->
         <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold text-gray-700">
-            {{dateA.toDate().toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' })}}</h2>
+            {{dateA.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' })}}</h2>
           <div class="flex space-x-4 items-center">
             <span class="material-icons cursor-pointer text-red-500" @click="deleteMemo">delete</span>
             <span class="material-icons cursor-pointer" @click="closeDialog">close</span>
@@ -26,21 +26,23 @@
   </template>
   
 <script>
+import { useUIStore } from '../../store/uiStore';
+import { useMemoStore } from '../../store/memoStore';
 import { useDialogStore } from '../../store/dialogStore';
 import { db } from "../../firebase";
 import { doc, deleteDoc, Timestamp } from "firebase/firestore";
-import { mapState} from 'vuex';
   
 export default {
   data() {
     return {
+      uiStore: useUIStore(),
+      memoStore: useMemoStore(),
       dialogStore: useDialogStore(),
     };
   },
   computed: {
-    ...mapState(['selectedDay']),
     dateA() {
-      return new Timestamp(this.dialogStore.content.timestamp.seconds, this.dialogStore.content.timestamp.nanoseconds)
+      return this.dialogStore.content.timestamp;
     }
   },
   methods: {

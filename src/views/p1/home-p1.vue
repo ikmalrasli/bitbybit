@@ -105,7 +105,7 @@
           </transition>
         </div>
 
-        <!-- Memos (expand/collapse) 
+        <!--Memos (expand/collapse) -->
         <div v-if="dayMemos.length !== 0">
           <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Memos')">
             <div class="flex items-center">
@@ -139,7 +139,7 @@
               </div>
             </div>
           </transition>
-        </div>-->
+        </div>
       </div>
     </div>
   </div>
@@ -153,6 +153,7 @@ import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
 import { useDialogStore } from '../../store/dialogStore';
 import { useHabitStore } from '../../store/habitStore';
+import { useMemoStore } from '../../store/memoStore';
 import { useUIStore } from '../../store/uiStore';
 
 export default {
@@ -171,9 +172,13 @@ export default {
       dialogStore: useDialogStore(),
       uiStore: useUIStore(),
       habitStore: useHabitStore(),
+      memoStore: useMemoStore(),
     };
   },
   mounted() {
+    // Check if any habit exists
+    this.habitStore.checkIfAnyHabitExists();
+
     // Get habit metrics for this week and last week
     const today = new Date();
     const startOfLastWeek = new Date(today);
@@ -181,7 +186,8 @@ export default {
     startOfLastWeek.setHours(0, 0, 0, 0);
 
     this.habitStore.getHabitMetrics(startOfLastWeek, today);
-    this.habitStore.checkIfAnyHabitExists();
+    this.memoStore.getMemos(startOfLastWeek, today);
+    
   },
   computed: {
     // Get selected date from habitStore (which is passed from calendar-row component)
@@ -214,6 +220,12 @@ export default {
       return this.habits.filter(habit =>
         habit.isPausedOnDay && habit.isScheduled
       ) || [];
+    },
+    
+    // memos for selected day
+    dayMemos() {
+      const dateKey = this.selectedDay.toISOString().split('T')[0];
+      return this.memoStore.dayMemos[dateKey] || [];
     }
   },
   methods: {
@@ -263,36 +275,36 @@ export default {
 
       return `${hours}:${minutes} ${period}`;
     },
-    // memoCategory(category) {
-    //   if (category === 'feeling') {
-    //     return 'How I feel today'
-    //   } else if (category === 'gratitude') {
-    //     return 'Words of gratitude'
-    //   } else if (category === 'deeds') {
-    //     return 'Good deeds today'
-    //   } else if (category === 'highlight') {
-    //     return 'Hightlight of the day'
-    //   } else {
-    //     return 'Other'
-    //   }
-    // },
+    memoCategory(category) {
+      if (category === 'feeling') {
+        return 'How I feel today'
+      } else if (category === 'gratitude') {
+        return 'Words of gratitude'
+      } else if (category === 'deeds') {
+        return 'Good deeds today'
+      } else if (category === 'highlight') {
+        return 'Hightlight of the day'
+      } else {
+        return 'Other'
+      }
+    },
     toggleDeleteButton(index) {
       // Directly toggle the value in the showDeleteButton object
       this.showDeleteButton[index] = !this.showDeleteButton[index];
     },
-    // viewMemo(memoContent) {
-    //   this.dialogStore.openViewMemoDialog(memoContent);
-    // },
-    // async deleteMemo(memoId, index) {
-    //   this.showDeleteButton[index] = !this.showDeleteButton[index];
-    //   try {
-    //     const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
-    //     await deleteDoc(memoRef);
-    //     this.$store.dispatch('getDayMemos', this.selectedDay); // Refetch memos after deletion if needed
-    //   } catch (error) {
-    //     console.error("Error deleting memo:", error);
-    //   }
-    // },
+    viewMemo(memoContent) {
+      this.dialogStore.openViewMemoDialog(memoContent);
+    },
+    async deleteMemo(memoId, index) {
+      this.showDeleteButton[index] = !this.showDeleteButton[index];
+      try {
+        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
+        await deleteDoc(memoRef);
+        this.memoStore.getMemos(this.selectedDay, this.selectedDay); // Refetch memos after deletion if needed
+      } catch (error) {
+        console.error("Error deleting memo:", error);
+      }
+    },
     toggleSection(section) {
       if (section === 'Uncompleted') {
         this.showUncompleted = !this.showUncompleted;
