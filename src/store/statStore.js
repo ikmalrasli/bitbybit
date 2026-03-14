@@ -1,58 +1,60 @@
 import { defineStore } from 'pinia';
+import { habitService } from '../services/habitService';
+import { useUserStore } from './userStore';
 
-export const useStatStore = defineStore('habitStore', {
+export const useStatStore = defineStore('statStore', {
   state: () => ({
-    selectedStat: null,   // Holds the currently selected habit
-    selectedMonth: new Date().getMonth(), // Default to the current month
-    selectedYear: new Date().getFullYear(), // Default to the current year
-    textColor: 'text-violet-400',
-    fillColor: 'fill-violet-400',
-    habitsCache: {}, // Caches habits data by month and year
-    progressUpdated: true,
+    // Use a single Date object set to the 1st of the current month
+    viewDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    monthlyCache: {},
+    selectedStat: null,
+    loading: false
   }),
+  
+  getters: {
+    // Easily extract Month and Year for the service and UI
+    month: (state) => state.viewDate.getMonth(),
+    year: (state) => state.viewDate.getFullYear(),
+    
+    cacheKey: (state) => `${state.viewDate.getFullYear()}-${state.viewDate.getMonth()}`,
+    
+    currentMonthHabits: (state) => {
+      return state.monthlyCache[state.cacheKey] || [];
+    }
+  },
+
   actions: {
-    resetHabitsCache() {
-      this.habitsCache = {};
-    },
-    // Sets the selected habit
-    selectStat(habit) {
-      this.selectedStat = habit;
-      if (habit.color) {
-        this.textColor = 'text-' + habit.color.default;
-        this.fillColor = 'fill-' + habit.color.default;
+    // One function to rule them all
+    async loadStats() {
+      const userStore = useUserStore();
+      const key = this.cacheKey;
+      
+      // If we already have it, don't fetch again (unless you want to force refresh)
+      if (this.monthlyCache[key]) return;
+
+      this.loading = true;
+      try {
+        const data = await habitService.fetchMonthlySummary(
+          userStore.getUserId, 
+          this.month, 
+          this.year
+        );
+        console.log(data);
+        this.monthlyCache[key] = data;
+      } finally {
+        this.loading = false;
       }
     },
-    // Sets the selected month and year
-    setMonthAndYear(month, year) {
-      this.selectedMonth = month;
-      this.selectedYear = year;
-    },
-    // Stores habits for the specified month and year in cache
-    setHabitsForMonth(habits, month, year) {
-      const key = `${month}-${year}`;
-      this.habitsCache[key] = habits;
-    },
-    // Retrieves habits for the specified month and year from cache
-    getHabitsForMonth(month, year) {
-      const key = `${month}-${year}`;
-      return this.habitsCache[key] || null;
-    },
-    setProgressUpdated() {
-      this.progressUpdated = true;
-    },
-    resetProgressUpdated() {
-      this.progressUpdated = false;
-    },
-  },
-  getters: {
-    // Returns the name of the selected month
-    currentMonthName: (state) => {
-      const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
-      ];
-      return monthNames[state.selectedMonth];
-    },
-    getHabitId: (state) => state.selectedHabit,
-  },
+
+    // Simple "Set and Fetch" logic
+    changeMonth(delta) {
+      // Create a new date based on the current viewDate
+      const newDate = new Date(this.viewDate);
+      // JS automatically handles year rollovers if month becomes < 0 or > 11
+      newDate.setMonth(newDate.getMonth() + delta);
+      this.viewDate = newDate;
+      
+      this.loadStats();
+    }
+  }
 });
