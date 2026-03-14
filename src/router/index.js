@@ -123,7 +123,7 @@ const routes = [
         meta: { title: 'Stats', requiresAuth: true },
       },
       {
-        path: 'stats/:habitId:timestamp',
+        path: 'stats/:habitId',
         name: 'detail-stats',
         components: {
           default: Stats,
@@ -131,8 +131,7 @@ const routes = [
         },
         props: {
           right: (route) => ({
-            habitId: route.params.habitId,
-            timestamp: route.params.timestamp
+            habitId: route.params.habitId
           })
         },
         meta: { requiresAuth: true }
