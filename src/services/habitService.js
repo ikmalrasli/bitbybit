@@ -6,7 +6,7 @@ export const habitService = {
     // Ensure start is 00:00:00 and end is 23:59:59 of the local day
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
-    
+
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
@@ -36,7 +36,7 @@ export const habitService = {
 
     // 2. BUILD THE VIEW
     let current = new Date(start);
-    
+
     // The loop now covers the full range inclusive of the last millisecond
     while (current <= end) {
       const dateKey = getLocalDateKey(current);
@@ -45,17 +45,17 @@ export const habitService = {
 
       habitMetricsMap[dateKey] = habits.filter(habit => {
         // Normalize habit terms for comparison
-        const termStart = habit.termStart ? new Date(habit.termStart).setHours(0,0,0,0) : 0;
-        const termEnd = habit.termEnd ? new Date(habit.termEnd).setHours(23,59,59,999) : Infinity;
-        
+        const termStart = habit.termStart ? new Date(habit.termStart).setHours(0, 0, 0, 0) : 0;
+        const termEnd = habit.termEnd ? new Date(habit.termEnd).setHours(23, 59, 59, 999) : Infinity;
+
         return currentTime >= termStart && currentTime <= termEnd;
       }).map(habit => {
         const isScheduled = habit.repeat?.[dayName];
-        
+
         const isPausedOnDay = pauses.some(p => {
           if (p.habitId !== habit.id) return false;
-          const pStart = new Date(p.start).setHours(0,0,0,0);
-          const pEnd = p.end ? new Date(p.end).setHours(23,59,59,999) : Infinity;
+          const pStart = new Date(p.start).setHours(0, 0, 0, 0);
+          const pEnd = p.end ? new Date(p.end).setHours(23, 59, 59, 999) : Infinity;
           return currentTime >= pStart && currentTime <= pEnd;
         });
 
@@ -77,5 +77,42 @@ export const habitService = {
   async checkIfAnyHabitExists(userId) {
     const habits = await db.habits.where('userId').equals(userId).toArray();
     return habits.length > 0;
+  },
+  // Add this to habitService.js
+  async fetchMonthlySummary(userId, month, year) {
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0);
+
+    // Reuse the existing high-speed function
+    const dailyMap = await this.fetchHabitMetrics(userId, startOfMonth, endOfMonth);
+
+    const summary = {};
+
+    // Aggregate daily data into habit totals
+    Object.values(dailyMap).forEach(dayHabits => {
+      dayHabits.forEach(h => {
+        if (!summary[h.id]) {
+          summary[h.id] = {
+            ...h,
+            totalGoal: 0,
+            totalProgress: 0
+          };
+        }
+
+        // Only add to goal if scheduled AND not paused
+        if (h.isScheduled && !h.isPausedOnDay) {
+          summary[h.id].totalGoal += (h.dailyGoal || 0);
+          summary[h.id].totalProgress += (h.actualProgress || 0);
+        }
+      });
+    });
+
+    // Calculate percentages and return as array
+    return Object.values(summary).map(habit => ({
+      ...habit,
+      progressPercent: habit.totalGoal > 0
+        ? Math.min(100, Math.round((habit.totalProgress / habit.totalGoal) * 100))
+        : 0
+    }));
   }
 };
