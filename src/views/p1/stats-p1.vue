@@ -1,548 +1,235 @@
 <template>
-  <div class="w-full flex flex-col flex-grow">
-    <!-- Header -->
-    <header class="bg-white pt-1 pb-2 px-4 flex flex-row justify-between sticky top-0 z-20">
-      <button class="material-icons rounded-full active:bg-gray-200" @click="previousMonth">chevron_left</button>
-      <h1 class="text-xl text-black font-semibold">{{ currentMonthName }} {{ currentYear }}</h1>
-      <button
-        class="material-icons rounded-full active:bg-gray-200 disabled:text-gray-400"
-        :disabled="currentMonth == todayMonth && currentYear == todayYear"
-        @click="nextMonth"
-      >
+  <div class="w-full flex flex-col flex-grow bg-gray-50">
+    <header class="bg-white pt-1 pb-2 px-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
+      <button class="material-icons p-2 active:bg-gray-100 rounded-full" @click="store.changeMonth(-1)">
+        chevron_left
+      </button>
+
+      <h1 class="text-xl font-semibold">{{ monthName }} {{ store.year }}</h1>
+
+      <button class="material-icons p-2 active:bg-gray-100 rounded-full disabled:text-gray-300"
+        :disabled="isCurrentMonth" @click="store.changeMonth(1)">
         chevron_right
       </button>
     </header>
 
-    <!-- Content Section -->
-    <div class="flex-grow flex flex-col overflow-hidden px-4">
-      <!-- Fixed Overall Progress -->
-      <div class="w-full p-2 bg-white border rounded-lg flex items-center h-24 md:h-28 shadow-sm sticky z-10">
-        <template v-if="fetched">
-          <h2 class="p-2 w-3/4 leading-tight">{{ mainText }}</h2>
-          <div class="w-1/4 h-full">
-            <RadialProgressbar
-              :progress="Number(overallProgress)"
-              :radius="40"
-              :text="String(displayValue)"
-              color="text-violet-400"
-              class="cursor-pointer"
-              @click="toggleGrade"
-            />
+    <div class="flex-grow flex flex-col px-4 pt-4 overflow-hidden">
+      <div class="w-full p-4 bg-white border rounded-xl flex items-center shadow-sm mb-2">
+        <template v-if="!store.loading">
+          <h2 class="w-3/4 text-md font-medium pr-4 leading-tight">{{ motivationText }}</h2>
+          <div class="w-1/4">
+            <RadialProgressbar :progress="overallProgress" :radius="45" :text="displayLabel" color="text-violet-500"
+              @click="showGrade = !showGrade" />
           </div>
         </template>
-        <template v-else>
-          <!-- Skeleton Loader -->
-          <div class="flex items-center w-full animate-pulse">
-            <div class="w-3/4 h-6 bg-gray-200 rounded-md"></div>
-            <div class="w-16 h-16 bg-gray-200 rounded-full ml-4"></div>
-          </div>
-        </template>
+        <div v-else class="animate-pulse flex w-full space-x-4">
+          <div class="h-12 bg-gray-200 rounded flex-grow"></div>
+          <div class="h-16 w-16 bg-gray-200 rounded-full"></div>
+        </div>
       </div>
 
       <!-- More Options Button (Dropdown Toggle) -->
       <div class="relative flex flex-row items-center p-2">
-        <span class="font-semibold text-black">More info</span>
+        <span class="text-sm font-semibold uppercase tracking-widest">Summary</span>
         <hr class="flex-grow border-t border-gray-300 mx-4" />
         <div class="space-x-1 flex items-center cursor-pointer" @click="toggleDropdown">
-          <span class="material-icons rounded-full">sort</span>
-          <span class="font-semibold">Sort</span>
+          <span class="material-icons text-md rounded-full">sort</span>
+          <span class="font-semibold text-sm uppercase tracking-widest">Sort</span>
         </div>
-        <div
-          v-if="isDropdownOpen"
+        <div v-if="isDropdownOpen"
           class="absolute right-0 z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-          style="position: absolute; top: 100%;"
-          @click.stop
-        >
+          style="position: absolute; top: 100%;" @click.stop>
           <ul class="py-1 text-gray-700">
-            <li
-              @click="sortName"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortName"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Name</span>
-              <span
-                v-if="currentSort === 'name'"
-                class="material-icons"
-              >{{ sortNameAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'name'" class="material-icons">{{ sortNameAsc ? 'arrow_upward' :
+                'arrow_downward'
+                }}</span>
             </li>
-            <li
-              @click="sortProgress"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortProgress"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Progress</span>
-              <span
-                v-if="currentSort === 'progress'"
-                class="material-icons"
-              >{{ sortProgressAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'progress'" class="material-icons">{{ sortProgressAsc ? 'arrow_upward' :
+                'arrow_downward' }}</span>
             </li>
-            <li
-              @click="sortColor"
-              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer"
-            >
+            <li @click="sortColor"
+              class="flex justify-between items-center px-4 py-2 text-md hover:bg-gray-100 cursor-pointer">
               <span>Color</span>
-              <span
-                v-if="currentSort === 'color'"
-                class="material-icons"
-              >{{ sortColorAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
+              <span v-if="currentSort === 'color'" class="material-icons">{{ sortColorAsc ? 'arrow_upward' :
+                'arrow_downward'
+                }}</span>
             </li>
           </ul>
         </div>
       </div>
 
-      <!-- Scrollable Habits List -->
-      <div class="flex-grow overflow-y-auto pb-2" style="scrollbar-width: thin;">
-        <div v-if="fetched && habitsMonth.length !== 0" class="space-y-1">
-          <div v-if="showHabitsList" class="flex flex-col space-y-1">
-            <div
-              v-for="habit in habitsMonth"
-              :key="habit.id"
-              class="w-full min-h-18 p-4 bg-white border rounded-lg shadow-sm flex flex-row items-center justify-between cursor-pointer hover:bg-gray-100"
-              @click="openDetail(habit)"
-            >
-              <div class="flex flex-row items-center">
-                <div
-                  class="h-3 w-3 md:h-4 md:w-4"
-                  :class="habit.color ? `fill-${habit.color.default}` : 'fill-violet-400'"
-                >
-                  <svg class="h-full w-full" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" />
-                  </svg>
-                </div>
-                <h2 class="p-2 w-full">{{ habit.name }}</h2>
-              </div>
-              <div class="flex flex-row items-center">
-                <span
-                  class="material-icons p-1"
-                  :class="habit.color ? `text-${habit.color.default}` : 'text-violet-400'"
-                >pie_chart</span>
-                <h3 class="font-semibold text-center min-w-10">{{ habit.progressPercent }}%</h3>
-                <span class="material-icons">chevron_right</span>
-              </div>
+
+      <div class="flex-grow overflow-y-auto pb-6 custom-scrollbar">
+        <div v-if="habits.length > 0" class="space-y-3">
+          <div v-for="habit in habits" :key="habit.id" @click="openDetail(habit)"
+            class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between active:bg-gray-50 transition-colors">
+            <div class="flex items-center space-x-3">
+              <div :class="`h-3 w-3 rounded-full bg-${habit.color?.default || 'violet-400'}`"></div>
+              <span class="font-medium text-gray-700">{{ habit.name }}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="text-lg font-semibold text-gray-600">{{ habit.progressPercent }}%</span>
+              <span class="material-icons text-gray-300">chevron_right</span>
             </div>
           </div>
         </div>
-        <div v-else-if="fetched">
-          <h2 class="mt-16 text-xl text-center block mb-2 h-full">No Habits in this month</h2>
-        </div>
-        <div v-else class="w-full h-full flex justify-center items-center">
-          <!-- Skeleton Loader -->
-          <div class="spinner"></div>
+
+        <div v-else-if="!store.loading" class="text-center mt-20 text-gray-400">
+          <p>No activity tracked for this month.</p>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, ref } from 'vue';
+import { useStatStore } from '../../store/statStore';
+import { useRouter } from 'vue-router';
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
-import { query, collection, where, getDocs, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { mapState } from 'vuex';
-import { useStatStore } from '../../store/statStore.js';
 
-export default {
-  components: {
-    RadialProgressbar
-  },
-  data() {
-    const statStore = useStatStore();
-    return {
-      statStore,
-      sortType: 'alphabetical',
-      currentMonth: new Date().getMonth(),
-      currentYear: new Date().getFullYear(),
-      today: new Date().getDate(),
-      todayMonth: new Date().getMonth(),
-      todayYear: new Date().getFullYear(),
-      mainText: '',
-      overallProgress: 0,
-      showGrade: true,
-      fetched: false,
-      isDropdownOpen: false,
-      sortNameAsc: true,
-      sortProgressAsc: true,
-      sortColorAsc: true,
-      currentSort: 'name',
-      showHabitsList: false,
-    }
-  },
-  computed: {
-    currentMonthName() {
-      const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
-      ];
-      return monthNames[this.currentMonth];
-    },
-    ...mapState(['habits']),
-    currentMonthYear() {
-      return `${this.currentMonth}-${this.currentYear}`;
-    },
-    displayValue() {
-      if (this.showGrade) {
-        return this.getGrade(this.overallProgress); // Show grade if toggled
-      }
-      return this.overallProgress; // Otherwise, show progress
-    },
-    habitsMonth(){
-      return this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
-    },
-  },
-  methods: {
-    clicked(){
-      //console log habits cache from statStore
-      console.log(this.statStore.habitsCache)
-    },
-    previousMonth() {
-      if (this.currentMonth === 0) {
-          this.currentMonth = 11;
-          this.currentYear--;
-      } else {
-          this.currentMonth--;
-      }
-      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
-      this.$router.push('/stats');
-    },
-    nextMonth() {
-      if (this.currentMonth === this.todayMonth && this.currentYear === this.todayYear) {
-        return;
-      }
-      if (this.currentMonth === 11) {
-        this.currentMonth = 0;
-        this.currentYear++;
-      } else {
-        this.currentMonth++;
-      }
-      this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
-      this.$router.push('/stats');
-    },
-    toggleSort() {
-      if (this.sortType === 'alphabetical') {
-        this.habitsMonth.sort((a, b) => (b.totalProgress * 100 / b.totalGoals) - (a.totalProgress * 100 / a.totalGoals));
-        this.sortType = 'progress';
-      } else {
-        this.habitsMonth.sort((a, b) => a.name.localeCompare(b.name));
-        this.sortType = 'alphabetical';
-      }
-    },
-    toggleGrade() {
-      this.showGrade = !this.showGrade;
-    },
-    updateMainText() {
-      const grade = this.overallProgress;
+const store = useStatStore();
+const router = useRouter();
+const showGrade = ref(true);
 
-      if (this.currentMonth === this.todayMonth && this.currentYear === this.todayYear) {
-        // Ongoing Month Messages
-        if (grade >= 80) {
-          this.mainText = "Fantastic effort so far! Keep up the great work to finish strong!";
-        } else if (grade >= 60) {
-          this.mainText = "You're doing well! A little more effort could push you over the top.";
-        } else if (grade >= 40) {
-          this.mainText = "Keep going! There's still time to reach your goal this month.";
-        } else if (grade >= 20) {
-          this.mainText = "Progress is coming along—stay consistent, and results will follow!";
-        } else {
-          this.mainText = "Every small step counts. Let's make a push to improve this month!";
-        }
-      } else if (this.currentMonth < this.todayMonth && this.currentYear <= this.todayYear) {
-        // Past Month Messages
-        if (grade >= 80) {
-          this.mainText = "Outstanding! You completed this month’s goals with flying colors.";
-        } else if (grade >= 60) {
-          this.mainText = "Great job! You made solid progress and met most of your goals.";
-        } else if (grade >= 40) {
-          this.mainText = "Good effort! Though there was room for improvement, every bit counts.";
-        } else if (grade >= 20) {
-          this.mainText = "Some progress made, though there were more opportunities to grow.";
-        } else {
-          this.mainText = "A fresh start awaits! Use last month’s results as motivation to improve.";
-        }
-      }
-    },
-    getGrade(progress) {
-      if (progress >= 80) return 'A';
-      if (progress >= 60) return 'B';
-      if (progress >= 40) return 'C';
-      if (progress >= 20) return 'D';
-      return 'F'; // For progress less than 20%
-    },
-    async fetchHabitsMonth() {
-      this.fetched = false;
-      this.showHabitsList = false;
-      const fetchedHabits = await this.getMonthStats();
-      //this.habitsMonth = fetchedHabits;
-      this.statStore.setHabitsForMonth(fetchedHabits, this.currentMonth, this.currentYear);
-      this.overallProgress = this.calcOverallProgress(fetchedHabits);
-      this.fetched = true;
-      setTimeout(() => {
-        this.showHabitsList = true;
-      }, 50)
-    },
-    async getMonthStats() {
-      const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0).setHours(23, 59, 59, 999);
-      
-      const validHabits = this.habits.filter(habit => {
-        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
-        return termStart <= endOfMonth
-      });
+// Dropdown state
+const isDropdownOpen = ref(false);
+const currentSort = ref('');
+const sortNameAsc = ref(true);
+const sortProgressAsc = ref(true);
+const sortColorAsc = ref(true);
 
-      return await Promise.all(
-        validHabits.map(async (habit) => {
-          let totalGoals = this.getDailyGoalsInMonth(habit);
-          let totalProgress = await this.getProgressInMonth(habit);
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-          if (totalProgress > totalGoals) {
-            totalProgress = totalGoals;
-          }
-
-          const progressPercent = totalGoals > 0 ? Number((totalProgress * 100 / totalGoals).toFixed(0)) : 0;
-          
-          return { ...habit, totalGoals, totalProgress, progressPercent };
-        })
-      );
-    },
-    getDailyGoalsInMonth(habit) {
-      let dayCounts = 0;
-      let endDate = new Date().getDate();
-      if (this.currentYear != this.todayYear || this.currentMonth != this.todayMonth) {
-        endDate = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
-      }
-
-      for (let day = 1; day <= endDate; day++) {
-        const date = new Date(this.currentYear, this.currentMonth, day);
-        const dayOfWeek = date.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
-        const termStart = new Timestamp(habit.termStart.seconds, habit.termStart.nanoseconds).toDate();
-        const termEnd = habit.termEnd ? new Timestamp(habit.termEnd.seconds, habit.termEnd.nanoseconds).toDate() : null;
-        if (habit.repeat && habit.repeat[dayOfWeek] &&
-            termStart.setHours(0, 0, 0, 0) <= date &&
-          (habit.termEnd == null || termEnd > date)
-            && !this.isHabitPausedOnDay(habit.habitId, date, this.$store.state.pauses)
-          ) {
-          dayCounts++;
-        }
-      }
-      return dayCounts * habit.dailyGoal;
-    },
-    async getProgressInMonth(habit) {
-      let totalProgress = 0;
-
-      // Define the start and end of the month
-      const startOfMonth = new Date(this.currentYear, this.currentMonth, 1, 0, 0, 0, 0);
-      const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0, 23, 59, 59, 999);
-
-      // Query all progress documents for this habit within the month
-      const q = query(
-        collection(db, "progress"),
-        where("timestamp", ">=", startOfMonth),
-        where("timestamp", "<=", endOfMonth),
-        where("habitId", "==", habit.habitId),
-        orderBy("timestamp", "desc") // Order by timestamp to help with filtering the latest entries
-      );
-
-      // Fetch all documents in the range
-      const querySnapshot = await getDocs(q);
-
-      // Process documents to get the latest entry per day
-      const dailyProgressMap = {};
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const progressDate = new Date(data.timestamp.toDate());
-        const dayKey = `${progressDate.getFullYear()}-${String(progressDate.getMonth() + 1).padStart(2, '0')}-${String(progressDate.getDate()).padStart(2, '0')}`;
-
-
-        // Only keep the latest document for each day
-        if (!dailyProgressMap[dayKey]) {
-          if (!this.isHabitPausedOnDay(habit.habitId, progressDate, this.$store.state.pauses)) {
-            dailyProgressMap[dayKey] = Number(data.progress);
-          }
-        }
-      });
-      //console.log(habit.name+':',dailyProgressMap)
-      // Sum up the daily progress values
-      totalProgress = Object.values(dailyProgressMap).reduce((sum, progress) => sum + progress, 0);
-
-      return totalProgress;
-    },
-    calcOverallProgress(habits) {
-      let goals = 0;
-      let progress = 0;
-
-      habits.forEach((habit) => {
-        if (habit.totalProgress != null) {
-          progress += habit.totalProgress;
-          goals += habit.totalGoals;
-        }
-      });
-
-      return goals ? (progress * 100 / goals).toFixed(0) : 0;
-    },
-    isHabitPausedOnDay(habitId, day, pauses) {
-      const dayStart = new Date(day);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(day);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      return pauses?.some(pause => {
-        if (pause.habitId !== habitId) return false;
-        const start = pause.start.toDate ? pause.start.toDate() : new Date(pause.start.seconds * 1000);
-        const end = pause.end
-          ? (pause.end.toDate ? pause.end.toDate() : new Date(pause.end.seconds * 1000))
-          : null;
-        if (end) {
-          end.setHours(23, 59, 59, 999);
-          return dayStart >= start && dayEnd <= end;
-        } else {
-          return dayStart >= start;
-        }
-      });
-    },
-    openDetail(habit) {
-      this.statStore.selectStat(habit);
-
-      this.$router.push({
-        name: 'detail-stats',
-        params: { habitId: habit.habitId, timestamp: this.currentMonthYear }
-      });
-    },
-    // Back and Dropdown Functions
-    toggleDropdown(event) {
-      event.stopPropagation(); // Prevent the outside click listener from being triggered
-      this.isDropdownOpen = !this.isDropdownOpen;
-
-      // If the dropdown is open, add the click listener to detect clicks outside
-      if (this.isDropdownOpen) {
-        document.addEventListener('click', this.handleClickOutside);
-      } else {
-        document.removeEventListener('click', this.handleClickOutside);
-      }
-    },
-    handleClickOutside(event) {
-      const dropdown = this.$el.querySelector('.absolute');
-      if (dropdown && !dropdown.contains(event.target)) {
-        this.isDropdownOpen = false;  // Close dropdown
-        document.removeEventListener('click', this.handleClickOutside); // Remove the event listener
-      }
-    },
-    sortName() {
-      this.habitsMonth.sort((a, b) => this.sortNameAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
-      this.sortNameAsc = !this.sortNameAsc;
-      this.currentSort = 'name'; // Set active sort to 'name'
-      this.isDropdownOpen = false;
-      document.removeEventListener('click', this.handleClickOutside);
-    },
-    sortProgress() {
-      this.habitsMonth.sort((a, b) => this.sortProgressAsc ? a.progressPercent - b.progressPercent : b.progressPercent - a.progressPercent);
-      this.sortProgressAsc = !this.sortProgressAsc;
-      this.currentSort = 'progress'; // Set active sort to 'progress'
-      this.isDropdownOpen = false;
-      document.removeEventListener('click', this.handleClickOutside);
-    },
-    sortColor() {
-      // Define color order based on listColors
-      const colorOrder = {
-        "red-300": 0,
-        "orange-300": 1,
-        "yellow-300": 2,
-        "emerald-300": 3,
-        "blue-300": 4,
-        "pink-300": 5,
-        "violet-400": 6
-      };
-
-      // Sort habitsMonth based on the colorOrder
-      this.habitsMonth.sort((a, b) => {
-        const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
-        const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
-        
-        return this.sortColorAsc ? colorA - colorB : colorB - colorA;
-      });
-
-      // Toggle the sorting order and set current sort
-      this.sortColorAsc = !this.sortColorAsc;
-      this.currentSort = 'color';
-      this.isDropdownOpen = false;
-      document.removeEventListener('click', this.handleClickOutside);
-    },
-  },
-  watch: {
-    currentMonthYear(newVal, oldVal) {
-      if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
-        this.fetchHabitsMonth();
-        this.statStore.resetProgressUpdated();
-      } else {
-        this.overallProgress = this.calcOverallProgress(this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear));
-      }
-    },
-    overallProgress(newVal) {
-      this.updateMainText();
-    },
-  },
-  mounted() {
-    this.statStore.setMonthAndYear(this.currentMonth, this.currentYear);
-    
-    if (!this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear) || this.statStore.progressUpdated){
-      this.fetchHabitsMonth();
-      this.statStore.resetProgressUpdated();
-    }else{
-      //this.habitsMonth = this.statStore.getHabitsForMonth(this.currentMonth, this.currentYear);
-      this.overallProgress = this.calcOverallProgress(this.habitsMonth);
-      this.updateMainText();
-      this.fetched = true;
-      this.showHabitsList = true;
-    }
+// Computed
+const rawHabits = computed(() => store.currentMonthHabits);
+const habits = computed(() => {
+  let sorted = [...rawHabits.value];
+  
+  if (currentSort.value === 'name') {
+    sorted.sort((a, b) => sortNameAsc.value ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+  } else if (currentSort.value === 'progress') {
+    sorted.sort((a, b) => sortProgressAsc.value ? a.progressPercent - b.progressPercent : b.progressPercent - a.progressPercent);
+  } else if (currentSort.value === 'color') {
+    sorted.sort((a, b) => {
+      const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
+      const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
+      return sortColorAsc.value ? colorA - colorB : colorB - colorA;
+    });
   }
-}
+  
+  return sorted;
+});
+const monthName = computed(() => monthNames[store.month]);
+
+// Color order for sorting
+const colorOrder = {
+  "red-300": 0,
+  "orange-300": 1,
+  "yellow-300": 2,
+  "emerald-300": 3,
+  "blue-300": 4,
+  "pink-300": 5,
+  "violet-400": 6
+};
+
+// Disable "Next" button if we are looking at the current month/year
+const isCurrentMonth = computed(() => {
+  const now = new Date();
+  return store.month === now.getMonth() && store.year === now.getFullYear();
+});
+
+const overallProgress = computed(() => {
+  if (!habits.value.length) return 0;
+  const total = habits.value.reduce((acc, h) => acc + h.progressPercent, 0);
+  return Math.round(total / habits.value.length);
+});
+
+const displayLabel = computed(() => {
+  if (!showGrade.value) return `${overallProgress.value}%`;
+  const p = overallProgress.value;
+  if (p >= 90) return 'S';
+  if (p >= 80) return 'A';
+  if (p >= 60) return 'B';
+  if (p >= 40) return 'C';
+  if (p >= 20) return 'D';
+  return 'F';
+});
+
+const motivationText = computed(() => {
+  const p = overallProgress.value;
+  if (isCurrentMonth) {
+    if (p >= 90) return "Outstanding! You're on fire this month!";
+    if (p >= 80) return "Fantastic Effort so far! Keep up the great work today!";
+    if (p >= 60) return "You're doing well! A little more effort could push you over the top.";
+    if (p >= 50) return "Keep going! There's still time to reach your goal this month.";
+    if (p >= 40) return "Progress is coming along—stay consistent, and results will follow!";
+    if (p >= 20) return "Every small step counts. Let's make a push to improve this month!";
+    return "Every day is a fresh start to build your streak.";
+  } else {
+    if (p >= 90) return "Perfect month! You crushed it this month.";
+    if (p >= 80) return "Outstanding! You completed this month's goals with flying colors!";
+    if (p >= 60) return "Great job! You made solid progress and met most of your goals.";
+    if (p >= 50) return "Good effort! Though there was room for improvement, every bit counts.";
+    if (p >= 40) return "Some progress made, though there were more opportunities to grow.";
+    if (p >= 20) return "A fresh start awaits! Use last month's results as motivation to improve.";
+    return "Every day is a fresh start to build your streak.";
+  }
+});
+
+// Methods
+const openDetail = (habit) => {
+  store.selectedStat = habit;
+  router.push({ name: 'detail-stats', params: { habitId: habit.id } });
+};
+
+// Dropdown and Sorting Functions
+const toggleDropdown = (event) => {
+  event.stopPropagation();
+  isDropdownOpen.value = !isDropdownOpen.value;
+
+  if (isDropdownOpen.value) {
+    document.addEventListener('click', handleClickOutside);
+  } else {
+    document.removeEventListener('click', handleClickOutside);
+  }
+};
+
+const handleClickOutside = (event) => {
+  const dropdown = document.querySelector('.absolute');
+  if (dropdown && !dropdown.contains(event.target)) {
+    isDropdownOpen.value = false;
+    document.removeEventListener('click', handleClickOutside);
+  }
+};
+
+const sortName = () => {
+  sortNameAsc.value = !sortNameAsc.value;
+  currentSort.value = 'name';
+  isDropdownOpen.value = false;
+  document.removeEventListener('click', handleClickOutside);
+};
+
+const sortProgress = () => {
+  sortProgressAsc.value = !sortProgressAsc.value;
+  currentSort.value = 'progress';
+  isDropdownOpen.value = false;
+  document.removeEventListener('click', handleClickOutside);
+};
+
+const sortColor = () => {
+  sortColorAsc.value = !sortColorAsc.value;
+  currentSort.value = 'color';
+  isDropdownOpen.value = false;
+  document.removeEventListener('click', handleClickOutside);
+};
+onMounted(() => {
+  store.loadStats();
+});
 </script>
-
-<style scoped>
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #a78bfa; /* Change color as needed */
-  border-radius: 50%;
-  width: 28px; /* Spinner size */
-  height: 28px; /* Spinner size */
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Skeleton Loading Animation */
-.animate-pulse {
-  @apply rounded-md;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-
-/* Transition for slide-fade */
-.slide-fade-enter-active, .slide-fade-leave-active {
-  transition: all 0.3s ease;
-}
-.slide-fade-enter-from, .slide-fade-leave-to {
-  transform: translateY(-10px);
-  opacity: 0;
-}
-
-/* Transition for expand-collapse */
-.expand-collapse-enter-active, .expand-collapse-leave-active {
-  transition: all 0.3s ease;
-}
-.expand-collapse-enter, .expand-collapse-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-</style>
