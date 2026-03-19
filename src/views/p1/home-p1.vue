@@ -331,11 +331,11 @@ export default {
       this.$router.push({
         name: 'detail-habit',
         params: {
-          habitId: habit.habitId,
+          habitId: habit.id,
           timestamp: this.formatDate(new Date())
         }
       });
-      this.$store.dispatch('updateSelectedHabit', habit)
+      this.habitStore.setSelectedHabit(habit);
     },
   }
 };

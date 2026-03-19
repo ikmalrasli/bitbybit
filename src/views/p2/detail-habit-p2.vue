@@ -195,16 +195,13 @@
         <div class="flex flex-grow flex-row justify-between space-x-2 items-center">
           <span
             class="min-w-24 text-center text-sm text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">
-            {{ habitTermStart.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+            {{ selectedHabit?.termStart?.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year: 'numeric' }) }}
           </span>
           <hr class="flex-grow border-t mx-2"
             :class="selectedHabit?.color ? `border-${selectedHabit?.color.default}` : 'border-violet-400'" />
           <span
             class="justify-end min-w-24 text-center text-sm text-nowrap font-medium text-black text-opacity-50 rounded-full py-0.5 px-2 bg-black bg-opacity-5">
-            {{ selectedHabit?.termEnd ? habitTermEnd.toLocaleDateString('en-UK', {
-              day: 'numeric', month: 'short', year:
-                'numeric'
-            }) : 'No end' }}
+            {{ selectedHabit?.termEnd ? selectedHabit?.termEnd.toLocaleDateString('en-UK', { day: 'numeric', month: 'short', year:'numeric' }) : 'No end' }}
           </span>
         </div>
       </div>
@@ -213,12 +210,14 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
 import { db } from "../../firebase"; // Firestore instance
 import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc, or, limit } from "firebase/firestore"; // Firestore methods
 import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
+import { useHabitStore } from '../../store/habitStore.js';
+import { useUIStore } from "../../store/uiStore.js";
+import { habitService } from '../../services/habitService';
 
 export default {
   data() {
@@ -239,21 +238,17 @@ export default {
       isPaused: false,
       pauseId: '',
       pauseStart: null,
+      habitStore: useHabitStore(),
+      uiStore: useUIStore(),
     };
   },
   computed: {
-    ...mapState(['selectedHabit', 'selectedDay', 'firstFetchWeekProgress']),
     selectedHabit() {
-      this.addProgress = this.$store.state.selectedHabit?.progress;
-      return this.$store.state.selectedHabit;
+      return this.habitStore.selectedHabit
     },
-    habitTermStart() {
-      return new Timestamp(this.selectedHabit?.termStart.seconds, this.selectedHabit?.termStart.nanoseconds).toDate()
+    selectedDate() {
+      return this.uiStore.selectedDate
     },
-    habitTermEnd() {
-      return new Timestamp(this.selectedHabit?.termEnd?.seconds, this.selectedHabit?.termEnd?.nanoseconds).toDate()
-    },
-
     processedNotes() {
       if (!this.selectedHabit?.notes) return '';
       const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -399,15 +394,17 @@ export default {
         this.addProgress--;
       }
     },
+    
+    // Habit functions
     async removeTodayEntries() {
       try {
-        const dayStart = new Date(this.selectedDay);
+        const dayStart = new Date(this.selectedDate);
         dayStart.setHours(0, 0, 0, 0);
 
-        const dayEnd = new Date(this.selectedDay);
+        const dayEnd = new Date(this.selectedDate);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const habitId = this.selectedHabit.habitId;
+        const habitId = this.selectedHabit.id;
 
         const q = query(
           collection(db, 'progress'),
@@ -438,50 +435,6 @@ export default {
         });
       }
     },
-    // Habit functions
-    handleSelectedHabitChange() {
-      if (this.selectedDay.setHours(0, 0, 0, 0) != new Date().setHours(0, 0, 0, 0)) {
-        this.setTimestamp = new Date(this.selectedDay);
-        this.setTimestamp.setHours(23, 59, 59, 999);
-        this.onTime = false;
-      }
-      this.checkProgress();
-      this.checkPause();
-    },
-    checkPause() {
-      console.log("Checking pause status for habit:", this.selectedHabit?.habitId);
-      const q = query(
-        collection(db, 'pauses'),
-        where('habitId', '==', this.selectedHabit.habitId),
-        orderBy('start', 'desc'),
-        limit(1)
-      );
-      getDocs(q).then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          if (querySnapshot.docs[0].data().end === null) {
-            this.isPaused = true;
-            this.pauseId = querySnapshot.docs[0].id;
-            this.pauseStart = querySnapshot.docs[0].data().start;
-            console.log("Habit is paused");
-          } else {
-            this.isPaused = false;
-            console.log("Habit is not paused, end is set");
-          }
-        } else {
-          this.isPaused = false;
-          console.log("Habit is never paused");
-        }
-      }).catch((error) => {
-        console.error("Error checking pause status: ", error);
-      });
-    },
-    checkProgress() {
-      if (this.selectedHabit?.progressId !== '') {
-        this.docId = this.selectedHabit?.progressId;
-      } else {
-        this.docId = null;
-      }
-    },
     createProgress() {
       const auth = getAuth();
       const user = auth.currentUser;
@@ -492,7 +445,7 @@ export default {
 
       this.loading = true; // Start loading
       const habitRef = addDoc(collection(db, "progress"), {
-        habitId: this.selectedHabit.habitId,
+        habitId: this.selectedHabit.id,
         progress: this.addProgress,
         timestamp: this.setTimestamp,
         onTime: this.onTime
@@ -575,15 +528,7 @@ export default {
       }
     },
     confirmProgress() {
-      if (this.addProgress > 0) {
-        this.updateProgress();
-      }
-
-      if (this.addProgress === 0) {
-        this.removeTodayEntries();
-      }
-
-      this.statStore.setProgressUpdated();
+      this.habitService.updateProgress(this.docId, this.selectedHabit.userId, this.selectedHabit.id, this.addProgress, this.selectedDate);
     },
     pauseHabit() {
       this.dialogStore.openDialog(
@@ -600,7 +545,7 @@ export default {
             }
 
             const habitRef = addDoc(collection(db, "pauses"), {
-              habitId: this.selectedHabit.habitId,
+              habitId: this.selectedHabit.id,
               start: Timestamp.fromDate(new Date()),
               end: null
             });
@@ -609,7 +554,7 @@ export default {
               this.isPaused = true;
               this.pauseId = docRef.id;
               this.pauseStart = Timestamp.fromDate(new Date());
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+              const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
               updateDoc(habitDocRef, {
                 isPaused: true
               }).then(() => {
@@ -651,7 +596,7 @@ export default {
                 // Same day: delete pause doc
                 const pauseDocRef = doc(db, 'pauses', this.pauseId);
                 await deleteDoc(pauseDocRef);
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+                const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
                 await updateDoc(habitDocRef, { isPaused: false });
                 this.isPaused = false;
                 console.log("Pause doc deleted, habit resumed (same day)");
@@ -663,7 +608,7 @@ export default {
                 yesterday.setDate(now.getDate() - 1);
                 yesterday.setHours(23, 59, 59, 999);
                 await updateDoc(pauseDocRef, { end: Timestamp.fromDate(yesterday) });
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+                const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
                 await updateDoc(habitDocRef, { isPaused: false });
                 this.$store.dispatch('fetchPauses');
                 this.isPaused = false;
@@ -671,7 +616,7 @@ export default {
               }
             } else {
               // Fallback: just update habit
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.habitId);
+              const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
               await updateDoc(habitDocRef, { isPaused: false });
               this.isPaused = false;
               console.log("HabitDoc updated resume fallback");
@@ -688,7 +633,7 @@ export default {
     },
     editHabit() {
       //use addHabit layout for edit habit
-      this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.habitId } });
+      this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.id } });
     },
     deleteHabit() {
       //confirmation to delete habit
@@ -704,7 +649,7 @@ export default {
               //delete all progress from firestore with the habit id
               const q = query(
                 collection(db, 'progress'),
-                where('habitId', '==', this.selectedHabit.habitId)
+                where('habitId', '==', this.selectedHabit.id)
               );
               getDocs(q).then((querySnapshot) => {
                 querySnapshot.forEach((doc) => {
@@ -713,7 +658,7 @@ export default {
               });
 
               //delete habit from firestore
-              const docRef = doc(db, "habits", this.selectedHabit.habitId);
+              const docRef = doc(db, "habits", this.selectedHabit.id);
               deleteDoc(docRef);
 
               this.$toast.info({
@@ -737,14 +682,8 @@ export default {
       );
     },
   },
-  watch: {
-    selectedHabit: 'handleSelectedHabitChange'
-  },
   mounted() {
-    this.handleSelectedHabitChange();
-    if (this.$refs.galleryContainer) {
-      this.$refs.galleryContainer.addEventListener('wheel', this.handleScroll, { passive: false });
-    }
+    console.log(this.habitStore.selectedHabit);
   },
   beforeDestroy() {
     document.removeEventListener('click', this.handleClickOutside);
