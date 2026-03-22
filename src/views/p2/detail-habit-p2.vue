@@ -210,14 +210,10 @@
 </template>
 
 <script>
-import { db } from "../../firebase"; // Firestore instance
-import { collection, query, where, getDocs, deleteDoc, Timestamp, addDoc, orderBy, doc, updateDoc, or, limit } from "firebase/firestore"; // Firestore methods
-import { getAuth } from "firebase/auth"; // Firebase Authentication
 import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
 import { useHabitStore } from '../../store/habitStore.js';
 import { useUIStore } from "../../store/uiStore.js";
-import { habitService } from '../../services/habitService';
 
 export default {
   data() {
