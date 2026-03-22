@@ -104,7 +104,7 @@
         </div>
 
         <!-- Reset Progress Button -->
-        <button type="button" @click="removeTodayEntries"
+        <button type="button" @click="resetProgress"
           class="material-icons textpausegray-700 mt-4 mr-2 p-1 rounded-full active:bg-gray-200 disabled:text-gray-400"
           :disabled="isPaused">replay</button>
         <!-- Add Progress Button-->
@@ -235,7 +235,6 @@ export default {
       fullscreenImageUrl: '',
       scrollTimeout: null,
       currentImageIndex: 0,
-      isPaused: false,
       pauseId: '',
       pauseStart: null,
       habitStore: useHabitStore(),
@@ -249,6 +248,9 @@ export default {
     selectedDate() {
       return this.uiStore.selectedDate
     },
+    isPaused() {
+      return this.selectedHabit?.isPaused;
+    },
     processedNotes() {
       if (!this.selectedHabit?.notes) return '';
       const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -258,6 +260,15 @@ export default {
     },
     imageUrls() {
       return this.selectedHabit?.imageUrls || [];
+    }
+  },
+  watch: {
+    // Keep internal slider in sync with store data
+    selectedHabit: {
+      handler(newVal) {
+        if (newVal) this.addProgress = newVal.actualProgress || 0;
+      },
+      immediate: true
     }
   },
   methods: {
@@ -396,290 +407,83 @@ export default {
     },
     
     // Habit functions
-    async removeTodayEntries() {
+    async confirmProgress() {
+      this.loading = true;
       try {
-        const dayStart = new Date(this.selectedDate);
-        dayStart.setHours(0, 0, 0, 0);
-
-        const dayEnd = new Date(this.selectedDate);
-        dayEnd.setHours(23, 59, 59, 999);
-
-        const habitId = this.selectedHabit.id;
-
-        const q = query(
-          collection(db, 'progress'),
-          where('habitId', '==', habitId),
-          where('timestamp', '>=', Timestamp.fromDate(dayStart)),
-          where('timestamp', '<=', Timestamp.fromDate(dayEnd))
+        await this.habitStore.confirmProgress(
+          this.selectedHabit.id, 
+          this.addProgress, 
+          this.selectedDate,
+          this.selectedHabit.progressId
         );
-
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach(async (doc) => {
-          await deleteDoc(doc.ref);
-        });
-
-        // this.$store.dispatch('fetchWeekProgress');
-        this.addProgress = 0;
-        this.$store.state.selectedHabit.progress = 0;
-        this.docId = null;
-        this.statStore.setProgressUpdated();
-
-        // if (this.firstFetchWeekProgress===false){
-        //   this.$store.dispatch('fetchWeekProgress');
-        //   this.$store.commit('setFirstFetchWeekProgress', true);
-        // }
-      } catch (error) {
-        this.$toast.error({
-          message: 'Error resetting progress. Please try again.',
-          duration: 2000
-        });
-      }
-    },
-    createProgress() {
-      const auth = getAuth();
-      const user = auth.currentUser;
-
-      if (!user) {
-        throw new Error("User not authenticated. Please log in.");
-      }
-
-      this.loading = true; // Start loading
-      const habitRef = addDoc(collection(db, "progress"), {
-        habitId: this.selectedHabit.id,
-        progress: this.addProgress,
-        timestamp: this.setTimestamp,
-        onTime: this.onTime
-      });
-
-      habitRef.then((docRef) => {
-        this.loading = false; // End loading
-        this.docId = docRef.id;
-
-        // if (this.firstFetchWeekProgress===false){
-        //   this.$store.dispatch('fetchWeekProgress');
-        //   this.$store.commit('setFirstFetchWeekProgress', true);
-        // }
-
+        
         if (this.addProgress === this.selectedHabit.dailyGoal) {
-          this.$toast.success({
-            message: 'Habit completed!',
-            duration: 2000
-          });
-          setTimeout(() => {
-            this.$router.push('/'), 1000;
-          })
-        } else if (this.addProgress > this.selectedHabit.progress) {
-          this.$toast.info({
-            message: 'Habit progress increased!',
-            duration: 2000
-          });
+          this.$toast.success({ message: 'Habit completed!', duration: 2000 });
+          this.goBack();
+        } else {
+          this.$toast.info({ message: 'Progress saved!', duration: 2000 });
         }
-        this.selectedHabit.progress = this.addProgress;
-      }).catch((error) => {
-        this.loading = false; // End loading on error
-        console.error(error);
-        this.$toast.error({
-          message: 'Error. Please try again.',
-          duration: 2000
-        });
-      });
-    },
-    updateProgress() {
-      if (this.docId) {
-        this.loading = true; // Start loading
-        try {
-          const docRef = doc(db, 'progress', this.docId);
-          updateDoc(docRef, {
-            progress: this.addProgress,
-            timestamp: this.setTimestamp,
-            onTime: this.onTime
-          }).then(() => {
-            this.loading = false; // End loading
-
-            // if (this.firstFetchWeekProgress===false){
-            //   this.$store.dispatch('fetchWeekProgress');
-            //   this.$store.commit('setFirstFetchWeekProgress', true);
-            // }
-
-            if (this.addProgress === this.selectedHabit.dailyGoal) {
-              this.$toast.success({
-                message: 'Habit completed!',
-                duration: 2500
-              });
-              setTimeout(() => {
-                this.$router.push('/'), 1000;
-              })
-            } else if (this.addProgress > this.selectedHabit.progress) {
-              this.$toast.info({
-                message: 'Habit progress increased!',
-                duration: 2500
-              });
-            }
-            this.selectedHabit.progress = this.addProgress;
-          }).catch(error => {
-            this.loading = false; // End loading on error
-            console.error(error);
-          });
-        } catch (error) {
-          console.log(error);
-        }
-      } else {
-        this.createProgress();
+      } catch (e) {
+        this.$toast.error({ message: 'Failed to update progress' });
+      } finally {
+        this.loading = false;
       }
     },
-    confirmProgress() {
-      this.habitService.updateProgress(this.docId, this.selectedHabit.userId, this.selectedHabit.id, this.addProgress, this.selectedDate);
+
+    async resetProgress() {
+      if (!this.selectedHabit?.progressId) {
+        this.$toast.error({ message: 'No progress to reset' });
+        return;
+      }
+      await this.habitStore.removeProgress(
+        this.selectedHabit.id, 
+        this.selectedDate, 
+        this.selectedHabit.progressId
+      );
+      this.addProgress = 0;
     },
+
     pauseHabit() {
       this.dialogStore.openDialog(
         'Pause Habit',
         'Are you sure you want to pause this habit?',
         'default',
-        () => {
-          try {
-            const auth = getAuth();
-            const user = auth.currentUser;
-
-            if (!user) {
-              throw new Error("User not authenticated. Please log in.");
-            }
-
-            const habitRef = addDoc(collection(db, "pauses"), {
-              habitId: this.selectedHabit.id,
-              start: Timestamp.fromDate(new Date()),
-              end: null
-            });
-
-            habitRef.then((docRef) => {
-              this.isPaused = true;
-              this.pauseId = docRef.id;
-              this.pauseStart = Timestamp.fromDate(new Date());
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
-              updateDoc(habitDocRef, {
-                isPaused: true
-              }).then(() => {
-                console.log("HabitDoc updated pause successfully");
-              })
-            });
-          } catch (error) {
-            console.log(error);
-            this.$toast.error({
-              message: 'Error pausing habit. Please try again.',
-              duration: 2000
-            });
-          }
+        async () => {
+          await this.habitStore.pauseHabit(this.selectedHabit.id);
+          this.$toast.info({ message: 'Habit paused' });
+          console.log(this.habitStore.selectedHabit);
         }, 'OK', 'text-gray-700'
       );
     },
+
     resumeHabit() {
       this.dialogStore.openDialog(
         'Resume Habit',
         'Are you sure you want to resume this habit?',
         'default',
         async () => {
-          try {
-            const auth = getAuth();
-            const user = auth.currentUser;
-            if (!user) {
-              throw new Error("User not authenticated. Please log in.");
-            }
-
-            const now = new Date();
-            if (this.pauseStart) {
-              const startDate = this.pauseStart.toDate ? this.pauseStart.toDate() : new Date(this.pauseStart.seconds * 1000);
-              // Compare only date part
-              if (
-                startDate.getFullYear() === now.getFullYear() &&
-                startDate.getMonth() === now.getMonth() &&
-                startDate.getDate() === now.getDate()
-              ) {
-                // Same day: delete pause doc
-                const pauseDocRef = doc(db, 'pauses', this.pauseId);
-                await deleteDoc(pauseDocRef);
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
-                await updateDoc(habitDocRef, { isPaused: false });
-                this.isPaused = false;
-                console.log("Pause doc deleted, habit resumed (same day)");
-              } else {
-                // Different day: update end time
-                const pauseDocRef = doc(db, 'pauses', this.pauseId);
-                // Set end to yesterday at 23:59:59.999
-                const yesterday = new Date();
-                yesterday.setDate(now.getDate() - 1);
-                yesterday.setHours(23, 59, 59, 999);
-                await updateDoc(pauseDocRef, { end: Timestamp.fromDate(yesterday) });
-                const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
-                await updateDoc(habitDocRef, { isPaused: false });
-                this.$store.dispatch('fetchPauses');
-                this.isPaused = false;
-                console.log("Pause doc end updated, habit resumed");
-              }
-            } else {
-              // Fallback: just update habit
-              const habitDocRef = doc(db, 'habits', this.selectedHabit.id);
-              await updateDoc(habitDocRef, { isPaused: false });
-              this.isPaused = false;
-              console.log("HabitDoc updated resume fallback");
-            }
-          } catch (error) {
-            console.log(error);
-            this.$toast.error({
-              message: 'Error resuming habit. Please try again.',
-              duration: 2000
-            });
-          }
+          await this.habitStore.resumeHabit(this.selectedHabit.id);
+          this.$toast.success({ message: 'Habit resumed' });
+          console.log(this.habitStore.selectedHabit);
         }, 'OK', 'text-gray-700'
       );
     },
-    editHabit() {
-      //use addHabit layout for edit habit
-      this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.id } });
-    },
+
     deleteHabit() {
-      //confirmation to delete habit
       this.dialogStore.openDialog(
         'Delete Habit',
-        'Are you sure you want to delete this habit?',
+        'This will permanently remove the habit and all its history.',
         'default',
-        () => {
-          try {
-            const auth = getAuth();
-            const user = auth.currentUser;
-            if (user) {
-              //delete all progress from firestore with the habit id
-              const q = query(
-                collection(db, 'progress'),
-                where('habitId', '==', this.selectedHabit.id)
-              );
-              getDocs(q).then((querySnapshot) => {
-                querySnapshot.forEach((doc) => {
-                  deleteDoc(doc.ref);
-                });
-              });
-
-              //delete habit from firestore
-              const docRef = doc(db, "habits", this.selectedHabit.id);
-              deleteDoc(docRef);
-
-              this.$toast.info({
-                message: 'Habit deleted successfully!',
-                duration: 2000
-              });
-
-              this.$store.dispatch('fetchHabits');
-              setTimeout(() => {
-                this.$router.push('/');
-              }, 300);
-            }
-          } catch (error) {
-            console.log(error);
-            this.$toast.error({
-              message: 'Error deleting habit. Please try again.',
-              duration: 2000
-            });
-          }
+        async () => {
+          await this.habitStore.deleteHabit(this.selectedHabit.id);
+          this.$toast.info({ message: 'Habit deleted' });
+          this.goBack();
         }, 'Delete', 'text-red-400'
       );
+    },
+
+    editHabit() {
+      this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.id } });
     },
   },
   mounted() {
