@@ -167,6 +167,10 @@ export const habitService = {
   /**
    * Habit CRUD
    */
+  async fetchHabits(userId) {
+    return await db.habits.where('userId').equals(userId).toArray();
+  },
+
   async toggleHabitPause(habitId, isPaused) {
     const now = new Date();
 
@@ -217,6 +221,21 @@ export const habitService = {
       await db.pauses.where('habitId').equals(habitId).delete();
       await db.habits.delete(habitId);
     });
+  },
+
+  async addHabit(habitData) {
+    const habitId = generateId();
+    const now = new Date();
+
+    await db.habits.add({
+      id: habitId,
+      ...habitData,
+      syncStatus: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return habitId;
   },
 
   _isToday(date) {

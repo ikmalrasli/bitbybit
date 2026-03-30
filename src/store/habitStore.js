@@ -70,6 +70,38 @@ export const useHabitStore = defineStore('habitStore', {
       await this.refreshMetrics();
     },
 
+    async addHabit(habitData) {
+      const userStore = useUserStore();
+      const uid = userStore.getUserId;
+
+      // Get the index for sorting
+      const habits = await habitService.fetchHabits(uid);
+      const index = habits.length;
+
+      const habitId = await habitService.addHabit({
+        ...habitData,
+        userId: uid,
+        index,
+      });
+
+      // Refresh metrics and check if any habits exist
+      await this.refreshMetrics();
+      await this.checkIfAnyHabitExists();
+
+      return habitId;
+    },
+
+    async updateHabit(habitId, habitData) {
+      await habitService.updateHabitDetails(habitId, {
+        ...habitData,
+        syncStatus: 'pending',
+        updatedAt: new Date(),
+      });
+
+      // Refresh metrics
+      await this.refreshMetrics();
+    },
+
     async checkIfAnyHabitExists() {
       const userStore = useUserStore();
       const uid = userStore.getUserId;
@@ -78,6 +110,13 @@ export const useHabitStore = defineStore('habitStore', {
 
     setSelectedHabit(habit) {
       this.selectedHabit = habit;
+    },
+
+    async getHabitsLength() {
+      const userStore = useUserStore();
+      const uid = userStore.getUserId;
+      const habits = await habitService.fetchHabits(uid);
+      return habits.length;
     }
   }
 });
