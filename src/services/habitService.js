@@ -224,7 +224,7 @@ export const habitService = {
   },
 
   async addHabit(habitData) {
-    const habitId = generateId();
+    const habitId = habitData.id || generateId();
     const now = new Date();
 
     await db.habits.add({

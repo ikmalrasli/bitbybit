@@ -214,6 +214,7 @@ import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
 import { useHabitStore } from '../../store/habitStore.js';
 import { useUIStore } from "../../store/uiStore.js";
+import { db } from '../../db.js';
 
 export default {
   data() {
@@ -235,6 +236,8 @@ export default {
       pauseStart: null,
       habitStore: useHabitStore(),
       uiStore: useUIStore(),
+      localPhotoUrls: new Map(), // Track blob URLs for cleanup
+      loadedPhotos: [], // Track loaded photos from IndexedDB
     };
   },
   computed: {
@@ -255,7 +258,8 @@ export default {
       });
     },
     imageUrls() {
-      return this.selectedHabit?.imageUrls || [];
+      // Only use loaded photos from IndexedDB, not the habit imageUrls
+      return this.loadedPhotos.map(photo => photo.url);
     }
   },
   watch: {
@@ -481,9 +485,42 @@ export default {
     editHabit() {
       this.$router.push({ name: 'edit-habit', params: { habitId: this.selectedHabit.id } });
     },
+
+    async loadExistingPhotos() {
+      try {
+        const photos = await db.photos
+          .where('habitId')
+          .equals(this.selectedHabit.id)
+          .toArray();
+        
+        this.loadedPhotos = photos.map(photo => {
+          const blobUrl = URL.createObjectURL(photo.blob);
+          this.localPhotoUrls.set(photo.id, blobUrl);
+          
+          return {
+            id: photo.id,
+            url: blobUrl,
+            isLocal: true,
+            fileName: photo.fileName
+          };
+        });
+      } catch (error) {
+        console.error('Error loading existing photos:', error);
+      }
+    },
+
+    // Cleanup blob URLs when component is destroyed
+    beforeUnmount() {
+      this.localPhotoUrls.forEach(url => URL.revokeObjectURL(url));
+      this.localPhotoUrls.clear();
+    },
   },
-  mounted() {
+  async mounted() {
     console.log(this.habitStore.selectedHabit);
+    // Load photos from IndexedDB when component mounts
+    if (this.selectedHabit) {
+      await this.loadExistingPhotos();
+    }
   },
   beforeDestroy() {
     document.removeEventListener('click', this.handleClickOutside);
@@ -491,6 +528,9 @@ export default {
       this.$refs.galleryContainer.removeEventListener('wheel', this.handleScroll);
     }
     clearTimeout(this.scrollTimeout);
+    // Cleanup blob URLs
+    this.localPhotoUrls.forEach(url => URL.revokeObjectURL(url));
+    this.localPhotoUrls.clear();
   },
   beforeRouteLeave(to, from, next) {
     if (from.name && to.name != 'edit-habit') { // Check if user is navigating away

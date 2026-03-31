@@ -262,6 +262,7 @@ import youtubeDialog from "../../components/dialogs/youtube-dialog.vue";
 import datePicker from "../../components/inputs/datepicker-input.vue";
 import draggable from 'vuedraggable';
 import { useHabitStore } from '../../store/habitStore.js';
+import { usePhotoCacheStore } from '../../store/photoCacheStore.js';
 
 export default {
   components: {
@@ -274,8 +275,10 @@ export default {
   data() {
     return {
       habitStore: useHabitStore(),
+      photoCacheStore: usePhotoCacheStore(),
       selectedDate: new Date(),
       title: "Add Habits",
+      currentHabitId: crypto.randomUUID(), // Generate ID immediately for local photo association
       formData: {
         name: "",
         dailyGoal: 1,
@@ -308,7 +311,11 @@ export default {
       selectedPhotos: [],
     };
   },
-  mounted() {
+  beforeUnmount() {
+    // Clean up cached photos when component is destroyed
+    this.photoCacheStore.clearHabitPhotos(this.currentHabitId);
+  },
+  async mounted() {
     if (this.$store.getters.selectedSunnah && this.$route.name === 'add-sunnah') {
       this.formData.name = this.$store.getters.selectedSunnah.name;
       this.formData.dailyGoal = this.$store.getters.selectedSunnah.dailyGoal;
@@ -339,10 +346,8 @@ export default {
       if (this.selectedHabit.spotifyUrls) {
         this.formData.spotifyUrls = this.selectedHabit.spotifyUrls;
       }
-      if (this.selectedHabit.imageUrls) {
-        this.selectedPhotos = this.selectedHabit.imageUrls;
-      }
-
+      // Use existing habitId for editing
+      this.currentHabitId = this.selectedHabit.id;
     }
   },
   computed: {
@@ -390,6 +395,9 @@ export default {
       this.formData.repeatDays[day] = !this.formData.repeatDays[day];
     },
     goBack() {
+      // Clear cached photos before navigating
+      this.photoCacheStore.clearHabitPhotos(this.currentHabitId);
+      
       if (this.$store.getters.selectedSunnah) {
         this.$router.push('/sunnahs/' + this.$store.getters.selectedSunnah.sunnahId);
       }
@@ -466,19 +474,49 @@ export default {
     triggerPhotoInput() {
       this.$refs.photoInput.click(); // Trigger the hidden file input click
     },
-    handlePhotoSelect(event) {
+    async handlePhotoSelect(event) {
       const files = Array.from(event.target.files);
-      const newPhotos = files.map(file => ({
-        id: Date.now() + Math.random(),
-        file,
-        url: URL.createObjectURL(file)
-      }));
-      this.selectedPhotos = [...this.selectedPhotos, ...newPhotos];
-      this.selectedFile = true;
+      
+      try {
+        // Cache photos instead of saving to DB immediately
+        const cachedPhotos = this.photoCacheStore.addPhotos(this.currentHabitId, files);
+        
+        // Update UI with cached photos
+        this.selectedPhotos.push(...cachedPhotos.map(photo => ({
+          id: photo.id,
+          url: photo.blobUrl,
+          isLocal: true,
+          fileName: photo.fileName
+        })));
+        
+        this.selectedFile = true;
+      } catch (error) {
+        console.error('Error caching photos:', error);
+        this.$toast.error({
+          message: 'Failed to cache photos',
+          duration: 2000
+        });
+      }
+      
+      // Clear the file input
+      event.target.value = '';
     },
-    removePhoto(index) {
-      URL.revokeObjectURL(this.selectedPhotos[index].url);
-      this.selectedPhotos.splice(index, 1);
+    async removePhoto(index) {
+      const photo = this.selectedPhotos[index];
+      
+      try {
+        // Remove from cache
+        this.photoCacheStore.removePhoto(this.currentHabitId, photo.id);
+        
+        // Remove from UI
+        this.selectedPhotos.splice(index, 1);
+        
+        if (this.selectedPhotos.length === 0) {
+          this.selectedFile = false;
+        }
+      } catch (error) {
+        console.error('Error removing photo:', error);
+      }
     },
     // onFileSelected(event) {
     //   this.selectedFile = event.target.files[0];
@@ -581,7 +619,7 @@ export default {
           default: this.formData.color.default,
           active: this.formData.color.active
         },
-        imageUrls: [],
+        // Remove imageUrls from here - handled by photoCacheStore
         youtubeUrls: this.formData.youtubeUrls.map(item => ({
           title: item.title,
           channel: item.channel,
@@ -606,6 +644,8 @@ export default {
         if (isEdit) {
           await this.habitStore.updateHabit(this.selectedHabit.id, habitData);
         } else {
+          // Use the pre-generated habitId for new habits
+          habitData.id = this.currentHabitId;
           await this.habitStore.addHabit(habitData);
         }
 
@@ -613,6 +653,8 @@ export default {
           message: isEdit ? "Habit updated!" : "Habit created!",
           duration: 2000,
         });
+
+        this.goBack();
       } catch (error) {
         this.handleError(error);
       } finally {

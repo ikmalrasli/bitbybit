@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { habitService } from '../services/habitService';
 import { useUserStore } from '../store/userStore';
 import { useUIStore } from './uiStore';
+import { usePhotoCacheStore } from './photoCacheStore';
 
 export const useHabitStore = defineStore('habitStore', {
   state: () => ({
@@ -72,16 +73,24 @@ export const useHabitStore = defineStore('habitStore', {
 
     async addHabit(habitData) {
       const userStore = useUserStore();
+      const photoCacheStore = usePhotoCacheStore();
       const uid = userStore.getUserId;
 
       // Get the index for sorting
       const habits = await habitService.fetchHabits(uid);
       const index = habits.length;
 
-      const habitId = await habitService.addHabit({
+      // Use provided habitId or generate a new one
+      const habitId = habitData.id || crypto.randomUUID();
+
+      // Save cached photos to database first
+      const savedPhotos = await photoCacheStore.saveToDatabase(habitId, uid);
+      
+      await habitService.addHabit({
         ...habitData,
         userId: uid,
         index,
+        imageUrls: savedPhotos, // Add saved photo references
       });
 
       // Refresh metrics and check if any habits exist
