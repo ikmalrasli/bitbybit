@@ -26,6 +26,13 @@ export const syncService = {
 
     if (!userId) throw new Error("User must be logged in to sync data.");
 
+    // Check if migration was already completed
+    const migrationKey = `photo-migration-complete-${userId}`;
+    if (localStorage.getItem(migrationKey) === 'true') {
+      console.log("✅ Photo migration already completed, skipping...");
+      return;
+    }
+
     const collectionsToSync = ['habits', 'progress', 'memos', 'pauses'];
 
     console.log("🚀 Starting initial data migration...");
@@ -72,6 +79,8 @@ export const syncService = {
       }
     }
 
-    console.log("🏁 Migration complete!");
+    // Mark migration as complete
+    localStorage.setItem(migrationKey, 'true');
+    console.log("🏁 Migration complete and flagged!");
   }
 };

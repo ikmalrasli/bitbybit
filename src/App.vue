@@ -10,6 +10,7 @@ import loading from './views/loading.vue';
 import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
 import { syncService } from './services/syncService';
+import { habitService } from './services/habitService';
 import { useUserStore } from './store/userStore';
 import { useUIStore } from './store/uiStore';
 import { useHabitStore } from './store/habitStore';
@@ -33,7 +34,19 @@ export default {
       if (userStore.user) {
         getNotifications(this.$store, this.$toast);
 
-        // await syncService.fetchAllFromFirebase(userStore.getUserId);
+        await syncService.fetchAllFromFirebase(userStore.getUserId);
+
+        // Trigger photo migration for all habits after initial sync
+        try {
+          console.log('🚀 Starting photo migration on app launch...');
+          await habitService.fetchHabitsWithMigration(userStore.getUserId, {
+            enableMigration: true,
+            maxConcurrent: 2
+          });
+          console.log('✅ Photo migration completed on app launch');
+        } catch (migrationError) {
+          console.error('❌ Photo migration failed on app launch:', migrationError);
+        }
 
         // await this.$store.dispatch('fetchPauses');
         

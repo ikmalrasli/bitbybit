@@ -14,16 +14,24 @@ export const useHabitStore = defineStore('habitStore', {
     // REFRESH LOGIC: Re-fetches the metrics for the current visible range
     async refreshMetrics() {
       const uiStore = useUIStore();
+      const userStore = useUserStore();
       const today = new Date();
       const startRange = new Date(today);
       startRange.setDate(today.getDate() - 28); // Covers the 4-week view
-      await this.getHabitMetrics(startRange, today);
+      
+      // Use fetchHabitsWithMigration for automatic photo migration
+      await this.getHabitMetrics(startRange, today, { enableMigration: true });
     },
 
-    async getHabitMetrics(start, end) {
+    async getHabitMetrics(start, end, options = {}) {
       const userStore = useUserStore();
       const uid = userStore.getUserId;
-      this.dayHabitMetrics = { ...this.dayHabitMetrics, ...await habitService.fetchHabitMetrics(uid, start, end) };
+      
+      // Pass migration options to habitService
+      this.dayHabitMetrics = { 
+        ...this.dayHabitMetrics, 
+        ...await habitService.fetchHabitMetrics(uid, start, end, options) 
+      };
     },
 
     async confirmProgress(habitId, progress, date, progressId) {

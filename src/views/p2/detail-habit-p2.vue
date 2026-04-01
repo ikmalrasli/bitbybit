@@ -488,24 +488,70 @@ export default {
 
     async loadExistingPhotos() {
       try {
+        // If habit has no imageUrls, clear loaded photos
+        if (!this.selectedHabit.imageUrls || this.selectedHabit.imageUrls.length === 0) {
+          this.loadedPhotos = [];
+          return;
+        }
+
+        // Get the photo IDs that should be loaded based on the habit's imageUrls
+        const expectedPhotoIds = [];
+        
+        if (typeof this.selectedHabit.imageUrls[0] === 'string') {
+          // Legacy format: Array of strings - generate consistent IDs
+          const { generateConsistentId } = await import('../../utils/imageDataStandardizer.js');
+          for (const urlString of this.selectedHabit.imageUrls) {
+            const photoId = generateConsistentId(urlString);
+            expectedPhotoIds.push(photoId);
+          }
+        } else {
+          // New format: Array of objects with IDs
+          for (const photoObj of this.selectedHabit.imageUrls) {
+            if (photoObj.id) {
+              expectedPhotoIds.push(photoObj.id);
+            }
+          }
+        }
+
+        // Only load photos that are expected based on the habit's imageUrls
+        if (expectedPhotoIds.length === 0) {
+          this.loadedPhotos = [];
+          return;
+        }
+
         const photos = await db.photos
           .where('habitId')
           .equals(this.selectedHabit.id)
+          .and(photo => expectedPhotoIds.includes(photo.id))
           .toArray();
         
-        this.loadedPhotos = photos.map(photo => {
-          const blobUrl = URL.createObjectURL(photo.blob);
-          this.localPhotoUrls.set(photo.id, blobUrl);
-          
-          return {
-            id: photo.id,
-            url: blobUrl,
-            isLocal: true,
-            fileName: photo.fileName
-          };
+        // Create a map to ensure we only load each photo once
+        const photoMap = new Map();
+        photos.forEach(photo => {
+          photoMap.set(photo.id, photo);
         });
+
+        // Load photos in the order they appear in the habit's imageUrls
+        this.loadedPhotos = expectedPhotoIds.map(photoId => {
+          const photo = photoMap.get(photoId);
+          if (photo) {
+            const blobUrl = URL.createObjectURL(photo.blob);
+            this.localPhotoUrls.set(photo.id, blobUrl);
+            
+            return {
+              id: photo.id,
+              url: blobUrl,
+              isLocal: true,
+              fileName: photo.fileName
+            };
+          }
+          return null;
+        }).filter(photo => photo !== null); // Remove any null entries
+
+        console.log(`📸 Loaded ${this.loadedPhotos.length} photos for habit ${this.selectedHabit.name}`);
       } catch (error) {
         console.error('Error loading existing photos:', error);
+        this.loadedPhotos = [];
       }
     },
 

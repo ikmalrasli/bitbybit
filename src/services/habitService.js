@@ -1,12 +1,15 @@
 import { db } from '../db';
 import { generateId } from '../utils/generateId';
+import { processMultipleHabits } from './photoDownloadService';
 
 export const habitService = {
   /**
    * Fetches habit metrics for a user within a date range.
    * Used in calendar-row component in home page.
    */
-  async fetchHabitMetrics(userId, startDate, endDate) {
+  async fetchHabitMetrics(userId, startDate, endDate, options = {}) {
+    const { enableMigration = true } = options;
+    
     // 1. NORMALIZE BOUNDARIES
     // Ensure start is 00:00:00 and end is 23:59:59 of the local day
     const start = new Date(startDate);
@@ -15,8 +18,12 @@ export const habitService = {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    const [habits, allProgress, pauses] = await Promise.all([
-      db.habits.where('userId').equals(userId).toArray(),
+    // Use migration-enabled fetch if migration is enabled
+    const habits = enableMigration 
+      ? await this.fetchHabitsWithMigration(userId, { enableMigration: true, maxConcurrent: 2 })
+      : await this.fetchHabits(userId);
+
+    const [allProgress, pauses] = await Promise.all([
       // Use inclusive bounds [start, end]
       db.progress.where('timestamp').between(start, end, true, true).toArray(),
       db.pauses.toArray()
@@ -169,6 +176,61 @@ export const habitService = {
    */
   async fetchHabits(userId) {
     return await db.habits.where('userId').equals(userId).toArray();
+  },
+
+  /**
+   * Fetches habits with automatic photo migration
+   * This is the main method that should be used when loading habits
+   * @param {string} userId - The user ID
+   * @param {Object} options - Migration options
+   * @returns {Promise<Array>} - Array of habits with migrated photos
+   */
+  async fetchHabitsWithMigration(userId, options = {}) {
+    const { enableMigration = true, maxConcurrent = 2 } = options;
+    
+    // First, fetch habits from local IndexedDB
+    const habits = await this.fetchHabits(userId);
+    
+    if (!enableMigration || habits.length === 0) {
+      return habits;
+    }
+    
+    // Filter habits that need migration
+    const habitsNeedingMigration = habits.filter(habit => {
+      // Check if habit has imageUrls and hasn't completed migration
+      return habit.imageUrls && 
+             habit.imageUrls.length > 0 && 
+             !habit.localMigrationComplete;
+    });
+    
+    if (habitsNeedingMigration.length === 0) {
+      console.log('✅ All habits are already migrated');
+      return habits;
+    }
+    
+    console.log(`🔄 Starting migration for ${habitsNeedingMigration.length} habits`);
+    
+    try {
+      // Make it blocking - wait for completion to prevent race condition
+      const results = await processMultipleHabits(habitsNeedingMigration, userId, {
+        maxConcurrent,
+        delayBetween: 500
+      });
+      
+      console.log('🎉 Migration completed:', {
+        habitsProcessed: results.habitsProcessed,
+        downloadsCompleted: results.totalDownloadsCompleted,
+        downloadsFailed: results.totalDownloadsFailed
+      });
+      
+      // Return habits after migration completes
+      return habits;
+      
+    } catch (error) {
+      console.error('❌ Error starting habit migration:', error);
+      // Return habits even if migration fails
+      return habits;
+    }
   },
 
   async toggleHabitPause(habitId, isPaused) {
