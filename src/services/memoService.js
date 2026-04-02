@@ -29,6 +29,17 @@ export const memoService = {
 
   async deleteMemo(memoId) {
     await db.memos.delete(memoId);
+    
+    // Refetch memos to update UI
+    const userStore = useUserStore();
+    const userId = userStore.getUserId;
+    const today = new Date();
+    const startOfLastWeek = new Date(today);
+    startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
+    startOfLastWeek.setHours(0, 0, 0, 0);
+    
+    // This will trigger memoStore.getMemos() to refresh the data
+    return { refetchData: { userId, start: startOfLastWeek, end: today } };
   },
 
   async fetchMemos(userId, startDate, endDate) {

@@ -29,8 +29,7 @@
 import { useUIStore } from '../../store/uiStore';
 import { useMemoStore } from '../../store/memoStore';
 import { useDialogStore } from '../../store/dialogStore';
-import { db } from "../../firebase";
-import { doc, deleteDoc, Timestamp } from "firebase/firestore";
+import { memoService } from '../../services/memoService';
   
 export default {
   data() {
@@ -64,16 +63,17 @@ export default {
     },
     async deleteMemo() {
       try {
-        const memoId = this.dialogStore.content.memoId;
-        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
-        await deleteDoc(memoRef);
+        console.log('Deleting memo:', this.dialogStore.content.id);
+        const memoId = this.dialogStore.content.id;
+        const result = await memoService.deleteMemo(memoId);
+        
+        // Refresh memos using the refetch data
+        if (result && result.refetchData) {
+          this.memoStore.getMemos(result.refetchData.start, result.refetchData.end);
+        }
       } catch (error) {
         console.error("Error deleting memo:", error);
       } finally {
-        if (this.$store.state.firstFetchWeekMemos===false){
-          this.$store.dispatch('fetchWeekMemos');
-          this.$store.commit('setFirstFetchWeekMemos', true);
-        }
         this.closeDialog();
       }
     },
