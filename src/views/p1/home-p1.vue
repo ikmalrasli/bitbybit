@@ -140,7 +140,7 @@
             </div>
           </transition>
         </div>
-        
+
       </div>
     </div>
   </div>
@@ -236,13 +236,15 @@ export default {
     dayMemos() {
       const dateKey = this.selectedDay.toISOString().split('T')[0];
       const memos = this.memoStore.dayMemos[dateKey] || [];
+      const sortedMemos = [...memos].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       console.log('Debug - dayMemos:', {
         selectedDay: this.selectedDay,
         dateKey,
         memoStoreData: this.memoStore.dayMemos,
-        dayMemos: memos
+        originalMemos: memos,
+        sortedMemos: sortedMemos
       });
-      return memos;
+      return sortedMemos;
     }
   },
   methods: {
