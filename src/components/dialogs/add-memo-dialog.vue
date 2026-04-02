@@ -49,14 +49,15 @@
   
 <script>
 import { useDialogStore } from '../../store/dialogStore';
-import { db } from "../../firebase";
-import { collection, addDoc} from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { memoService } from '../../services/memoService';
+import { useUserStore } from '../../store/userStore';
+import { useMemoStore } from '../../store/memoStore';
 import { mapState} from 'vuex';
   
 export default {
   data() {
     return {
+      userStore: useUserStore(),
       dialogStore: useDialogStore(),
       formData: {
         memo: "",
@@ -91,36 +92,42 @@ export default {
     async createEntry() {
       try {
         this.loading = true;
-        const auth = getAuth();
-        const user = auth.currentUser;
+        const userId = this.userStore.getUserId;
 
-        if (!user) {
+        if (!userId) {
           throw new Error("User not authenticated. Please log in.");
         }
         
-        await addDoc(collection(db, "memos"), {
-          userId: user.uid,
+        const result = await memoService.addMemo({
+          userId: userId,
           memo: this.formData.memo,
           timestamp: new Date(this.formData.date),
           category: this.formData.category
         });
+
+        // Refetch memos to update UI
+        if (result.refetchData) {
+          const memoStore = useMemoStore();
+          await memoStore.getMemos(result.refetchData.start, result.refetchData.end);
+        }
+
         if (this.$store.state.firstFetchWeekMemos===false){
           this.$store.dispatch('fetchWeekMemos');
           this.$store.commit('setFirstFetchWeekMemos', true);
         }
-        this.loading = false;
+        
         this.$toast.success({
           message: "Memo created successfully!",
           duration: 2000,
         });
       } catch (error) {
-        this.loading = false;
         console.error("Error creating memo:", error);
         this.$toast.error({
           message: "Error creating memo: " + error.message,
           duration: 2000,
         });
       } finally {
+        this.loading = false;
         this.closeDialog();
       }
     },

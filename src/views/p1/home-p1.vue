@@ -110,6 +110,7 @@
           <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('Memos')">
             <div class="flex items-center">
               <span class="font-semibold text-black">Memos</span>
+              <span class="pl-3 text-gray-500">{{ dayMemos.length }}</span>
             </div>
             <hr class="flex-grow border-t border-gray-300 mx-4" />
             <div class="flex items-center">
@@ -117,7 +118,6 @@
               <span v-else class="material-icons">keyboard_arrow_down</span>
             </div>
           </div>
-
 
          
           <transition name="slide-fade">
@@ -140,14 +140,14 @@
             </div>
           </transition>
         </div>
+        
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { memoService } from '../../services/memoService';
 import calendarRow from "../../components/calendar-row.vue";
 import HomeProgress from "../../components/habitpb.vue";
 import fab from "../../components/fab.vue";
@@ -155,6 +155,7 @@ import { useDialogStore } from '../../store/dialogStore';
 import { useHabitStore } from '../../store/habitStore';
 import { useMemoStore } from '../../store/memoStore';
 import { useUIStore } from '../../store/uiStore';
+import { useUserStore } from '../../store/userStore';
 
 export default {
   components: {
@@ -185,9 +186,18 @@ export default {
     startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
     startOfLastWeek.setHours(0, 0, 0, 0);
 
+    console.log('Debug - home-p1 mounted:', { today, startOfLastWeek });
+    
     this.habitStore.getHabitMetrics(startOfLastWeek, today);
     this.memoStore.getMemos(startOfLastWeek, today);
     
+    // Add debug info about user authentication
+    const userStore = useUserStore();
+    console.log('Debug - user auth status:', { 
+      user: userStore.user, 
+      isAuthenticated: userStore.isAuthenticated, 
+      userId: userStore.getUserId 
+    });
   },
   computed: {
     // Get selected date from habitStore (which is passed from calendar-row component)
@@ -225,7 +235,14 @@ export default {
     // memos for selected day
     dayMemos() {
       const dateKey = this.selectedDay.toISOString().split('T')[0];
-      return this.memoStore.dayMemos[dateKey] || [];
+      const memos = this.memoStore.dayMemos[dateKey] || [];
+      console.log('Debug - dayMemos:', {
+        selectedDay: this.selectedDay,
+        dateKey,
+        memoStoreData: this.memoStore.dayMemos,
+        dayMemos: memos
+      });
+      return memos;
     }
   },
   methods: {
@@ -298,9 +315,13 @@ export default {
     async deleteMemo(memoId, index) {
       this.showDeleteButton[index] = !this.showDeleteButton[index];
       try {
-        const memoRef = doc(db, "memos", memoId); // Adjust the collection name if needed
-        await deleteDoc(memoRef);
-        this.memoStore.getMemos(this.selectedDay, this.selectedDay); // Refetch memos after deletion if needed
+        await memoService.deleteMemo(memoId);
+        // Refresh memos for the current date range
+        const today = new Date();
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
+        startOfLastWeek.setHours(0, 0, 0, 0);
+        this.memoStore.getMemos(startOfLastWeek, today);
       } catch (error) {
         console.error("Error deleting memo:", error);
       }
