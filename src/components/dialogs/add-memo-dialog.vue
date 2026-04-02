@@ -98,10 +98,26 @@ export default {
           throw new Error("User not authenticated. Please log in.");
         }
         
+        // Create timestamp with appropriate time
+        const selectedDate = new Date(this.formData.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        
+        let timestamp;
+        if (selectedDate.getTime() === today.getTime()) {
+          // If today, use current time
+          timestamp = new Date();
+        } else {
+          // If previous day, set to 23:59:59
+          timestamp = new Date(this.formData.date);
+          timestamp.setHours(23, 59, 59, 999);
+        }
+
         const result = await memoService.addMemo({
           userId: userId,
           memo: this.formData.memo,
-          timestamp: new Date(this.formData.date),
+          timestamp: timestamp,
           category: this.formData.category
         });
 
