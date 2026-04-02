@@ -57,76 +57,70 @@
 
 <script>
 import { useDialogStore } from '../../store/dialogStore';
-import { mapState } from 'vuex';
+import { useHabitStore } from '../../store/habitStore';
+import { useUIStore } from '../../store/uiStore';
+import { useUserStore } from '../../store/userStore';
 import draggable from 'vuedraggable';
-import { db } from '../../firebase'; // Import your Firestore instance
-import { doc, updateDoc } from 'firebase/firestore';
+import { habitService } from '../../services/habitService';
 
 export default {
   components: { draggable },
   data() {
     return { 
       dialogStore: useDialogStore(),
+      habitStore: useHabitStore(),
+      uiStore: useUIStore(),
+      userStore: useUserStore(),
       type: '',
       isCustom: false,
       localHabits: [] // Local copy of habits
     };
   },
-  computed: {
-    ...mapState(['habits', 'sortType']),
-  },
   methods: {
-    sortHabits(evt) {
+    async sortHabits(evt) {
       if (evt.target.value === "name") {
-        this.$store.dispatch('setSortType', 'name');
-        this.$store.dispatch('sortHabits');
-        this.localHabits = this.habits;
+        this.uiStore.setSortType('name');
+        this.localHabits = await this.habitStore.sortHabits('name');
         this.isCustom = false;
       } else if (evt.target.value === "color") {
-        this.$store.dispatch('setSortType', 'color');
-        this.$store.dispatch('sortHabits');
-        this.localHabits = this.habits;
+        this.uiStore.setSortType('color');
+        this.localHabits = await this.habitStore.sortHabits('color');
         this.isCustom = false;
       } else if (evt.target.value === "custom") {
         this.isCustom = true;
-        this.localHabits.sort((a, b) => (a.index ?? state.habits.length) - (b.index ?? state.habits.length));
+        this.localHabits = await this.habitStore.sortHabits('custom');
       }
     },
     saveCustomOrder() {
       const updatedOrder = this.localHabits.map((habit, index) => ({ ...habit, index: index }));
       this.localHabits = updatedOrder;
     },
-    confirmAction() {
+    async confirmAction() {
       if (this.type === 'custom') {
-        this.localHabits.forEach((habit, index) => {
-          const docRef = doc(db, 'habits', habit.habitId);
-          updateDoc(docRef, {
-            index: index
-          })
-        })
-        this.$store.dispatch('setSortType', 'custom');
+        // Update habits in IndexedDB instead of Firebase
+        for (let i = 0; i < this.localHabits.length; i++) {
+          const habit = this.localHabits[i];
+          await habitService.updateHabitDetails(habit.id, {
+            index: i
+          });
+        }
+        this.uiStore.setSortType('custom');
       }
-      if (this.$store.state.firstFetchHabits===false){
-        console.log('fetchHabits');
-        this.$store.dispatch('fetchHabits');
-        this.$store.commit('setFirstFetchHabits', true);
-      }
-      this.$store.dispatch('getDayHabits', this.$store.state.selectedDay, true);
+      
+      // Refresh the habits data
+      await this.habitStore.refreshMetrics();
       this.dialogStore.closeDialog();
     },
   },
-  mounted() {
-    this.type = this.sortType;
+  async mounted() {
+    this.type = this.uiStore.sortType;
     if (this.type === 'custom') {
       this.isCustom = true;
     }
-    this.localHabits = [...this.habits]; // Initialize local copy of habits
-  },
-  watch: {
-    habits(newHabits) {
-      // Keep localHabits in sync with Vuex state if it changes
-      this.localHabits = [...newHabits];
-    }
+    
+    // Get initial habits data
+    const habits = await this.habitStore.sortHabits(this.type);
+    this.localHabits = [...habits];
   }
 };
 </script>

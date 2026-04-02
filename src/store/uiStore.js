@@ -4,6 +4,7 @@ export const useUIStore = defineStore('uiStore', {
   state: () => ({
     loading: false, // Start false, let the fetch/login set it to true
     selectedDate: new Date(),
+    sortType: 'name', // Default sort type
   }),
   getters: {
     isLoading: (state) => state.loading,
@@ -14,6 +15,9 @@ export const useUIStore = defineStore('uiStore', {
     },
     setSelectedDate(date) {
       this.selectedDate = date;
+    },
+    setSortType(type) {
+      this.sortType = type;
     },
   }
 });

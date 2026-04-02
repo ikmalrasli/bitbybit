@@ -209,7 +209,12 @@ export default {
     },
     habits() {
       const dateKey = this.selectedDay.toISOString().split('T')[0];
-      return this.habitStore.dayHabitMetrics[dateKey] || [];
+      const habits = this.habitStore.dayHabitMetrics[dateKey] || [];
+      
+      // Apply sorting based on the sortType from uiStore
+      return this.habitStore.sortHabits ? 
+        this.habitStore.sortHabitsSync(habits, this.uiStore.sortType) : 
+        habits;
     },
     // completedHabits: only habits that are completed and NOT paused
     completedHabits() {
@@ -405,6 +410,8 @@ export default {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   /* Limit to 2 lines */
+  line-clamp: 2;
+  /* Standard property for compatibility */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;

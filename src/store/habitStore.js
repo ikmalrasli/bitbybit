@@ -134,6 +134,17 @@ export const useHabitStore = defineStore('habitStore', {
       const uid = userStore.getUserId;
       const habits = await habitService.fetchHabits(uid);
       return habits.length;
+    },
+
+    async sortHabits(sortType) {
+      const userStore = useUserStore();
+      const uid = userStore.getUserId;
+      const habits = await habitService.fetchHabits(uid);
+      return habitService.sortHabits(habits, sortType);
+    },
+
+    sortHabitsSync(habits, sortType) {
+      return habitService.sortHabits(habits, sortType);
     }
   }
 });

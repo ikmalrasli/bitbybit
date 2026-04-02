@@ -300,6 +300,48 @@ export const habitService = {
     return habitId;
   },
 
+  /**
+   * Sorts habits based on the specified sort type
+   * @param {Array} habits - Array of habit objects
+   * @param {string} sortType - 'name', 'color', or 'custom'
+   * @returns {Array} - Sorted array of habits
+   */
+  sortHabits(habits, sortType) {
+    const sortedHabits = [...habits];
+    
+    if (sortType === 'name') {
+      sortedHabits.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortType === 'color') {
+      const colorOrder = {
+        "red-300": 0,
+        "orange-300": 1,
+        "yellow-300": 2,
+        "emerald-300": 3,
+        "blue-300": 4,
+        "pink-300": 5,
+        "violet-400": 6
+      };
+
+      // Sort by color first, then alphabetically by name within the same color
+      sortedHabits.sort((a, b) => {
+        const colorA = colorOrder[a.color?.default || "violet-400"] ?? 99;
+        const colorB = colorOrder[b.color?.default || "violet-400"] ?? 99;
+
+        // First, compare color order
+        if (colorA !== colorB) {
+          return colorA - colorB;
+        }
+
+        // If colors are the same, sort alphabetically by name
+        return a.name.localeCompare(b.name);
+      });
+    } else if (sortType === 'custom') {
+      sortedHabits.sort((a, b) => (a.index ?? sortedHabits.length) - (b.index ?? sortedHabits.length));
+    }
+    
+    return sortedHabits;
+  },
+
   _isToday(date) {
     const today = new Date();
     const d = new Date(date);
