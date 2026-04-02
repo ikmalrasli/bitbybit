@@ -185,19 +185,12 @@ export default {
     const startOfLastWeek = new Date(today);
     startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
     startOfLastWeek.setHours(0, 0, 0, 0);
-
-    console.log('Debug - home-p1 mounted:', { today, startOfLastWeek });
     
     this.habitStore.getHabitMetrics(startOfLastWeek, today);
     this.memoStore.getMemos(startOfLastWeek, today);
     
     // Add debug info about user authentication
     const userStore = useUserStore();
-    console.log('Debug - user auth status:', { 
-      user: userStore.user, 
-      isAuthenticated: userStore.isAuthenticated, 
-      userId: userStore.getUserId 
-    });
   },
   computed: {
     // Get selected date from habitStore (which is passed from calendar-row component)
@@ -242,13 +235,6 @@ export default {
       const dateKey = this.selectedDay.toISOString().split('T')[0];
       const memos = this.memoStore.dayMemos[dateKey] || [];
       const sortedMemos = [...memos].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      console.log('Debug - dayMemos:', {
-        selectedDay: this.selectedDay,
-        dateKey,
-        memoStoreData: this.memoStore.dayMemos,
-        originalMemos: memos,
-        sortedMemos: sortedMemos
-      });
       return sortedMemos;
     }
   },

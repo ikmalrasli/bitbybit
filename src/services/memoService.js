@@ -43,11 +43,11 @@ export const memoService = {
   },
 
   async fetchMemos(userId, startDate, endDate) {
-    console.log('Debug - memoService.fetchMemos:', { userId, startDate, endDate });
+    // console.log('Debug - memoService.fetchMemos:', { userId, startDate, endDate });
     
     // 1. Fetch all memos for the user
     const memos = await db.memos.where('userId').equals(userId).toArray();
-    console.log('Debug - raw memos from DB:', memos);
+    // console.log('Debug - raw memos from DB:', memos);
 
     // 2. Build the Day-by-Day View with memos mapped to date keys
     const memosMap = {};
@@ -62,10 +62,10 @@ export const memoService = {
     normalizedEndDate.setDate(normalizedEndDate.getDate() + 1); // I don't know a proper fix for this yet but this will do
     normalizedEndDate.setHours(23, 59, 59, 999);
     
-    console.log('Debug - date range:', { 
-      start: current.toISOString().split('T')[0], 
-      end: normalizedEndDate.toISOString().split('T')[0] 
-    });
+    // console.log('Debug - date range:', { 
+    //   start: current.toISOString().split('T')[0], 
+    //   end: normalizedEndDate.toISOString().split('T')[0] 
+    // });
     
     while (current <= normalizedEndDate) {
       const dateKey = current.toISOString().split('T')[0];
@@ -78,7 +78,7 @@ export const memoService = {
       const memoDate = new Date(memo.timestamp);
       const dateKey = memoDate.toISOString().split('T')[0];
       
-      console.log('Debug - processing memo:', { memo, dateKey });
+      // console.log('Debug - processing memo:', { memo, dateKey });
       
       // Only include memos within the specified date range
       if (memoDate >= startDate && memoDate <= normalizedEndDate && memosMap[dateKey]) {
@@ -92,7 +92,7 @@ export const memoService = {
       }
     });
 
-    console.log('Debug - final memosMap:', memosMap);
+    // console.log('Debug - final memosMap:', memosMap);
     return memosMap;
   }
 };
