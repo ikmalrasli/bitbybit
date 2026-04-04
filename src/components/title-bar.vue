@@ -66,22 +66,26 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
-import { mapState } from 'vuex';
 import { useDialogStore } from '../store/dialogStore';
+import { useUIStore } from '../store/uiStore';
 
 export default {
   data() {
     return {
+      uiStore: useUIStore(),
       dialogStore: useDialogStore(),
       isDropdownOpen: false,
     };
   },
   computed: {
-    ...mapGetters(['getSelectedDay']), // Map the Vuex getter
-    ...mapState(['selectionMode']),
+    getSelectedDay() {
+      return this.uiStore.selectedDate;
+    },
+    selectionMode(){
+      return this.uiStore.selectionMode;
+    },
     closeSelectionMode() {
-      this.$store.commit('toggleSelectionMode');
+      this.uiStore.toggleSelectionMode();
     },
     displayTitle() {
       if (this.$route.name === "home" ||  
@@ -168,7 +172,7 @@ export default {
       }
     },
     selectHabits() {
-      this.$store.dispatch('toggleSelectionMode');
+      this.uiStore.toggleSelectionMode();
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);
     },
