@@ -22,13 +22,13 @@ const shouldReportMessagingError = (error) => {
 };
 
 // Check for Notification and Service Worker support
-export function getNotifications(vuex, toast) {
+export function getNotifications(userStore, toast) {
   try {
     if ('Notification' in window && 'serviceWorker' in navigator) {
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
           console.log('Notification permission granted.');
-          initializeFCM(vuex, toast);
+          initializeFCM(userStore, toast);
         } else {
           console.warn('Notification permission denied.');
         }
@@ -57,12 +57,12 @@ export function getNotifications(vuex, toast) {
   }
 }
 
-function initializeFCM(vuex, toast) {
+function initializeFCM(userStore, toast) {
   try {
     getToken(messaging, { vapidKey }).then((currentToken) => {
       if (currentToken) {
         console.log('FCM Token:', currentToken);
-        saveTokenToFirestore(vuex.state.user.uid, currentToken, vuex, toast);
+        saveTokenToFirestore(userStore.getUserId, currentToken, userStore, toast);
       } else {
         console.log('No registration token available.');
       }
@@ -93,7 +93,7 @@ function initializeFCM(vuex, toast) {
   }
 }
 
-async function saveTokenToFirestore(userId, token, vuex, toast) {
+async function saveTokenToFirestore(userId, token, userStore, toast) {
   if (!userId || !token) return;
 
   const platform = /iPhone|iPad|iPod/.test(navigator.userAgent) ? "iOS" :
@@ -108,13 +108,14 @@ async function saveTokenToFirestore(userId, token, vuex, toast) {
       lastActive: serverTimestamp(),
     });
 
-    if (!vuex.state.pushNotiGranted) {
-      toast.info({
+    if (!userStore.pushNotiGranted) {
+      toast.showToast({
         message: "Notifications enabled!",
+        type: "info",
         duration: 2000,
       });
 
-      vuex.commit('setPushNotiGranted', true);
+      userStore.setPushNotiGranted(true);
     }
 
   } catch (error) {

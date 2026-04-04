@@ -10,68 +10,51 @@ import loading from './views/loading.vue';
 import { getNotifications } from './utils/pushNotifications';
 import { getAuth } from 'firebase/auth';
 import { syncService } from './services/syncService';
-import { habitService } from './services/habitService';
 import { useUserStore } from './store/userStore';
 import { useUIStore } from './store/uiStore';
 import { useHabitStore } from './store/habitStore';
+import { useToastStore } from './store/toastStore';
+import { onMounted } from 'vue';
 
 export default {
   components: { loading },
-  computed: {
-    uiStore() {
-      return useUIStore();
-    },
-    habitStore() {
-      return useHabitStore();
-    }
-  },
-  async created() {
-    this.uiStore.setLoading(true);
+  setup() {
+    const uiStore = useUIStore();
+    const habitStore = useHabitStore();
+    const userStore = useUserStore();
+    const toastStore = useToastStore();
 
-    try {
-      const userStore = useUserStore();
-      await userStore.fetchUser();
-      if (userStore.user) {
-        getNotifications(this.$store, this.$toast);
+    onMounted(async () => {
+      uiStore.setLoading(true);
 
-        await syncService.fetchAllFromFirebase(userStore.getUserId);
+      try {
+        await userStore.fetchUser();
+        if (userStore.user) {
+          getNotifications(userStore, toastStore);
 
-        // Trigger photo migration for all habits after initial sync
-        try {
-          console.log('🚀 Starting photo migration on app launch...');
-          await habitService.fetchHabitsWithMigration(userStore.getUserId, {
-            enableMigration: true,
-            maxConcurrent: 2
-          });
-          console.log('✅ Photo migration completed on app launch');
-        } catch (migrationError) {
-          console.error('❌ Photo migration failed on app launch:', migrationError);
+          await syncService.fetchAllFromFirebase(userStore.getUserId);
+
+          // Initialize app using Pinia store - this will only run once per session
+          await habitStore.initializeApp();
+
+          // If we're on the calendar route, fetch week progress
+          // if (this.$route.name === 'calendar') {
+          //   await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+          // }
         }
-
-        // await this.$store.dispatch('fetchPauses');
-        
-        // If we're on the calendar route, fetch week progress
-        if (this.$route.name === 'calendar') {
-          await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
-        }
+        uiStore.setLoading(false);
+      } catch (error) {
+        console.error('Error in App initialization:', error);
+        uiStore.setLoading(false);
       }
-      this.uiStore.setLoading(false);
-    } catch (error) {
-      console.error('Error in App created:', error);
-      this.uiStore.setLoading(false);
-    }
-  },
-  async mounted() {
-    // If user is already logged in
-    const auth = getAuth();
-    if (auth.currentUser) {
-      await this.$store.dispatch('checkForNewNews');
-    }
-  },
-  beforeDestroy() {
-    if (this.$store.state.unsubscribeHabits) {
-      this.$store.state.unsubscribeHabits();
-    }
+    });
+
+    return {
+      uiStore,
+      habitStore,
+      userStore,
+      toastStore
+    };
   },
 };
 </script>

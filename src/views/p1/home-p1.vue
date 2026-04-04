@@ -43,12 +43,13 @@
                 <HomeProgress :percent="habit.actualProgress * 100 / habit.dailyGoal" :text="habit.name"
                   :timesdone="habit.actualProgress + '/' + habit.dailyGoal"
                   :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
-                  :selectionMode="$store.state.selectionMode"
-                  :isSelected="$store.state.selectedHabits.includes(habit.habitId)"
+                  :selectionMode="uiStore.selectionMode"
+                  :isSelected="uiStore.selectedHabits.includes(habit.id)"
                   :bgColor="habit === $store.state.selectedHabit ? 'bg-gray-50' : ''"
                   :showDot="habit.reminders ? showDot(habit) : false"
                   :subtext="habit.reminders ? formatReminderTimes(habit.reminders) : ''" :isPaused="habit?.isPaused"
-                  @toggleSelect="$store.dispatch('selectHabit', habit.habitId)" @openDetail="openDetail(habit)" />
+                  @toggleSelect="uiStore.selectHabit(habit.id)" 
+                  @openDetail="openDetail(habit)" />
               </div>
             </div>
           </transition>

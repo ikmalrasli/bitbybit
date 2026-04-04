@@ -3,12 +3,15 @@ import { habitService } from '../services/habitService';
 import { useUserStore } from '../store/userStore';
 import { useUIStore } from './uiStore';
 import { usePhotoCacheStore } from './photoCacheStore';
+import { useToastStore } from './toastStore';
 
 export const useHabitStore = defineStore('habitStore', {
   state: () => ({
     dayHabitMetrics: {},
     hasAnyHabit: false,
-    selectedHabit: null
+    selectedHabit: null,
+    hasMigratedPhotosThisSession: false,
+    isMigrating: false
   }),
   actions: {
     // REFRESH LOGIC: Re-fetches the metrics for the current visible range
@@ -19,18 +22,18 @@ export const useHabitStore = defineStore('habitStore', {
       const startRange = new Date(today);
       startRange.setDate(today.getDate() - 28); // Covers the 4-week view
       
-      // Use fetchHabitsWithMigration for automatic photo migration
-      await this.getHabitMetrics(startRange, today, { enableMigration: true });
+      // Just fetch metrics - no migration logic here
+      await this.getHabitMetrics(startRange, today);
     },
 
-    async getHabitMetrics(start, end, options = {}) {
+    async getHabitMetrics(start, end) {
       const userStore = useUserStore();
       const uid = userStore.getUserId;
       
-      // Pass migration options to habitService
+      // Just fetch metrics - no migration options needed
       this.dayHabitMetrics = { 
         ...this.dayHabitMetrics, 
-        ...await habitService.fetchHabitMetrics(uid, start, end, options) 
+        ...await habitService.fetchHabitMetrics(uid, start, end) 
       };
     },
 
@@ -145,6 +148,70 @@ export const useHabitStore = defineStore('habitStore', {
 
     sortHabitsSync(habits, sortType) {
       return habitService.sortHabits(habits, sortType);
+    },
+
+    async markHabitsCompleted() {
+      const uiStore = useUIStore();
+      const userStore = useUserStore();
+      const toastStore = useToastStore();
+      
+      if (uiStore.selectedHabits.length === 0) {
+        toastStore.showToast({
+          message: 'No habits selected',
+          type: 'warning',
+          duration: 2000
+        });
+        return;
+      }
+
+      try {
+        await habitService.markMultipleHabitsCompleted(
+          uiStore.selectedHabits,
+          userStore.getUserId,
+          uiStore.selectedDate
+        );
+
+        toastStore.showToast({
+          message: 'Habits completed!',
+          type: 'success',
+          duration: 1000
+        });
+
+        // Clear selection and exit selection mode
+        uiStore.selectedHabits = [];
+        uiStore.selectionMode = false;
+
+        // Refresh metrics to update UI
+        await this.refreshMetrics();
+
+      } catch (error) {
+        console.error('Error marking habits as completed:', error);
+        toastStore.showToast({
+          message: 'Error. Please try again.',
+          type: 'error',
+          duration: 2000
+        });
+      }
+    },
+
+    async initializeApp() {
+      // If we already did this, bail out immediately.
+      if (this.hasMigratedPhotosThisSession || this.isMigrating) return;
+      
+      const userStore = useUserStore();
+      if (!userStore.getUserId) return;
+      
+      this.isMigrating = true;
+      try {
+        console.log('🚀 Starting photo migration on app launch...');
+        await habitService.runPhotoMigration(userStore.getUserId);
+        this.hasMigratedPhotosThisSession = true;
+        console.log('✅ Photo migration completed on app launch');
+      } catch (error) {
+        console.error('❌ Photo migration failed on app launch:', error);
+      } finally {
+        this.isMigrating = false;
+      }
     }
   }
 });

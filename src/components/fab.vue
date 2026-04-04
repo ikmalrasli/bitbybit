@@ -54,7 +54,8 @@
 
 <script>
 import { useDialogStore } from '../store/dialogStore';
-import { mapState } from 'vuex';
+import { useUIStore } from '../store/uiStore';
+import { useHabitStore } from '../store/habitStore';
 
 export default {
   data() {
@@ -64,7 +65,12 @@ export default {
     };
   },
   computed: {
-    ...mapState(['selectionMode', 'selectedHabits']),
+    selectionMode(){
+      return useUIStore().selectionMode;
+    },
+    selectedHabits(){
+      return useUIStore().selectedHabits;
+    }
   },
   methods: {
     toggleExpand() {
@@ -79,7 +85,8 @@ export default {
       this.isExpanded = false;
     },
     markAsCompleted() {
-      this.$store.dispatch('markHabitsCompleted',  this.$toast);
+      const habitStore = useHabitStore();
+      habitStore.markHabitsCompleted();
       this.isExpanded = false;
     }
   },

@@ -7,9 +7,7 @@ export const habitService = {
    * Fetches habit metrics for a user within a date range.
    * Used in calendar-row component in home page.
    */
-  async fetchHabitMetrics(userId, startDate, endDate, options = {}) {
-    const { enableMigration = true } = options;
-    
+  async fetchHabitMetrics(userId, startDate, endDate) {
     // 1. NORMALIZE BOUNDARIES
     // Ensure start is 00:00:00 and end is 23:59:59 of the local day
     const start = new Date(startDate);
@@ -18,10 +16,8 @@ export const habitService = {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    // Use migration-enabled fetch if migration is enabled
-    const habits = enableMigration 
-      ? await this.fetchHabitsWithMigration(userId, { enableMigration: true, maxConcurrent: 2 })
-      : await this.fetchHabits(userId);
+    // Just fetch habits - no migration logic here
+    const habits = await this.fetchHabits(userId);
 
     const [allProgress, pauses] = await Promise.all([
       // Use inclusive bounds [start, end]
@@ -179,59 +175,85 @@ export const habitService = {
   },
 
   /**
-   * Fetches habits with automatic photo migration
-   * This is the main method that should be used when loading habits
-   * @param {string} userId - The user ID
-   * @param {Object} options - Migration options
-   * @returns {Promise<Array>} - Array of habits with migrated photos
-   */
-  async fetchHabitsWithMigration(userId, options = {}) {
-    const { enableMigration = true, maxConcurrent = 2 } = options;
-    
-    // First, fetch habits from local IndexedDB
-    const habits = await this.fetchHabits(userId);
-    
-    if (!enableMigration || habits.length === 0) {
-      return habits;
-    }
-    
-    // Filter habits that need migration
-    const habitsNeedingMigration = habits.filter(habit => {
-      // Check if habit has imageUrls and hasn't completed migration
-      return habit.imageUrls && 
-             habit.imageUrls.length > 0 && 
-             !habit.localMigrationComplete;
+ * Dedicated photo migration method
+ * Separates migration logic from data fetching
+ * @param {string} userId - The user ID
+ * @param {Object} options - Migration options
+ * @returns {Promise<Object>} - Migration results
+ */
+async runPhotoMigration(userId, options = {}) {
+  const { maxConcurrent = 2 } = options;
+  
+  // First, fetch habits from local IndexedDB
+  const habits = await this.fetchHabits(userId);
+  
+  if (habits.length === 0) {
+    console.log('✅ No habits found, skipping migration');
+    return { habitsProcessed: 0, totalDownloadsCompleted: 0, totalDownloadsFailed: 0 };
+  }
+  
+  // Filter habits that need migration
+  const habitsNeedingMigration = habits.filter(habit => {
+    // Check if habit has imageUrls and hasn't completed migration
+    return habit.imageUrls && 
+           habit.imageUrls.length > 0 && 
+           !habit.localMigrationComplete;
+  });
+  
+  if (habitsNeedingMigration.length === 0) {
+    console.log('✅ All habits are already migrated');
+    return { habitsProcessed: 0, totalDownloadsCompleted: 0, totalDownloadsFailed: 0 };
+  }
+  
+  console.log(`🔄 Starting migration for ${habitsNeedingMigration.length} habits`);
+  
+  try {
+    // Make it blocking - wait for completion to prevent race condition
+    const results = await processMultipleHabits(habitsNeedingMigration, userId, {
+      maxConcurrent,
+      delayBetween: 500
     });
     
-    if (habitsNeedingMigration.length === 0) {
-      console.log('✅ All habits are already migrated');
-      return habits;
-    }
+    console.log('🎉 Migration completed:', {
+      habitsProcessed: results.habitsProcessed,
+      downloadsCompleted: results.totalDownloadsCompleted,
+      downloadsFailed: results.totalDownloadsFailed
+    });
     
-    console.log(`🔄 Starting migration for ${habitsNeedingMigration.length} habits`);
+    return results;
     
-    try {
-      // Make it blocking - wait for completion to prevent race condition
-      const results = await processMultipleHabits(habitsNeedingMigration, userId, {
-        maxConcurrent,
-        delayBetween: 500
-      });
-      
-      console.log('🎉 Migration completed:', {
-        habitsProcessed: results.habitsProcessed,
-        downloadsCompleted: results.totalDownloadsCompleted,
-        downloadsFailed: results.totalDownloadsFailed
-      });
-      
-      // Return habits after migration completes
-      return habits;
-      
-    } catch (error) {
-      console.error('❌ Error starting habit migration:', error);
-      // Return habits even if migration fails
-      return habits;
-    }
-  },
+  } catch (error) {
+    console.error('❌ Error starting habit migration:', error);
+    throw error;
+  }
+},
+
+/**
+ * Fetches habits with automatic photo migration
+ * DEPRECATED: Use runPhotoMigration separately for cleaner architecture
+ * This method is kept for backward compatibility
+ * @param {string} userId - The user ID
+ * @param {Object} options - Migration options
+ * @returns {Promise<Array>} - Array of habits with migrated photos
+ */
+async fetchHabitsWithMigration(userId, options = {}) {
+  console.warn('⚠️ fetchHabitsWithMigration is deprecated. Use runPhotoMigration for migration and fetchHabits for data fetching.');
+  
+  const { enableMigration = true, maxConcurrent = 2 } = options;
+  
+  // First, fetch habits from local IndexedDB
+  const habits = await this.fetchHabits(userId);
+  
+  if (!enableMigration || habits.length === 0) {
+    return habits;
+  }
+  
+  // Run migration if needed
+  await this.runPhotoMigration(userId, { maxConcurrent });
+  
+  // Return habits after migration completes
+  return habits;
+},
 
   async toggleHabitPause(habitId, isPaused) {
     const now = new Date();
@@ -340,6 +362,75 @@ export const habitService = {
     }
     
     return sortedHabits;
+  },
+
+  /**
+   * Marks multiple habits as completed for a specific date
+   * @param {Array} habitIds - Array of habit IDs to mark as completed
+   * @param {string} userId - User ID
+   * @param {Date} targetDate - Date to mark habits for (defaults to today)
+   * @returns {Promise} - Promise that resolves when all operations complete
+   */
+  async markMultipleHabitsCompleted(habitIds, userId, targetDate = new Date()) {
+    let setTimestamp = new Date(targetDate);
+    let onTime = this._isToday(targetDate);
+
+    if (!onTime) {
+      // For past dates, set timestamp to end of that day
+      setTimestamp = new Date(targetDate);
+      setTimestamp.setHours(23, 59, 59, 999);
+    }
+
+    // Fetch all habits to get their daily goals
+    const habits = await this.fetchHabits(userId);
+    const habitMap = habits.reduce((map, habit) => {
+      map[habit.id] = habit;
+      return map;
+    }, {});
+
+    const updatePromises = habitIds.map(async (habitId) => {
+      const habit = habitMap[habitId];
+      if (!habit) {
+        console.warn(`Habit ${habitId} not found for user ${userId}`);
+        return null;
+      }
+
+      const dailyGoal = habit.dailyGoal || 0;
+      
+      // Check if progress already exists for this habit and date
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const existingProgress = await db.progress
+        .where('habitId').equals(habitId)
+        .and(p => p.timestamp >= startOfDay && p.timestamp <= endOfDay)
+        .first();
+
+      if (existingProgress) {
+        // Update existing progress
+        return await db.progress.update(existingProgress.id, {
+          progress: dailyGoal,
+          timestamp: setTimestamp,
+          onTime: onTime
+        });
+      } else {
+        // Create new progress record
+        const progressId = generateId();
+        return await db.progress.add({
+          id: progressId,
+          habitId,
+          userId,
+          progress: dailyGoal,
+          timestamp: setTimestamp,
+          onTime: onTime
+        });
+      }
+    });
+
+    // Wait for all promises to resolve
+    return await Promise.all(updatePromises);
   },
 
   _isToday(date) {
