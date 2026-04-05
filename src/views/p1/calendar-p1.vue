@@ -34,8 +34,9 @@
 <script>
 import CalendarMonth from "../../components/calendar-month.vue";
 import VerticalProgressbar from "../../components/VerticalProgressbar.vue";
-import { mapState } from "vuex";
-import { getTotalProgressDay } from "../../utils/getTotalProgressDay";
+import { useHabitStore } from '../../store/habitStore';
+import { useUIStore } from '../../store/uiStore';
+import { getLocalDateKey } from '../../utils/dateHelpers';
 
 export default {
   components: {
@@ -46,40 +47,18 @@ export default {
     return {
       currentWeek: 'thisWeek', // Tracks which week is being viewed
       days: this.generateWeekDays('thisWeek'), // Initializes with current week
+      habitStore: useHabitStore(),
+      uiStore: useUIStore(),
     };
   },
   computed: {
-    ...mapState(["weekProgress", "habits"]),
     weekTitle() {
       return this.currentWeek === 'thisWeek' ? 'This Week' : 'Last Week';
     }
   },
   async created() {
     // Fetch this week's data when component is created
-    await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
-  },
-  async beforeRouteEnter(to, from, next) {
-    next(async (vm) => {
-      // Check if we need to fetch habits first
-      if (!vm.$store.state.habits.length) {
-        await vm.$store.dispatch('fetchHabits');
-      }
-      // Then fetch week progress if it's empty
-      if (!vm.$store.state.weekProgress.length) {
-        await vm.$store.dispatch('fetchWeekProgress', 'thisWeek');
-      }
-    });
-  },
-  watch: {
-    // Watch for habits changes and refetch progress if needed
-    habits: {
-      immediate: true,
-      handler(newHabits) {
-        if (newHabits.length && !this.weekProgress.length) {
-          this.$store.dispatch('fetchWeekProgress', this.currentWeek);
-        }
-      }
-    }
+    await this.loadWeekData('thisWeek');
   },
   methods: {
     generateWeekDays(week) {
@@ -109,18 +88,54 @@ export default {
       });
     },
     habitsProgress(day) {
-      const { totalProgress } = getTotalProgressDay(day, this.weekProgress, this.habits);
-      return totalProgress;
+      const dateKey = getLocalDateKey(day);
+      const dayHabits = this.habitStore.dayHabitMetrics[dateKey] || [];
+      
+      if (dayHabits.length === 0) return 0;
+      
+      // Calculate progress percentage for the day
+      let totalProgress = 0;
+      let totalGoal = 0;
+      
+      dayHabits.forEach(habit => {
+        if (habit.isScheduled && !habit.isPausedOnDay) {
+          totalGoal += habit.dailyGoal || 0;
+          totalProgress += habit.actualProgress || 0;
+        }
+      });
+      
+      return totalGoal > 0 ? (totalProgress / totalGoal) * 100 : 0;
     },
     async showLastWeek() {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek');
-      await this.$store.dispatch('fetchWeekProgress', 'lastWeek');
+      await this.loadWeekData('lastWeek');
     },
     async showThisWeek() {
       this.currentWeek = 'thisWeek';
       this.days = this.generateWeekDays('thisWeek');
-      await this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+      await this.loadWeekData('thisWeek');
+    },
+    async loadWeekData(weekType) {
+      const today = new Date();
+      const currentDayOfWeek = today.getDay();
+      const currentDate = today.getDate();
+
+      // Calculate start and end dates for the week
+      const startOfWeek = new Date(today);
+      if (weekType === 'thisWeek') {
+        startOfWeek.setDate(currentDate - currentDayOfWeek);
+      } else {
+        startOfWeek.setDate(currentDate - currentDayOfWeek - 7);
+      }
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // Use existing getHabitMetrics function from habitStore
+      await this.habitStore.getHabitMetrics(startOfWeek, endOfWeek);
     },
   },
 };
