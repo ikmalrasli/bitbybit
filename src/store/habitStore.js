@@ -4,6 +4,7 @@ import { useUserStore } from '../store/userStore';
 import { useUIStore } from './uiStore';
 import { usePhotoCacheStore } from './photoCacheStore';
 import { useToastStore } from './toastStore';
+import { getLocalDateKey } from '../utils/dateHelpers';
 
 export const useHabitStore = defineStore('habitStore', {
   state: () => ({
@@ -35,6 +36,7 @@ export const useHabitStore = defineStore('habitStore', {
         ...this.dayHabitMetrics, 
         ...await habitService.fetchHabitMetrics(uid, start, end) 
       };
+      console.log(this.dayHabitMetrics);
     },
 
     async confirmProgress(habitId, progress, date, progressId) {
@@ -54,7 +56,7 @@ export const useHabitStore = defineStore('habitStore', {
       await this.refreshMetrics();
 
       if (this.selectedHabit) {
-        const dateKey = new Date().toISOString().split('T')[0];
+        const dateKey = getLocalDateKey(new Date());
         const updatedHabit = this.dayHabitMetrics[dateKey]?.find(h => h.id === habitId);
         if (updatedHabit) {
           this.selectedHabit = updatedHabit;
@@ -67,7 +69,7 @@ export const useHabitStore = defineStore('habitStore', {
       await this.refreshMetrics();
 
       if (this.selectedHabit) {
-        const dateKey = new Date().toISOString().split('T')[0];
+        const dateKey = getLocalDateKey(new Date());
         const updatedHabit = this.dayHabitMetrics[dateKey]?.find(h => h.id === habitId);
         if (updatedHabit) {
           this.selectedHabit = updatedHabit;

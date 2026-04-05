@@ -43,6 +43,7 @@
 import RadialProgressbar from './RadialProgressbar.vue';
 import { useUIStore } from '../store/uiStore';
 import { useHabitStore } from '../store/habitStore';
+import { getLocalDateKey } from '../utils/dateHelpers';
 
 export default {
   components: {
@@ -118,7 +119,7 @@ export default {
     },
 
     dayProgress(day) {
-      const dateKey = day.toISOString().split('T')[0];
+      const dateKey = getLocalDateKey(day);
       const habitMetrics = this.habitMetrics[dateKey];
 
       // Return 0 if no metrics available yet (loading state)

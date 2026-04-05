@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { generateId } from '../utils/generateId';
 import { processMultipleHabits } from './photoDownloadService';
+import { getLocalDateKey } from '../utils/dateHelpers';
 
 export const habitService = {
   /**
@@ -27,14 +28,6 @@ export const habitService = {
 
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const habitMetricsMap = {};
-
-    // Helper to get YYYY-MM-DD in local time
-    const getLocalDateKey = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
 
     const progressLookup = {};
     const progressID = {};

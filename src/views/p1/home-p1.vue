@@ -157,6 +157,7 @@ import { useHabitStore } from '../../store/habitStore';
 import { useMemoStore } from '../../store/memoStore';
 import { useUIStore } from '../../store/uiStore';
 import { useUserStore } from '../../store/userStore';
+import { getLocalDateKey } from '../../utils/dateHelpers';
 
 export default {
   components: {
@@ -202,7 +203,7 @@ export default {
       return this.habitStore.hasAnyHabit;
     },
     habits() {
-      const dateKey = this.selectedDay.toISOString().split('T')[0];
+      const dateKey = getLocalDateKey(this.selectedDay);
       const habits = this.habitStore.dayHabitMetrics[dateKey] || [];
       
       // Apply sorting based on the sortType from uiStore
@@ -233,7 +234,7 @@ export default {
     
     // memos for selected day
     dayMemos() {
-      const dateKey = this.selectedDay.toISOString().split('T')[0];
+      const dateKey = getLocalDateKey(this.selectedDay);
       const memos = this.memoStore.dayMemos[dateKey] || [];
       const sortedMemos = [...memos].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       return sortedMemos;
