@@ -168,7 +168,7 @@
             <i class="fa-brands fa-spotify text-xl mx-2 flex-shrink-0" style="color: #1DB954;"></i>
             <div class="min-w-0 flex-1">
               <a :href="track.url" target="_blank" class="block hover:underline">
-                <div class="truncate">track.title</div>
+                <div class="truncate">{{track.title}}</div>
                 <div class="text-xs truncate">{{ track.artist }}</div>
               </a>
             </div>
