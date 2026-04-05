@@ -378,9 +378,24 @@ export default {
   },
   mounted() {
     if (this.$store.getters.selectedSunnah && this.$route.name === 'add-sunnah') {
-      this.formData.name = this.$store.getters.selectedSunnah.name;
-      this.formData.dailyGoal = this.$store.getters.selectedSunnah.dailyGoal;
-      this.formData.repeatDays = this.$store.getters.selectedSunnah.repeat;
+      const sunnah = this.$store.getters.selectedSunnah;
+      this.formData.name = sunnah.name;
+      this.formData.dailyGoal = sunnah.dailyGoal;
+      this.formData.repeatDays = sunnah.repeat;
+      
+      // Copy media content from sunnah
+      this.formData.notes = sunnah.notes || '';
+      this.formData.youtubeUrls = sunnah.youtubeUrls || [];
+      this.formData.spotifyUrls = sunnah.spotifyUrls || [];
+      
+      // Handle images - convert URLs to photo objects for preview
+      if (sunnah.imageUrls && sunnah.imageUrls.length > 0) {
+        this.selectedPhotos = sunnah.imageUrls.map((url, index) => ({
+          id: Date.now() + index,
+          url: url,
+          isSunnahImage: true // Mark as sunnah image to handle differently during upload
+        }));
+      }
     } else if (this.$route.name === 'edit-habit') {
       this.title = 'Edit Habit';
       this.loadingText = 'Apply'
@@ -615,6 +630,7 @@ export default {
       // Upload valid files and place their URLs in the correct index
       const uploadPromises = this.selectedPhotos.map(async (photo, index) => {
         if (photo.file instanceof File) {
+          // Upload user's own images to their habit folder
           const storage = getStorage();
           const storageRef = ref(storage, `habit_img/${this.$store.state.user.uid}/${this.formData.name}/${index}_${photo.file.name}`);
           const uploadTask = uploadBytesResumable(storageRef, photo.file);
@@ -634,6 +650,9 @@ export default {
               }
             );
           });
+        } else if (photo.isSunnahImage) {
+          // Keep sunnah image URLs as-is (reference, don't re-upload)
+          urls[index] = photo.url;
         } else if (typeof photo === "string") {
           urls[index] = photo; // Preserve existing URL in correct index
         }

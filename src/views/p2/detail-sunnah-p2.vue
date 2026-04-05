@@ -8,7 +8,58 @@
     </header>
     
     <!-- Content -->
-    <p class="h-96 flex-grow p-4 pb-20 scrollbar-hide overflow-y-auto" style="white-space: pre-wrap;">{{ sunnah.description }}</p>
+    <div class="h-96 flex-grow p-4 pb-20 scrollbar-hide overflow-y-auto">
+      <!-- Media Content Section -->
+      <div v-if="hasMediaContent" class="mb-4 space-y-3">
+        <!-- Description -->
+        <div style="white-space: pre-wrap;">{{ sunnah.description }}</div>
+
+        <!-- Notes -->
+        <div v-if="sunnah.notes" class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <h4 class="text-sm font-medium text-blue-800 mb-1">Notes</h4>
+          <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ sunnah.notes }}</p>
+        </div>
+
+        <!-- Images -->
+        <div v-if="sunnah.imageUrls && sunnah.imageUrls.length > 0" class="grid grid-cols-3 gap-2 mb-3">
+          <img 
+            v-for="(imageUrl, index) in sunnah.imageUrls" 
+            :key="index"
+            :src="imageUrl" 
+            :alt="`Sunnah image ${index + 1}`" 
+            class="w-full object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+            style="aspect-ratio: 1 / 1;"
+            @click="openImagePreview(imageUrl)"
+          />
+        </div>
+
+        <!-- YouTube Videos -->
+        <div v-if="sunnah.youtubeUrls && sunnah.youtubeUrls.length > 0" class="space-y-2">
+          <div v-for="(video, index) in sunnah.youtubeUrls" :key="index" 
+               class="flex items-center border rounded-md p-2 bg-gray-50">
+            <i class="fa-brands fa-youtube text-xl mx-2" style="color: #ff0000;"></i>
+            <a :href="video.url" target="_blank" class="flex-1 hover:underline">
+              <span class="block text-sm font-medium truncate">{{ video.title }}</span>
+              <span class="block text-xs text-gray-600">{{ video.channel }}</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Spotify Tracks -->
+        <div v-if="sunnah.spotifyUrls && sunnah.spotifyUrls.length > 0" class="space-y-2">
+          <div v-for="(track, index) in sunnah.spotifyUrls" :key="index" 
+               class="flex items-center border rounded-md p-2 bg-gray-50">
+            <i class="fa-brands fa-spotify text-xl mx-2" style="color: #1DB954;"></i>
+            <a :href="track.url" target="_blank" class="flex-1 hover:underline">
+              <span class="block text-sm font-medium truncate">{{ track.title }}</span>
+              <span class="block text-xs text-gray-600">{{ track.artist }}</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+      
+    </div>
 
     <!-- Create Button -->
     <div class="px-4 py-2 flex-shrink-0 absolute bottom-0 w-full">
@@ -32,6 +83,15 @@ export default {
   },
   computed: {
     ...mapGetters(['allSunnahs']),
+    hasMediaContent() {
+      if (!this.sunnah) return false;
+      return (
+        (this.sunnah.imageUrls && this.sunnah.imageUrls.length > 0) ||
+        (this.sunnah.youtubeUrls && this.sunnah.youtubeUrls.length > 0) ||
+        (this.sunnah.spotifyUrls && this.sunnah.spotifyUrls.length > 0) ||
+        this.sunnah.notes
+      );
+    }
   },
   methods: {
     formatTitle(title) {
@@ -48,6 +108,10 @@ export default {
     },
     goBack() {
       this.$router.push('/sunnahs');
+    },
+    openImagePreview(imageUrl) {
+      // Simple image preview - open in new tab
+      window.open(imageUrl, '_blank');
     },
     addToHabits() {
       this.$store.commit('setSelectedSunnah', this.sunnah);
