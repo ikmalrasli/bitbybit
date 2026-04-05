@@ -42,11 +42,10 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
 import RadialProgressbar from './RadialProgressbar.vue';
-import { getTotalProgressDayForMonth } from '../utils/getTotalProgressDayForMonth';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { useHabitStore } from '../store/habitStore';
+import { useUIStore } from '../store/uiStore';
+import { getLocalDateKey } from '../utils/dateHelpers';
 
 export default {
   components: {
@@ -60,7 +59,6 @@ export default {
       ];
       return monthNames[this.currentMonth];
     },
-    ...mapState(['habits', 'weekProgress', 'pauses']), // <-- Add pauses to mapState
   },
   data() {
     return {
@@ -71,7 +69,8 @@ export default {
       todayMonth: new Date().getMonth(),
       todayYear: new Date().getFullYear(),
       calendarDays: [],
-      progressArray: [], // Combined progress data
+      habitStore: useHabitStore(),
+      uiStore: useUIStore(),
     };
   },
   methods: {
@@ -85,12 +84,11 @@ export default {
       if (this.currentMonth === 0) {
         this.currentMonth = 11;
         this.currentYear--;
-
       } else {
         this.currentMonth--;
       }
       this.setupMonthDays();
-      this.fetchProgress();
+      this.fetchMonthProgress();
     },
     nextMonth() {
       if (this.currentMonth === 11) {
@@ -100,85 +98,38 @@ export default {
         this.currentMonth++;
       }
       this.setupMonthDays();
-      this.fetchProgress();
+      this.fetchMonthProgress();
     },
-    fetchProgress() {
+    async fetchMonthProgress() {
       const firstDayOfCurrentMonth = new Date(this.currentYear, this.currentMonth, 1);
       const lastDayOfCurrentMonth = new Date(this.currentYear, this.currentMonth + 1, 0);
       firstDayOfCurrentMonth.setHours(0, 0, 0, 0);
       lastDayOfCurrentMonth.setHours(23, 59, 59, 999);
 
-      // Split habits into batches of 30
-      const habitIds = this.habits.map(habit => habit.habitId);
-      const batchSize = 30;
-      const habitBatches = [];
-
-      for (let i = 0; i < habitIds.length; i += batchSize) {
-        habitBatches.push(habitIds.slice(i, i + batchSize));
-      }
-
-      // Clear existing unsubscribe if any
-      if (this.unsubscribeProgress) {
-        this.unsubscribeProgress();
-      }
-
-      // Create a listener for each batch
-      const unsubscribes = habitBatches.map(batchIds => {
-        const q = query(
-          collection(db, 'progress'),
-          where('habitId', 'in', batchIds),
-          where('timestamp', '>=', firstDayOfCurrentMonth),
-          where('timestamp', '<=', lastDayOfCurrentMonth),
-          orderBy('timestamp', 'desc')
-        );
-
-        return onSnapshot(q, (querySnapshot) => {
-          const progressArray = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            progressArray.push({ ...data, progressId: doc.id });
-          });
-          this.processProgressData(progressArray);
-        });
-      });
-
-      // Store unsubscribe functions
-      this.$store.commit('setUnsubscribeProgress', () => unsubscribes.forEach(unsub => unsub()));
-    },
-    processProgressData(progressArray) {
-      const outputArray = progressArray.reduce((acc, curr) => {
-        const currentDate = curr.timestamp.toDate ? curr.timestamp.toDate() : new Date(curr.timestamp);
-        const currentDay = currentDate.setHours(0, 0, 0, 0);
-
-        const existingHabit = acc.find(habit => {
-          const habitDate = habit.timestamp.toDate ? habit.timestamp.toDate() : new Date(habit.timestamp);
-          const existingDay = habitDate.setHours(0, 0, 0, 0);
-          return habit.habitId === curr.habitId && existingDay === currentDay;
-        });
-
-        if (existingHabit) {
-          if (curr.progress > existingHabit.progress) {
-            acc[acc.indexOf(existingHabit)] = curr;
-          }
-        } else {
-          acc.push(curr);
-        }
-        return acc;
-      }, []);
-
-      this.progressArray = outputArray;
-      // Update Vuex Week Progress
-      // this.$store.dispatch('updateWeekProgress', outputArray);
-      // Update the existing calendar days with progress data
+      // Use existing getHabitMetrics function from habitStore
+      await this.habitStore.getHabitMetrics(firstDayOfCurrentMonth, lastDayOfCurrentMonth);
       this.updateProgressValues();
     },
     updateProgressValues() {
       this.calendarDays = this.calendarDays.map(day => {
         if (day.isCurrentMonth) {
           const dayDate = new Date(this.currentYear, this.currentMonth, day.day);
-          // Pass pauses from Vuex state
-          const { totalProgress } = getTotalProgressDayForMonth(dayDate, this.progressArray, this.habits, this.pauses);
-          return { ...day, progress: totalProgress };
+          const dateKey = getLocalDateKey(dayDate);
+          const dayHabits = this.habitStore.dayHabitMetrics[dateKey] || [];
+          
+          // Calculate progress percentage for the day
+          let totalProgress = 0;
+          let totalGoal = 0;
+          
+          dayHabits.forEach(habit => {
+            if (habit.isScheduled && !habit.isPausedOnDay) {
+              totalGoal += habit.dailyGoal || 0;
+              totalProgress += habit.actualProgress || 0;
+            }
+          });
+          
+          const progressPercent = totalGoal > 0 ? (totalProgress / totalGoal) * 100 : 0;
+          return { ...day, progress: progressPercent };
         }
         return day;
       });
@@ -225,70 +176,25 @@ export default {
       this.calendarDays = days;
     },
     viewDayDetails(day) {
-      console.log(day)
       const selectedDate = new Date(this.currentYear, this.currentMonth, day.day);
-      const today = new Date();
-      const currentDayOfWeek = today.getDay();
-      const currentDate = today.getDate();
-
-      // Calculate start of this week and last week
-      const startOfThisWeek = new Date(today);
-      startOfThisWeek.setDate(currentDate - currentDayOfWeek);
-      startOfThisWeek.setHours(0, 0, 0, 0);
-
-      const startOfLastWeek = new Date(startOfThisWeek);
-      startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
-
-      const endOfLastWeek = new Date(startOfThisWeek);
-      endOfLastWeek.setHours(0, 0, 0, 0);
-
-      // Check if selected date is within this week or last week
-      if (selectedDate >= startOfThisWeek) {
-        // Date is in this week
-        if (!this.$store.state.weekProgress.some(progress => {
-          const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
-          return progressDate >= startOfThisWeek;
-        })) {
-          // This week's data not fetched yet, fetch it
-          this.$store.dispatch('fetchWeekProgress', 'thisWeek');
+      
+      // Set the selected date in UI store
+      this.uiStore.selectedDate = selectedDate;
+      
+      // Navigate to calendar-p2 with the selected date
+      this.$router.push({
+        name: 'calendar-p2',
+        params: {
+          date: selectedDate.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })
         }
-        this.$router.push({
-          name: 'calendar-p2',
-          params: {
-            date: selectedDate.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })
-          }
-        });
-      } else if (selectedDate >= startOfLastWeek && selectedDate < endOfLastWeek) {
-        // Date is in last week
-        if (!this.$store.state.weekProgress.some(progress => {
-          const progressDate = progress.timestamp.toDate ? progress.timestamp.toDate() : new Date(progress.timestamp);
-          return progressDate >= startOfLastWeek && progressDate < endOfLastWeek;
-        })) {
-          // Last week's data not fetched yet, fetch it
-          this.$store.dispatch('fetchWeekProgress', 'lastWeek');
-        }
-        this.$router.push({
-          name: 'calendar-p2',
-          params: {
-            date: selectedDate.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })
-          }
-        });
-      } else {
-        // Date is outside this week and last week, fetch normally
-        this.$router.push({
-          name: 'calendar-p2',
-          params: {
-            date: selectedDate.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })
-          }
-        });
-      }
+      });
     },
   },
-  mounted() {
+  async mounted() {
     // Calculate initial calendar days without progress
     this.setupMonthDays();
     // Then fetch progress data
-    this.fetchProgress();
+    await this.fetchMonthProgress();
   },
 };
 </script>
