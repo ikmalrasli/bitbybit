@@ -317,9 +317,33 @@ export default {
   },
   async mounted() {
     if (this.$store.getters.selectedSunnah && this.$route.name === 'add-sunnah') {
-      this.formData.name = this.$store.getters.selectedSunnah.name;
-      this.formData.dailyGoal = this.$store.getters.selectedSunnah.dailyGoal;
-      this.formData.repeatDays = this.$store.getters.selectedSunnah.repeat;
+      const selectedSunnah = this.$store.getters.selectedSunnah;
+      this.formData.name = selectedSunnah.name;
+      this.formData.dailyGoal = selectedSunnah.dailyGoal;
+      this.formData.repeatDays = selectedSunnah.repeat;
+      
+      // Copy sunnah media content to habit form data
+      if (selectedSunnah.notes) {
+        this.formData.notes = selectedSunnah.notes;
+      }
+      
+      if (selectedSunnah.imageUrls && selectedSunnah.imageUrls.length > 0) {
+        // Convert sunnah image URLs to selectedPhotos format
+        this.selectedPhotos = selectedSunnah.imageUrls.map((url, index) => ({
+          id: `sunnah-${index}`,
+          url: url,
+          isLocal: false,
+          fileName: `sunnah-image-${index}`
+        }));
+      }
+      
+      if (selectedSunnah.youtubeUrls && selectedSunnah.youtubeUrls.length > 0) {
+        this.formData.youtubeUrls = [...selectedSunnah.youtubeUrls];
+      }
+      
+      if (selectedSunnah.spotifyUrls && selectedSunnah.spotifyUrls.length > 0) {
+        this.formData.spotifyUrls = [...selectedSunnah.spotifyUrls];
+      }
     } else if (this.$route.name === 'edit-habit') {
       this.title = 'Edit Habit';
       this.loadingText = 'Apply'

@@ -54,6 +54,83 @@
               <label for="name" class="text-left block text-sm font-medium text-gray-700">Reference URL</label>
               <input v-model="formData.refUrl" type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" autocomplete="off" />
             </div>
+
+            <!-- Notes -->
+            <div>
+              <label for="notes" class="text-left block text-sm font-medium text-gray-700">Notes</label>
+              <textarea v-model="formData.notes" id="notes" ref="notesTextarea"
+                class="leading-tight bg-white text-black mt-1 block w-full p-2 border border-gray-300 rounded-md min-h-24 resize-none overflow-y-auto"
+                placeholder="Optional" @input="adjustTextareaHeight"></textarea>
+            </div>
+
+            <!-- Media Section -->
+            <div class="space-y-2">
+              <!-- Selected Photos Preview -->
+              <draggable v-model="selectedPhotos" itemKey="id" class="grid grid-cols-4 md:grid-cols-5 gap-2"
+                :animation="200" :ghost-class="'bg-gray-200'">
+                <template #item="{ element, index }">
+                  <div class="relative bg-gray-100 rounded-md overflow-hidden border">
+                    <img :src="element.url ? element.url : element" :alt="`Photo ${index + 1}`"
+                      class="w-full object-cover" style="aspect-ratio: 1 / 1;" />
+                    <button @click="removePhoto(index)"
+                      class="absolute top-1 right-1 h-5 w-5 bg-opacity-50 bg-gray-700 text-white rounded-full">
+                      <span class="material-icons text-sm">close</span>
+                    </button>
+                  </div>
+                </template>
+              </draggable>
+
+              <!-- Selected Youtube Urls Preview -->
+              <div v-for="(video, index) in formData.youtubeUrls" :key="index"
+                class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+                <div class="flex items-center">
+                  <i class="fa-brands fa-youtube text-xl mx-2" style="color: #ff0000;"></i>
+                  <a :href="video.url" target="_blank" class="ml-2 hover:underline">
+                    <span class="block truncate">{{ formatURLTitle(video.title) }}</span>
+                    <span class="block text-xs">{{ formatURLTitle(video.channel) }}</span>
+                  </a>
+                </div>
+                <button type="button" @click="removeYoutubeUrl(index)" class="text-black text-sm">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+
+              <!-- Selected Spotify Urls Preview -->
+              <div v-for="(track, index) in formData.spotifyUrls" :key="index"
+                class="flex items-center border rounded-md content-center justify-between text-sm p-2">
+                <div class="flex items-center">
+                  <i class="fa-brands fa-spotify text-xl mx-2" style="color: #1DB954;"></i>
+                  <a :href="track.url" target="_blank" class="ml-2 truncate hover:underline">
+                    <span class="block">{{ formatURLTitle(track.title) }}</span>
+                    <span class="block text-xs">{{ track.artist }}</span>
+                  </a>
+                </div>
+                <button type="button" @click="removeSpotifyUrl(index)" class="text-black text-sm">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+
+              <!-- Media Buttons -->
+              <input type="file" id="photo-input" ref="photoInput" multiple accept="image/*" @change="handlePhotoSelect"
+                class="hidden" />
+
+              <div class="flex space-x-2 justify-end">
+                <button type="button" @click="triggerPhotoInput"
+                  class="w-14 space-x-1 text-white p-2 px-4 rounded-full h-10 flex justify-center items-center transition-colors duration-200 bg-violet-400 hover:bg-violet-500 active:bg-violet-500">
+                  <i class="fa-solid fa-image text-xl"></i>
+                </button>
+
+                <button type="button" @click="openYoutubeDialog" class="w-14 space-x-1 p-2 px-4 rounded-full 
+                  h-10 flex justify-center items-center" style="background-color: #ff0000;">
+                  <i class="fa-brands fa-youtube text-xl" style="color: #ffffff;"></i>
+                </button>
+
+                <button type="button" @click="openSpotifyDialog" class="w-14 space-x-1 p-2 px-4 rounded-full 
+                  h-10 flex justify-center items-center bg-gray-700">
+                  <i class="fa-brands fa-spotify text-xl" style="color: #1ed760;"></i>
+                </button>
+              </div>
+            </div>
           </form>
         </div>
   
@@ -63,6 +140,10 @@
             {{ buttonText }} 
           </button>
         </div>
+        <!-- Dialogs -->
+        <youtubeDialog @add-link="handleYoutubeLink" />
+        <spotifyDialog @add-link="handleSpotifyLink" />
+
       </div>
     </div>  
   </template>
@@ -71,8 +152,19 @@
   import { db } from "../firebase"; // Firestore instance
   import { collection, addDoc } from "firebase/firestore"; // Firestore methods
   import { getAuth } from "firebase/auth"; // Firebase Authentication
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
+  import { useDialogStore } from "../store/dialogStore";
+  import youtubeDialog from "../components/dialogs/youtube-dialog.vue";
+  import spotifyDialog from "../components/dialogs/spotify-dialog.vue";
+  import draggable from 'vuedraggable';
+  import { usePhotoCacheStore } from '../store/photoCacheStore.js';
   
   export default {
+    components: {
+      youtubeDialog,
+      spotifyDialog,
+      draggable
+    },
     data() {
       return {
         formData: {
@@ -81,16 +173,27 @@
           repeatDays: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true },
           description: "",
           refUrl: "",
+          notes: "",
+          youtubeUrls: [],
+          spotifyUrls: [],
         },
         days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
         isLoading: false, // Loading state for the button
         loadingText: 'Create', // Initial button text
+        dialogStore: useDialogStore(),
+        photoCacheStore: usePhotoCacheStore(),
+        currentSunnahId: crypto.randomUUID(), // Generate ID immediately for local photo association
+        selectedPhotos: [],
       };
     },
     computed: {
       buttonText() {
         return this.isLoading ? this.loadingText : 'Create'; // Toggle text based on loading state
       }
+    },
+    beforeUnmount() {
+      // Clean up cached photos when component is destroyed
+      this.photoCacheStore.clearHabitPhotos(this.currentSunnahId);
     },
     methods: {
       toggleRepeat(day) {
@@ -107,6 +210,143 @@
           this.formData.dailyGoal--;
         }
       },
+      adjustTextareaHeight() {
+        const textarea = this.$refs.notesTextarea;
+        textarea.style.height = 'auto'; // Reset the height
+        textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px'; // Adjust height based on content, with a max of 100px
+      },
+      decodeHtmlEntities(text) {
+        const txt = document.createElement("textarea");
+        txt.innerHTML = text;
+        return txt.value;
+      },
+      removeYoutubeUrl(index) {
+        this.formData.youtubeUrls.splice(index, 1);
+      },
+      removeSpotifyUrl(index) {
+        this.formData.spotifyUrls.splice(index, 1);
+      },
+      openYoutubeLink(video) {
+        let link = '';
+        if (!video.id.videoId) {
+          link = `https://www.youtube.com/watch?v=${video.id}`
+        } else {
+          link = `https://www.youtube.com/watch?v=${video.id.videoId}`
+        }
+        return link
+      },
+      handleYoutubeLink(link) {
+        if (link) {
+          this.formData.youtubeUrls.push({
+            title: this.decodeHtmlEntities(link.snippet.title),
+            channel: this.decodeHtmlEntities(link.snippet.channelTitle),
+            url: this.openYoutubeLink(link)
+          });
+        } else {
+          console.error("No link received from Youtube dialog.");
+        }
+      },
+      handleSpotifyLink(link) {
+        if (link) {
+          this.formData.spotifyUrls.push({
+            title: link.name,
+            artist: link.artists[0].name,
+            url: link.external_urls.spotify
+          });
+        } else {
+          console.error("No link received from Spotify dialog.");
+        }
+      },
+      triggerPhotoInput() {
+        this.$refs.photoInput.click(); // Trigger the hidden file input click
+      },
+      async handlePhotoSelect(event) {
+        const files = Array.from(event.target.files);
+        
+        try {
+          // Cache photos instead of saving to DB immediately
+          const cachedPhotos = this.photoCacheStore.addPhotos(this.currentSunnahId, files);
+          
+          // Update UI with cached photos
+          this.selectedPhotos.push(...cachedPhotos.map(photo => ({
+            id: photo.id,
+            url: photo.blobUrl,
+            isLocal: true,
+            fileName: photo.fileName
+          })));
+        } catch (error) {
+          console.error('Error caching photos:', error);
+          alert('Failed to cache photos');
+        }
+        
+        // Clear the file input
+        event.target.value = '';
+      },
+      async removePhoto(index) {
+        const photo = this.selectedPhotos[index];
+        
+        try {
+          // Remove from cache
+          this.photoCacheStore.removePhoto(this.currentSunnahId, photo.id);
+          
+          // Remove from UI
+          this.selectedPhotos.splice(index, 1);
+        } catch (error) {
+          console.error('Error removing photo:', error);
+        }
+      },
+      formatURLTitle(title) {
+        const maxLength = 35; // Maximum length before truncating
+        if (title.length > maxLength) {
+          return `${title.substring(0, maxLength)}...`; // Truncate and append ellipsis
+        }
+
+        return title; // Return original file name if it's within limit
+      },
+      openYoutubeDialog() {
+        this.dialogStore.openYoutubeDialog();
+      },
+      openSpotifyDialog() {
+        this.dialogStore.openSpotifyDialog();
+      },
+      async uploadPhotos() {
+        if (!this.selectedPhotos || this.selectedPhotos.length === 0) return [];
+
+        // Create a new array with placeholders for correct order
+        const urls = new Array(this.selectedPhotos.length).fill(null);
+
+        // Upload valid files and place their URLs in the correct index
+        const uploadPromises = this.selectedPhotos.map(async (photo, index) => {
+          if (photo.file instanceof File) {
+            const storage = getStorage();
+            const storageRef = ref(storage, `sunnahs/${this.currentSunnahId}/images/${index}_${photo.file.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, photo.file);
+
+            return new Promise((resolve, reject) => {
+              uploadTask.on(
+                "state_changed",
+                null,
+                (error) => {
+                  console.error("Error uploading photo:", error);
+                  reject("Failed to upload photo.");
+                },
+                async () => {
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  urls[index] = downloadURL; // Place URL in correct index
+                  resolve(downloadURL);
+                }
+              );
+            });
+          } else if (typeof photo === "string") {
+            urls[index] = photo; // Preserve existing URL in correct index
+          }
+        });
+
+        await Promise.all(uploadPromises);
+
+        // Filter out null values and return the ordered URLs
+        return urls.filter(url => url !== null);
+      },
       async createEntry() {
         try {
           this.isLoading = true; // Set loading state to true
@@ -119,16 +359,32 @@
             throw new Error("User not authenticated. Please log in.");
           }
   
-          // Step 1: Add the habit to the "habits" collection with userId and image URL
-          const habitRef = await addDoc(collection(db, "sunnahs"), {
+          // Step 1: Upload photos to Firebase Storage
+          const imageUrls = await this.uploadPhotos();
+
+          // Step 2: Add the sunnah to the "sunnahs" collection with media
+          const sunnahRef = await addDoc(collection(db, "sunnahs"), {
             name: this.formData.name,
             dailyGoal: this.formData.dailyGoal,
             repeat: this.formData.repeatDays,
             description: this.formData.description,
             refUrl: this.formData.refUrl,
+            notes: this.formData.notes,
+            imageUrls: imageUrls,
+            youtubeUrls: this.formData.youtubeUrls.map(item => ({
+              title: item.title,
+              channel: item.channel,
+              url: item.url
+            })),
+            spotifyUrls: this.formData.spotifyUrls.map(item => ({
+              title: item.title,
+              artist: item.artist,
+              url: item.url
+            })),
+            sunnahId: this.currentSunnahId
           });
   
-          console.log("Sunnah created successfully with userId:", user.uid);
+          console.log("Sunnah created successfully with ID:", sunnahRef.id);
           alert("Sunnah created successfully!");
         } catch (error) {
           console.error("Error creating habit:", error);
@@ -136,11 +392,17 @@
         } finally {
           this.isLoading = false; // Reset loading state
           this.loadingText = 'Create'; // Reset button text
-          this.name='';
-          this.dailyGoal=1;
-          this.repeatDays={ mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true };
-          this.description='';
-          this.refUrl='';
+          this.formData.name = '';
+          this.formData.dailyGoal = 1;
+          this.formData.repeatDays = { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true };
+          this.formData.description = '';
+          this.formData.refUrl = '';
+          this.formData.notes = '';
+          this.formData.youtubeUrls = [];
+          this.formData.spotifyUrls = [];
+          this.selectedPhotos = [];
+          this.photoCacheStore.clearHabitPhotos(this.currentSunnahId);
+          this.currentSunnahId = crypto.randomUUID(); // Generate new ID for next sunnah
         }
       },
       startLoadingDots() {
