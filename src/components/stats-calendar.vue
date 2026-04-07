@@ -15,7 +15,7 @@
         <div v-for="(day, index) in calendarDays" :key="index" class="relative p-2 rounded-full">
           <div class="flex flex-col items-center">
             <RadialProgressbar 
-              :show="day.isCurrentMonth && day.isScheduled" 
+              :show="day.isCurrentMonth && day.isScheduled && day.inTermRange" 
               :progress="day.progress" 
               :radius="40" 
               :text="String(day.day)"
@@ -43,7 +43,7 @@
       <div class="flex flex-col items-center justify-center">
         <div class="flex flex-row space-x-1 items-center">
           <span class="material-icons text-sm" :class="textColor">pie_chart</span>
-          <span class="font-bold">{{ store.selectedStat?.progressPercent || 0 }}%</span>
+          <span class="font-bold">{{ calculatedProgressPercent }}%</span>
         </div>
       </div>
       <div class="flex flex-col items-center justify-center">
@@ -55,7 +55,7 @@
       <div class="flex flex-col items-center justify-center">
         <div class="flex flex-row space-x-1 items-center">
           <span class="material-icons text-sm" :class="textColor">grade</span>
-          <span class="font-bold">{{ getGrade(store.selectedStat?.progressPercent || 0) }}</span>
+          <span class="font-bold">{{ getGrade(calculatedProgressPercent) }}</span>
         </div>
       </div>
     </div>
@@ -76,6 +76,7 @@ const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const calendarDays = ref([]);
 const streak = ref(0);
 const loading = ref(true);
+const calculatedProgressPercent = ref(0);
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -86,6 +87,115 @@ const currentMonthName = computed(() => monthNames[store.month]);
 const textColor = computed(() => `text-${store.selectedStat?.color?.default || 'violet-400'}`);
 const fillColor = computed(() => `text-${store.selectedStat?.color?.default || 'violet-400'}`);
 const fillClass = computed(() => `fill-current ${textColor.value}`);
+
+// Helper functions for proper progress calculation
+const isDateInTermRange = (date, habit) => {
+  if (!habit) return false;
+  
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+  
+  const termStart = habit.termStart ? new Date(habit.termStart) : null;
+  const termEnd = habit.termEnd ? new Date(habit.termEnd) : null;
+  
+  if (termStart) {
+    termStart.setHours(0, 0, 0, 0);
+    if (checkDate < termStart) return false;
+  }
+  
+  if (termEnd) {
+    termEnd.setHours(23, 59, 59, 999);
+    if (checkDate > termEnd) return false;
+  }
+  
+  return true;
+};
+
+const getEligibleDayCount = (habit, year, month) => {
+  if (!habit) return 0;
+  
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  
+  let startDate = new Date(year, month, 1);
+  let endDate = new Date(year, month + 1, 0); // Last day of month
+  
+  // Apply termStart logic
+  if (habit.termStart) {
+    const termStart = new Date(habit.termStart);
+    termStart.setHours(0, 0, 0, 0);
+    
+    if (termStart.getFullYear() === year && termStart.getMonth() === month) {
+      // termStart is within this month
+      if (termStart.getDate() > 1) {
+        startDate = termStart;
+      }
+    }
+    // If termStart is before this month, keep startDate as 1st of month
+  }
+  
+  // Apply termEnd logic
+  if (habit.termEnd) {
+    const termEnd = new Date(habit.termEnd);
+    termEnd.setHours(23, 59, 59, 999);
+    
+    if (termEnd.getFullYear() === year && termEnd.getMonth() === month) {
+      // termEnd is within this month
+      if (termEnd < endDate) {
+        endDate = termEnd;
+      }
+    }
+    // If termEnd is after this month, keep endDate as end of month
+  } else if (isCurrentMonth) {
+    // termEnd is null and this is current month - count till today
+    endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    endDate.setHours(23, 59, 59, 999);
+  }
+  
+  // Ensure we don't count future days in current month
+  if (isCurrentMonth && endDate > today) {
+    endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    endDate.setHours(23, 59, 59, 999);
+  }
+  
+  // Count days, but only if they're scheduled days
+  let eligibleCount = 0;
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayName = days[d.getDay()];
+    if (habit.repeat?.[dayName]) {
+      eligibleCount++;
+    }
+  }
+  
+  return eligibleCount;
+};
+
+const calculateMonthlyProgress = (dailyMap, habit) => {
+  if (!habit) return 0;
+  
+  let totalActualProgress = 0;
+  const eligibleDays = getEligibleDayCount(habit, store.year, store.month);
+  
+  if (eligibleDays === 0) return 0;
+  
+  // Sum actual progress for all eligible days
+  Object.keys(dailyMap).forEach(dateKey => {
+    const date = new Date(dateKey);
+    if (date.getFullYear() === store.year && date.getMonth() === store.month) {
+      if (isDateInTermRange(date, habit)) {
+        const metrics = dailyMap[dateKey]?.find(h => h.id === habit.id);
+        if (metrics && metrics.isScheduled) {
+          totalActualProgress += metrics.actualProgress || 0;
+        }
+      }
+    }
+  });
+  
+  const totalGoal = habit.dailyGoal * eligibleDays;
+  return totalGoal > 0 ? Math.min(100, Math.round((totalActualProgress / totalGoal) * 100)) : 0;
+};
 
 const getGrade = (p) => {
   if (p >= 90) return 'S';
@@ -105,6 +215,9 @@ const refreshData = async () => {
   
   // Use the new local service
   const dailyMap = await habitService.fetchHabitMetrics(userStore.getUserId, start, end);
+  
+  // Calculate the proper progress percentage
+  calculatedProgressPercent.value = calculateMonthlyProgress(dailyMap, store.selectedStat);
   
   buildCalendar(dailyMap);
   calculateStreak(dailyMap);
@@ -128,17 +241,23 @@ const buildCalendar = (dailyMap) => {
   // Current Month
   for (let i = 1; i <= daysInMonth; i++) {
     const dateKey = `${store.year}-${String(store.month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    const currentDate = new Date(store.year, store.month, i);
     const metrics = dailyMap[dateKey]?.find(h => h.id === store.selectedStat.id);
     
     // Streak/Progress only counts if it's NOT a future date
-    const isFuture = new Date(store.year, store.month, i) > today;
+    const isFuture = currentDate > today;
+    
+    // Check if date is within term range
+    const inTermRange = isDateInTermRange(currentDate, store.selectedStat);
 
     days.push({
       day: i,
+      date: currentDate, // Store the actual date for term range checking
       isCurrentMonth: true,
       isToday: dateKey === todayStr,
       isScheduled: metrics?.isScheduled && !isFuture,
       isPaused: metrics?.isPausedOnDay || false,
+      inTermRange: inTermRange,
       progress: metrics ? (metrics.actualProgress / metrics.dailyGoal) * 100 : 0
     });
   }
@@ -154,13 +273,25 @@ const buildCalendar = (dailyMap) => {
 
 const calculateStreak = (dailyMap) => {
   let count = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   // Sort keys descending to check from most recent day backwards
   const days = Object.keys(dailyMap).sort().reverse();
   
   for (const dateKey of days) {
+    const date = new Date(dateKey);
+    
+    // Skip future dates
+    if (date > today) continue;
+    
+    // Check if date is within term range
+    if (!isDateInTermRange(date, store.selectedStat)) continue;
+    
     const metrics = dailyMap[dateKey]?.find(h => h.id === store.selectedStat.id);
     if (!metrics || !metrics.isScheduled) continue;
     
+    // Check for 100% completion (actualProgress >= dailyGoal)
     if (metrics.actualProgress >= metrics.dailyGoal) {
       count++;
     } else if (!metrics.isPausedOnDay) {

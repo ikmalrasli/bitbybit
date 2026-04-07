@@ -93,9 +93,12 @@ import { computed, onMounted, ref } from 'vue';
 import { useStatStore } from '../../store/statStore';
 import { useRouter } from 'vue-router';
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
+import { habitService } from '../../services/habitService';
+import { useUserStore } from '../../store/userStore';
 
 const store = useStatStore();
 const router = useRouter();
+const userStore = useUserStore();
 const showGrade = ref(true);
 
 // Dropdown state
@@ -107,10 +110,152 @@ const sortColorAsc = ref(true);
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Helper functions for proper progress calculation (same as stats-calendar.vue)
+const isDateInTermRange = (date, habit) => {
+  if (!habit) return false;
+  
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+  
+  const termStart = habit.termStart ? new Date(habit.termStart) : null;
+  const termEnd = habit.termEnd ? new Date(habit.termEnd) : null;
+  
+  if (termStart) {
+    termStart.setHours(0, 0, 0, 0);
+    if (checkDate < termStart) return false;
+  }
+  
+  if (termEnd) {
+    termEnd.setHours(23, 59, 59, 999);
+    if (checkDate > termEnd) return false;
+  }
+  
+  return true;
+};
+
+const getEligibleDayCount = (habit, year, month) => {
+  if (!habit) return 0;
+  
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  
+  let startDate = new Date(year, month, 1);
+  let endDate = new Date(year, month + 1, 0); // Last day of month
+  
+  // Apply termStart logic
+  if (habit.termStart) {
+    const termStart = new Date(habit.termStart);
+    termStart.setHours(0, 0, 0, 0);
+    
+    if (termStart.getFullYear() === year && termStart.getMonth() === month) {
+      // termStart is within this month
+      if (termStart.getDate() > 1) {
+        startDate = termStart;
+      }
+    }
+    // If termStart is before this month, keep startDate as 1st of month
+  }
+  
+  // Apply termEnd logic
+  if (habit.termEnd) {
+    const termEnd = new Date(habit.termEnd);
+    termEnd.setHours(23, 59, 59, 999);
+    
+    if (termEnd.getFullYear() === year && termEnd.getMonth() === month) {
+      // termEnd is within this month
+      if (termEnd < endDate) {
+        endDate = termEnd;
+      }
+    }
+    // If termEnd is after this month, keep endDate as end of month
+  } else if (isCurrentMonth) {
+    // termEnd is null and this is current month - count till today
+    endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    endDate.setHours(23, 59, 59, 999);
+  }
+  
+  // Ensure we don't count future days in current month
+  if (isCurrentMonth && endDate > today) {
+    endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    endDate.setHours(23, 59, 59, 999);
+  }
+  
+  // Count days, but only if they're scheduled days
+  let eligibleCount = 0;
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayName = days[d.getDay()];
+    if (habit.repeat?.[dayName]) {
+      eligibleCount++;
+    }
+  }
+  
+  return eligibleCount;
+};
+
+const calculateMonthlyProgress = async (habit, year, month) => {
+  if (!habit) return 0;
+  
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  
+  // Get the daily data for this habit
+  const dailyMap = await habitService.fetchHabitMetrics(userStore.getUserId, start, end);
+  
+  let totalActualProgress = 0;
+  const eligibleDays = getEligibleDayCount(habit, year, month);
+  
+  if (eligibleDays === 0) return 0;
+  
+  // Sum actual progress for all eligible days
+  Object.keys(dailyMap).forEach(dateKey => {
+    const date = new Date(dateKey);
+    if (date.getFullYear() === year && date.getMonth() === month) {
+      if (isDateInTermRange(date, habit)) {
+        const metrics = dailyMap[dateKey]?.find(h => h.id === habit.id);
+        if (metrics && metrics.isScheduled) {
+          totalActualProgress += metrics.actualProgress || 0;
+        }
+      }
+    }
+  });
+  
+  const totalGoal = habit.dailyGoal * eligibleDays;
+  return totalGoal > 0 ? Math.min(100, Math.round((totalActualProgress / totalGoal) * 100)) : 0;
+};
+
 // Computed
 const rawHabits = computed(() => store.currentMonthHabits);
+
+// Computed property with corrected progress calculations
+const habitsWithCorrectProgress = computed(() => {
+  return rawHabits.value.map(habit => ({
+    ...habit,
+    calculatedProgressPercent: habit.progressPercent // Will be updated asynchronously
+  }));
+});
+
+// Reactive reference to store calculated progress values
+const calculatedProgressMap = ref({});
+
+// Function to calculate progress for all habits
+const calculateAllProgress = async () => {
+  const progressMap = {};
+  
+  for (const habit of rawHabits.value) {
+    const progress = await calculateMonthlyProgress(habit, store.year, store.month);
+    progressMap[habit.id] = progress;
+  }
+  
+  calculatedProgressMap.value = progressMap;
+};
+
 const habits = computed(() => {
-  let sorted = [...rawHabits.value];
+  let sorted = habitsWithCorrectProgress.value.map(habit => ({
+    ...habit,
+    progressPercent: calculatedProgressMap.value[habit.id] || habit.progressPercent
+  }));
   
   if (currentSort.value === 'name') {
     sorted.sort((a, b) => sortNameAsc.value ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
@@ -147,7 +292,7 @@ const isCurrentMonth = computed(() => {
 
 const overallProgress = computed(() => {
   if (!habits.value.length) return 0;
-  const total = habits.value.reduce((acc, h) => acc + h.progressPercent, 0);
+  const total = habits.value.reduce((acc, h) => acc + (h.progressPercent || 0), 0);
   return Math.round(total / habits.value.length);
 });
 
@@ -230,6 +375,17 @@ const sortColor = () => {
   document.removeEventListener('click', handleClickOutside);
 };
 onMounted(() => {
-  store.loadStats();
+  store.loadStats().then(() => {
+    calculateAllProgress();
+  });
+});
+
+// Watch for month changes to recalculate progress
+const unwatch = store.$onAction(({ name, after }) => {
+  if (name === 'changeMonth') {
+    after(() => {
+      calculateAllProgress();
+    });
+  }
 });
 </script>
