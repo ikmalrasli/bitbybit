@@ -70,16 +70,19 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
+import { useSunnahStore } from '../../store/sunnahStore';
 
 export default {
   data() {
     return {
-      sunnah: null
+      sunnah: null,
+      sunnahStore: useSunnahStore(),
     };
   },
   computed: {
-    ...mapGetters(['allSunnahs']),
+    allSunnahs() {
+      return this.sunnahStore.allSunnahs;
+    },
     hasMedia() {
       if (!this.sunnah) return false;
       return (
@@ -106,7 +109,7 @@ export default {
       this.$router.push('/sunnahs');
     },
     addToHabits() {
-      this.$store.commit('setSelectedSunnah', this.sunnah);
+      this.sunnahStore.setSelectedSunnah(this.sunnah);
       this.$router.push({
         name: 'add-sunnah',  // Assuming this is the name of the route
         params: {

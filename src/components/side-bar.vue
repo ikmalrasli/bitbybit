@@ -12,7 +12,7 @@
         "
       >
         <!-- Add notification dot for settings -->
-        <div v-if="link.name === 'Settings' && $store.state.hasNewNews" 
+        <div v-if="link.name === 'Settings' && uiStore.hasNewNews" 
           class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full">
         </div>
         <i class="text-xl w-6 mr-2" :class="link.fa_icon"></i>
@@ -23,9 +23,10 @@
 </template>
 
 <script>
-import { mapActions } from "vuex";
 import { getAuth } from "firebase/auth";
 import { useDialogStore } from '../store/dialogStore';
+import { useUIStore } from '../store/uiStore';
+import { useSunnahStore } from '../store/sunnahStore';
 
 export default {
   props: {
@@ -43,6 +44,8 @@ export default {
       isDropdownOpen: false,
       isTablet: false,
       dialogStore: useDialogStore(),
+      uiStore: useUIStore(),
+      sunnahStore: useSunnahStore(),
     };
   },
   props: {
@@ -88,12 +91,10 @@ export default {
       const currentPath = this.$route.path;
       return currentPath === linkPath || currentPath.startsWith(linkPath + "/");
     },
-    ...mapActions(['logout']), // Map Vuex action
     async handleLogout() {
       try {
         const auth = getAuth();
         await auth.signOut(); // Firebase sign out
-        await this.logout(); // Dispatch the Vuex logout action
         this.$router.push("/login"); // Redirect after logout
       } catch (error) {
         console.error("Logout error:", error);
@@ -101,7 +102,7 @@ export default {
       }
     },
     addHabit() {
-      this.$store.commit('setSelectedSunnah', null);
+      this.sunnahStore.clearSelectedSunnah();
       this.$router.push('/add-habit');
       this.isDropdownOpen = false;
       document.removeEventListener('click', this.handleClickOutside);

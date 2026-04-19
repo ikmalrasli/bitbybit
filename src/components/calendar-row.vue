@@ -66,7 +66,7 @@ export default {
     if (this.selectedDay < startOfWeek) {
       this.currentWeek = 'lastWeek';
       this.days = this.generateWeekDays('lastWeek');
-      this.$store.dispatch('showLastWeek');
+      // showLastWeek was a Vuex action - week switching now handled by local state
     } else if (this.selectedDay >= startOfWeek) {
       this.showThisWeek(false);
     }

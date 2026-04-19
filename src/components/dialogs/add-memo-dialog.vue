@@ -52,13 +52,14 @@ import { useDialogStore } from '../../store/dialogStore';
 import { memoService } from '../../services/memoService';
 import { useUserStore } from '../../store/userStore';
 import { useMemoStore } from '../../store/memoStore';
-import { mapState} from 'vuex';
+import { useUIStore } from '../../store/uiStore';
   
 export default {
   data() {
     return {
       userStore: useUserStore(),
       dialogStore: useDialogStore(),
+      uiStore: useUIStore(),
       formData: {
         memo: "",
         date: "",
@@ -68,7 +69,9 @@ export default {
     };
   },
   computed: {
-    ...mapState(['selectedDay']),
+    selectedDay() {
+      return this.uiStore.selectedDate;
+    },
     computedDate() {
       return new Date(this.selectedDay).toISOString().split("T")[0];
     },
@@ -127,10 +130,8 @@ export default {
           await memoStore.getMemos(result.refetchData.start, result.refetchData.end);
         }
 
-        if (this.$store.state.firstFetchWeekMemos===false){
-          this.$store.dispatch('fetchWeekMemos');
-          this.$store.commit('setFirstFetchWeekMemos', true);
-        }
+        // Note: firstFetchWeekMemos was Vuex state, now handled by memoStore
+        // The memoStore.getMemos call above already handles fetching
         
         this.$toast.success({
           message: "Memo created successfully!",

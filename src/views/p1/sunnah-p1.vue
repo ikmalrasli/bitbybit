@@ -57,19 +57,19 @@
 </template>
 
 <script>
-import { db } from '../../firebase'; // Import your Firestore instance
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { useSunnahStore } from '../../store/sunnahStore';
 
 export default {
   data() {
     return {
       showDaily: true,
       showWeekly: true,
+      sunnahStore: useSunnahStore(),
     };
   },
   computed: {
     allSunnahs() {
-      return this.$store.getters.allSunnahs;
+      return this.sunnahStore.allSunnahs;
     },
     dailySunnahs() {
       return this.allSunnahs.filter(sunnah => {
@@ -94,30 +94,6 @@ export default {
         this.showWeekly = !this.showWeekly;
       }
     },
-    async getSunnahs() {
-      try {
-        // Query Firestore for habits belonging to the authenticated user
-        const q = query(
-          collection(db, 'sunnahs')
-        );
-        
-        // Set up a real-time listener
-        onSnapshot(q, (querySnapshot) => {
-          const sunnahs = [];
-          querySnapshot.forEach((doc) => {
-            sunnahs.push({ sunnahId: doc.id, ...doc.data() });
-            this.allSunnahs = sunnahs;
-          });
-          console.log(this.allSunnahs);
-
-          
-        }, (error) => {
-          console.error('Error fetching real-time habits:', error);
-        });
-      } catch (error) {
-        console.error('try failed at fetchHabits:', error);
-      }
-    },
     openDetail(sunnah) {
       this.$router.push({
         name: 'detail-sunnah',
@@ -126,7 +102,7 @@ export default {
     },
   },
   mounted() {
-    this.$store.dispatch('fetchSunnahs');
+    this.sunnahStore.fetchSunnahs();
   }
 };
 </script>

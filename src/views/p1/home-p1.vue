@@ -45,7 +45,7 @@
                   :color="habit.color ? `bg-${habit.color.default}` : 'bg-violet-400'" class="cursor-pointer"
                   :selectionMode="uiStore.selectionMode"
                   :isSelected="uiStore.selectedHabits.includes(habit.id)"
-                  :bgColor="habit === $store.state.selectedHabit ? 'bg-gray-50' : ''"
+                  :bgColor="habit === habitStore.selectedHabit ? 'bg-gray-50' : ''"
                   :showDot="habit.reminders ? showDot(habit) : false"
                   :subtext="habit.reminders ? formatReminderTimes(habit.reminders) : ''" :isPaused="habit?.isPaused"
                   @toggleSelect="uiStore.selectHabit(habit.id)" 
@@ -333,9 +333,14 @@ export default {
       }
     },
     handleDateSelected(date) {
-      this.$store.dispatch('updateSelectedDay', date); // Update the selected day in Vuex
-      this.$store.dispatch('getDayHabits', date); // Fetch day-specific progress for the selected date
-      this.$store.dispatch('getDayMemos', date);
+      this.uiStore.setSelectedDate(date);
+      // Refresh metrics and memos for the selected date
+      this.habitStore.refreshMetrics();
+      const today = new Date();
+      const startOfLastWeek = new Date(today);
+      startOfLastWeek.setDate(today.getDate() - today.getDay() - 14);
+      startOfLastWeek.setHours(0, 0, 0, 0);
+      this.memoStore.getMemos(startOfLastWeek, today);
     },
     formatDate(date) {
       const year = date.getFullYear();

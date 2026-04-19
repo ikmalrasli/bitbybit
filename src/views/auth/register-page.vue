@@ -57,9 +57,11 @@
 </template>
 
 <script>
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore"; // Import Firestore
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getNotifications } from '../../utils/pushNotifications';
+import { useUserStore } from '../../store/userStore';
+import * as Sentry from "@sentry/vue";
 
 export default {
   data() {
@@ -91,9 +93,10 @@ export default {
           uid: user.uid
         });
 
-        // Commit user to Vuex store
-        this.$store.commit('SET_USER', user);
-        getNotifications(this.$store, this.$toast);
+        // Set user in Pinia store
+        const userStore = useUserStore();
+        userStore.user = user;
+        getNotifications(userStore, this.$toast);
         // Redirect after successful registration
         this.$router.push("/home");
       } catch (error) {

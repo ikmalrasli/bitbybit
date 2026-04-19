@@ -41,7 +41,7 @@
         <div class="absolute bottom-0 left-12 right-0 h-px bg-gray-200"></div>
       </div>
       
-      <div v-if="!$store.state.pushNotiGranted"
+      <div v-if="!userStore.pushNotiGranted"
       class="relative flex items-center justify-between px-6 py-4 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
       @click="handleNotificationPermission">
         <div class="flex items-center space-x-4">
@@ -88,10 +88,11 @@
 </template>
 
 <script>
-import { mapActions } from "vuex";
 import { getAuth } from "firebase/auth";
 import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from "../../store/statStore";
+import { useUserStore } from '../../store/userStore';
+import { useUIStore } from '../../store/uiStore';
 import { getNotifications, removeTokenFromFirestore } from "../../utils/pushNotifications";
 
 export default {
@@ -99,11 +100,13 @@ export default {
     return {
       links: [
         { name: "Account", icon: "person", path: "/account" },
-        { name: "News & Updates", icon: "feed", path: "/news", hasNewNews: this.$store.state.hasNewNews },
+        { name: "News & Updates", icon: "feed", path: "/news", hasNewNews: this.uiStore.hasNewNews },
         { name: "About Us", icon: "info", path: "/about" },
       ],
       dialogStore: useDialogStore(),
       statStore: useStatStore(),
+      userStore: useUserStore(),
+      uiStore: useUIStore(),
       showUpdateButton: true,
     };
   },
@@ -124,7 +127,6 @@ export default {
     window.removeEventListener('swUpdated', this.handleSWUpdated);
   },
   methods: {
-    ...mapActions(['logout']),
     userLogout() {
       this.dialogStore.openDialog(
         'Logout',
@@ -134,7 +136,7 @@ export default {
           this.handleLogout();
           this.statStore.setProgressUpdated();
           this.statStore.resetHabitsCache();
-          this.$store.dispatch('updateLoadingHome', true);
+          this.uiStore.setLoading(true);
         },
         'Confirm',
         'text-red-500'
@@ -147,7 +149,7 @@ export default {
           await removeTokenFromFirestore(auth.currentUser.uid); // Ensure this completes first
         }
         await auth.signOut(); // Sign out only after token is removed
-        await this.logout(); // Additional logout handling
+        await this.userStore.logout(); // Dispatch the Pinia logout action
         this.$router.push("/login");
       } catch (error) {
         console.error("Logout error:", error);
@@ -176,7 +178,7 @@ export default {
       }
     },
     handleNotificationPermission() {
-      getNotifications(this.$store, this.$toast);
+      getNotifications(this.userStore, this.$toast);
     },
     forceUpdate() {
       window.location.reload();  // Reload the page to get the new version

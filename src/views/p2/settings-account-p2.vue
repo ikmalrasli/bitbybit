@@ -69,22 +69,31 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { useUserStore } from '../../store/userStore';
 
 export default {
+  data() {
+    const userStore = useUserStore();
+    return {
+      userStore: userStore,
+      newPassword: '',
+      confirmNewPassword: '',
+    };
+  },
   computed: {
-    ...mapState(['user']),
-    ...mapGetters(['isAuthenticated']),
-
+    user() {
+      return this.userStore.user;
+    },
+    isAuthenticated() {
+      return this.userStore.isAuthenticated;
+    },
     // Determines if the user signed in with email/password
     isEmailPasswordUser() {
       return this.user && this.user.providerData.some(provider => provider.providerId === 'password');
     },
-
     email() {
       return this.user?.email || '';
     },
-
     // Add more properties for other fields like `nickname`, if necessary
     // Example:
     nickname: {
@@ -93,7 +102,6 @@ export default {
       },
       set(value) {
         // Implement logic to update nickname if needed
-
       },
     },
   },
@@ -112,13 +120,7 @@ export default {
         return;
       }
       // Implement your update logic here
-    }
+    },
   },
-  data() {
-    return {
-      newPassword: '',
-      confirmNewPassword: '',
-    };
-  }
 };
 </script>

@@ -580,7 +580,7 @@ export default {
   },
   beforeRouteLeave(to, from, next) {
     if (from.name && to.name != 'edit-habit') { // Check if user is navigating away
-      this.$store.commit('setSelectedHabit', null);
+      this.habitStore.setSelectedHabit(null);
     }
     next();
   }

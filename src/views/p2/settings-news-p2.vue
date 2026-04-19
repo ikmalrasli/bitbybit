@@ -35,14 +35,16 @@
 
 <script>
 import { db } from "../../firebase";
-import { collection, getDocs, query, orderBy, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, setDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { useUIStore } from '../../store/uiStore';
 
 export default {
   data() {
     return {
       newsList: [],
       lastReadTimestamp: null,
+      uiStore: useUIStore(),
     };
   },
   methods: {
@@ -75,7 +77,7 @@ export default {
         }, { merge: true });
         
         // Update store
-        this.$store.commit('setHasNewNews', false);
+        this.uiStore.setHasNewNews(false);
       } catch (error) {
         console.error("Error marking news as read:", error);
       }

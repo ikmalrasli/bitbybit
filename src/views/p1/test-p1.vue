@@ -44,6 +44,7 @@
 <script>
 import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from '../../store/statStore.js';
+import { useUserStore } from '../../store/userStore.js';
 import habitPb from '../../components/habitpb.vue';
 import RadialProgressbar from '../../components/RadialProgressbar.vue';
 import fab from '../../components/fab.vue';
@@ -55,10 +56,12 @@ export default {
     fab,
   },
   data() {
+    const userStore = useUserStore();
     return {
       statStore: useStatStore(),
       dialogStore: useDialogStore(),
-      username: this.$store.state.user.displayName,
+      userStore: userStore,
+      username: userStore.user?.displayName || '',
       color: { default: "bg-blue-400", active: "bg-blue-500" },
       bgColor: 'blue', // Set your default background color
       hoverColor: 'red', // Set your default hover color
@@ -115,10 +118,12 @@ export default {
       // Handle adding the link to your app's state or database
     },
     fetchH() {
-      this.$store.dispatch('fetchHabits2');
+      // Note: fetchHabits2 was a Vuex action that no longer exists
+      console.log('fetchHabits2 is no longer available - migrated to Pinia');
     },
     fetchWP() {
-      this.$store.dispatch('fetchWeekProgress2');
+      // Note: fetchWeekProgress2 was a Vuex action that no longer exists
+      console.log('fetchWeekProgress2 is no longer available - migrated to Pinia');
     },
   },
 };

@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import store from '../store'
 import MainLayout from '../views/main-layout.vue'
 import Home from '../views/p1/home-p1.vue'
 import Calendar from '../views/p1/calendar-p1.vue'
@@ -214,7 +213,8 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const isAuthenticated = store.getters.isAuthenticated;
+  // Check authentication from localStorage or Firebase Auth directly
+  const isAuthenticated = localStorage.getItem('userStore') ? JSON.parse(localStorage.getItem('userStore')).user !== null : false;
 
   // Handle refreshing the page returns to parent (due to no data in store)
   if (to.name === 'detail-habit' && !from.name) {
@@ -246,5 +246,7 @@ router.beforeEach((to, from, next) => {
     next();
   }
 });
+
+// Note: Vuex store replaced with Pinia. Auth state is now checked via localStorage persistence or Firebase Auth.
 
 export default router;

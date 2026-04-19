@@ -263,6 +263,8 @@ import datePicker from "../../components/inputs/datepicker-input.vue";
 import draggable from 'vuedraggable';
 import { useHabitStore } from '../../store/habitStore.js';
 import { usePhotoCacheStore } from '../../store/photoCacheStore.js';
+import { useSunnahStore } from '../../store/sunnahStore.js';
+import { useUserStore } from '../../store/userStore.js';
 
 export default {
   components: {
@@ -276,6 +278,8 @@ export default {
     return {
       habitStore: useHabitStore(),
       photoCacheStore: usePhotoCacheStore(),
+      sunnahStore: useSunnahStore(),
+      userStore: useUserStore(),
       selectedDate: new Date(),
       title: "Add Habits",
       currentHabitId: crypto.randomUUID(), // Generate ID immediately for local photo association
@@ -316,8 +320,8 @@ export default {
     this.photoCacheStore.clearHabitPhotos(this.currentHabitId);
   },
   async mounted() {
-    if (this.$store.getters.selectedSunnah && this.$route.name === 'add-sunnah') {
-      const selectedSunnah = this.$store.getters.selectedSunnah;
+    if (this.sunnahStore.selectedSunnah && this.$route.name === 'add-sunnah') {
+      const selectedSunnah = this.sunnahStore.selectedSunnah;
       this.formData.name = selectedSunnah.name;
       this.formData.dailyGoal = selectedSunnah.dailyGoal;
       this.formData.repeatDays = selectedSunnah.repeat;
@@ -344,7 +348,9 @@ export default {
       if (selectedSunnah.spotifyUrls && selectedSunnah.spotifyUrls.length > 0) {
         this.formData.spotifyUrls = [...selectedSunnah.spotifyUrls];
       }
-    } else if (this.$route.name === 'edit-habit') {
+    }
+    
+    if (this.$route.name === 'edit-habit') {
       this.title = 'Edit Habit';
       this.loadingText = 'Apply'
       this.formData.name = this.selectedHabit.name;
@@ -422,8 +428,8 @@ export default {
       // Clear cached photos before navigating
       this.photoCacheStore.clearHabitPhotos(this.currentHabitId);
       
-      if (this.$store.getters.selectedSunnah) {
-        this.$router.push('/sunnahs/' + this.$store.getters.selectedSunnah.sunnahId);
+      if (this.sunnahStore.selectedSunnah) {
+        this.$router.push('/sunnahs/' + this.sunnahStore.selectedSunnah.sunnahId);
       }
       else {
         this.$router.push('/');
@@ -589,7 +595,7 @@ export default {
       const uploadPromises = this.selectedPhotos.map(async (photo, index) => {
         if (photo.file instanceof File) {
           const storage = getStorage();
-          const storageRef = ref(storage, `habit_img/${this.$store.state.user.uid}/${this.formData.name}/${index}_${photo.file.name}`);
+          const storageRef = ref(storage, `habit_img/${this.userStore.getUserId}/${this.formData.name}/${index}_${photo.file.name}`);
           const uploadTask = uploadBytesResumable(storageRef, photo.file);
 
           return new Promise((resolve, reject) => {

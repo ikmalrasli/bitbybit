@@ -51,10 +51,11 @@
 </template>
 
 <script>
-import { mapActions } from 'vuex';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getNotifications } from '../../utils/pushNotifications';
+import { useUserStore } from '../../store/userStore';
+import { useUIStore } from '../../store/uiStore';
 import * as Sentry from "@sentry/vue";
 
 // Define ignored errors
@@ -105,30 +106,29 @@ export default {
   data() {
     return {
       email: "",
-      password: ""
+      password: "",
+      userStore: useUserStore(),
+      uiStore: useUIStore(),
     };
   },
   methods: {
-    ...mapActions(['login']),
     async handleLogin() {
       try {
-        const user = await this.login({ email: this.email, password: this.password });
+        await this.userStore.login(this.email, this.password);
 
-        this.$store.dispatch('updateLoading', true);
-        this.$store.commit('SET_USER', user)
-        this.$store.dispatch('fetchUser').then((user) => {
+        this.uiStore.setLoading(true);
+        this.userStore.fetchUser().then((user) => {
           if (user) {
-            getNotifications(this.$store, this.$toast);
-            this.$store.dispatch('fetchHabits');
+            getNotifications(this.userStore, this.$toast);
           } else {
-            this.$store.dispatch('updateLoading', false);
+            this.uiStore.setLoading(false);
           }
         });
 
         this.$router.push("/");
 
       } catch (error) {
-        this.$store.dispatch('updateLoading', false);
+        this.uiStore.setLoading(false);
         
         // Only report non-ignored errors to Sentry
         if (shouldReportError(error)) {
@@ -164,21 +164,22 @@ export default {
           uid: uid
         });
         
-        this.$store.dispatch('updateLoading', true);
-        this.$store.commit('SET_USER', user)
-        this.$store.dispatch('fetchUser').then((user) => {
+        // Set user in store
+        this.userStore.user = user;
+        
+        this.uiStore.setLoading(true);
+        this.userStore.fetchUser().then((user) => {
           if (user) {
-            getNotifications(this.$store, this.$toast);
-            this.$store.dispatch('fetchHabits');
+            getNotifications(this.userStore, this.$toast);
           } else {
-            this.$store.dispatch('updateLoading', false);
+            this.uiStore.setLoading(false);
           }
         });
 
         this.$router.push("/")
         
       } catch (error) {
-        this.$store.dispatch('updateLoading', false);
+        this.uiStore.setLoading(false);
         
         // Only report non-ignored errors to Sentry
         if (shouldReportError(error)) {

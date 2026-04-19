@@ -9,7 +9,7 @@
         class="flex flex-col items-center justify-center p-2 text-center relative"
         :class="isLinkActive(link.path) ? 'text-violet-400' : 'text-gray-600'"
       >
-        <div v-if="link.name === 'Settings' && $store.state.hasNewNews" 
+        <div v-if="link.name === 'Settings' && uiStore.hasNewNews" 
           class="absolute top-2 right-5 w-2 h-2 bg-red-500 rounded-full">
         </div>
         <i :class="link.fa_icon" class="text-2xl"></i>
@@ -21,6 +21,8 @@
 </template>
 
 <script>
+import { useUIStore } from '../store/uiStore';
+
 export default {
   data() {
     return {
@@ -33,6 +35,7 @@ export default {
       ],
       isMobile: false,
       isIosStandalone: false,
+      uiStore: useUIStore(),
     };
   },
   computed: {
