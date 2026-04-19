@@ -97,16 +97,20 @@ import { getNotifications, removeTokenFromFirestore } from "../../utils/pushNoti
 
 export default {
   data() {
+    const dialogStore = useDialogStore();
+    const statStore = useStatStore();
+    const userStore = useUserStore();
+    const uiStore = useUIStore();
     return {
       links: [
         { name: "Account", icon: "person", path: "/account" },
-        { name: "News & Updates", icon: "feed", path: "/news", hasNewNews: this.uiStore.hasNewNews },
+        { name: "News & Updates", icon: "feed", path: "/news", hasNewNews: uiStore.hasNewNews },
         { name: "About Us", icon: "info", path: "/about" },
       ],
-      dialogStore: useDialogStore(),
-      statStore: useStatStore(),
-      userStore: useUserStore(),
-      uiStore: useUIStore(),
+      dialogStore,
+      statStore,
+      userStore,
+      uiStore,
       showUpdateButton: true,
     };
   },
