@@ -45,13 +45,17 @@ export const syncService = {
 
         const data = snapshot.docs.map(doc => {
           const rawData = doc.data();
+          const now = Date.now();
           const baseData = {
             ...rawData,
             id: doc.id,
-            // Convert Firebase Timestamps to JS Dates for Dexie
-            updatedAt: convertToDate(rawData.updatedAt) || new Date(),
+            // Convert Firebase Timestamps to numeric ms for Dexie v4 schema
+            updatedAt: rawData.updatedAt instanceof Timestamp
+              ? rawData.updatedAt.toMillis()
+              : (typeof rawData.updatedAt === 'number' ? rawData.updatedAt : now),
             timestamp: convertToDate(rawData.timestamp),
-            syncStatus: 'synced' // Mark as already synced
+            isDirty: false, // Already synced from server
+            isDeleted: false // Default to not deleted
           };
 
           // Only convert termStart and termEnd for habits collection

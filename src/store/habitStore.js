@@ -52,7 +52,8 @@ export const useHabitStore = defineStore('habitStore', {
     },
 
     async pauseHabit(habitId) {
-      await habitService.toggleHabitPause(habitId, true);
+      const userStore = useUserStore();
+      await habitService.toggleHabitPause(habitId, userStore.getUserId, true);
       await this.refreshMetrics();
 
       if (this.selectedHabit) {
@@ -65,7 +66,8 @@ export const useHabitStore = defineStore('habitStore', {
     },
 
     async resumeHabit(habitId) {
-      await habitService.toggleHabitPause(habitId, false);
+      const userStore = useUserStore();
+      await habitService.toggleHabitPause(habitId, userStore.getUserId, false);
       await this.refreshMetrics();
 
       if (this.selectedHabit) {
@@ -114,11 +116,8 @@ export const useHabitStore = defineStore('habitStore', {
     },
 
     async updateHabit(habitId, habitData) {
-      await habitService.updateHabitDetails(habitId, {
-        ...habitData,
-        syncStatus: 'pending',
-        updatedAt: new Date(),
-      });
+      // Service handles sync metadata (isDirty, updatedAt)
+      await habitService.updateHabitDetails(habitId, habitData);
 
       // Refresh metrics
       await this.refreshMetrics();

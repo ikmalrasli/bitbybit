@@ -5,12 +5,13 @@ import { useUserStore } from '../store/userStore';
 export const memoService = {
   async addMemo(memoData) {
     const memoId = memoData.id || generateId();
-    const now = new Date();
+    const now = Date.now();
 
     await db.memos.add({
       id: memoId,
       ...memoData,
-      syncStatus: 'pending',
+      isDirty: true,
+      isDeleted: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -28,7 +29,13 @@ export const memoService = {
   },
 
   async deleteMemo(memoId) {
-    await db.memos.delete(memoId);
+    const now = Date.now();
+    // Soft-delete (tombstone) instead of hard delete
+    await db.memos.update(memoId, {
+      isDeleted: true,
+      isDirty: true,
+      updatedAt: now
+    });
     
     // Refetch memos to update UI
     const userStore = useUserStore();
@@ -45,8 +52,9 @@ export const memoService = {
   async fetchMemos(userId, startDate, endDate) {
     // console.log('Debug - memoService.fetchMemos:', { userId, startDate, endDate });
     
-    // 1. Fetch all memos for the user
-    const memos = await db.memos.where('userId').equals(userId).toArray();
+    // 1. Fetch all memos for the user (filter out deleted)
+    const allMemos = await db.memos.where('userId').equals(userId).toArray();
+    const memos = allMemos.filter(m => !m.isDeleted);
     // console.log('Debug - raw memos from DB:', memos);
 
     // 2. Build the Day-by-Day View with memos mapped to date keys
@@ -87,7 +95,7 @@ export const memoService = {
           category: memo.category,
           memo: memo.memo,
           timestamp: memo.timestamp,
-          syncStatus: memo.syncStatus
+          isDirty: memo.isDirty
         });
       }
     });

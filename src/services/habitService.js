@@ -144,27 +144,28 @@ export const habitService = {
    * Progress CRUD
    */
   async updateProgress(progressId, userId, habitId, progress, date) {
-    if (progress === 0) {
-      if (progressId) await db.progress.delete(progressId);
-    } else {
-      const recordId = progressId || generateId();
-      // Upsert: Create or Update based on progressId
-      await db.progress.put({
-        id: recordId,
-        habitId,
-        userId,
-        progress,
-        timestamp: new Date(date), // Ensure we use the date context
-        onTime: this._isToday(date)
-      });
-    }
+    const recordId = progressId || generateId();
+    const now = Date.now();
+    // Upsert: Create or Update based on progressId
+    // For 0 progress, keep tombstone record (isDeleted handled separately if needed)
+    await db.progress.put({
+      id: recordId,
+      habitId,
+      userId,
+      progress,
+      timestamp: new Date(date), // Ensure we use the date context
+      onTime: this._isToday(date),
+      isDirty: true,
+      updatedAt: now
+    });
   },
 
   /**
    * Habit CRUD
    */
   async fetchHabits(userId) {
-    return await db.habits.where('userId').equals(userId).toArray();
+    const habits = await db.habits.where('userId').equals(userId).toArray();
+    return habits.filter(h => !h.isDeleted);
   },
 
   /**
@@ -248,19 +249,23 @@ async fetchHabitsWithMigration(userId, options = {}) {
   return habits;
 },
 
-  async toggleHabitPause(habitId, isPaused) {
-    const now = new Date();
+  async toggleHabitPause(habitId, userId, isPaused) {
+    const now = Date.now();
+    const nowDate = new Date();
 
-    // 1. Update the habit's pause status
-    await db.habits.update(habitId, { isPaused });
+    // 1. Update the habit's pause status with sync metadata
+    await db.habits.update(habitId, { isPaused, isDirty: true, updatedAt: now });
 
     // 2. Handle the pauses table
     if (isPaused) {
       return await db.pauses.add({
         id: generateId(),
         habitId,
-        start: now,
-        end: null
+        userId,
+        start: nowDate,
+        end: null,
+        isDirty: true,
+        updatedAt: now
       });
     } else {
       // Find the active pause (where end is null)
@@ -272,42 +277,59 @@ async fetchHabitsWithMigration(userId, options = {}) {
       if (activePause) {
         const pStart = new Date(activePause.start);
 
-        // If resumed on the same day it started: DELETE (Cancel the pause)
-        if (pStart.toDateString() === now.toDateString()) {
-          await db.pauses.delete(activePause.id);
+        // If resumed on the same day it started: tombstone (Cancel the pause)
+        if (pStart.toDateString() === nowDate.toDateString()) {
+          await db.pauses.update(activePause.id, { isDeleted: true, isDirty: true, updatedAt: now });
         } else {
           // If resumed on a later day: END it at the very end of YESTERDAY
           // This ensures fetchHabitMetrics sees 'Today' as outside the pause range.
           const yesterday = new Date();
-          yesterday.setDate(now.getDate() - 1);
+          yesterday.setDate(nowDate.getDate() - 1);
           yesterday.setHours(23, 59, 59, 999);
 
-          await db.pauses.update(activePause.id, { end: yesterday });
+          await db.pauses.update(activePause.id, { end: yesterday, isDirty: true, updatedAt: now });
         }
       }
     }
   },
 
   async updateHabitDetails(habitId, updates) {
-    return await db.habits.update(habitId, updates);
+    const now = Date.now();
+    return await db.habits.update(habitId, {
+      ...updates,
+      isDirty: true,
+      updatedAt: now
+    });
   },
 
   async deleteHabitFull(habitId) {
+    const now = Date.now();
     return await db.transaction('rw', [db.habits, db.progress, db.pauses], async () => {
-      await db.progress.where('habitId').equals(habitId).delete();
-      await db.pauses.where('habitId').equals(habitId).delete();
-      await db.habits.delete(habitId);
+      // Cascade tombstone: mark all related progress and pauses as deleted
+      const progressRecords = await db.progress.where('habitId').equals(habitId).toArray();
+      for (const p of progressRecords) {
+        await db.progress.update(p.id, { isDeleted: true, isDirty: true, updatedAt: now });
+      }
+
+      const pauseRecords = await db.pauses.where('habitId').equals(habitId).toArray();
+      for (const p of pauseRecords) {
+        await db.pauses.update(p.id, { isDeleted: true, isDirty: true, updatedAt: now });
+      }
+
+      // Soft-delete the habit (tombstone)
+      await db.habits.update(habitId, { isDeleted: true, isDirty: true, updatedAt: now });
     });
   },
 
   async addHabit(habitData) {
     const habitId = habitData.id || generateId();
-    const now = new Date();
+    const now = Date.now();
 
     await db.habits.add({
       id: habitId,
       ...habitData,
-      syncStatus: 'pending',
+      isDirty: true,
+      isDeleted: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -401,12 +423,15 @@ async fetchHabitsWithMigration(userId, options = {}) {
         .and(p => p.timestamp >= startOfDay && p.timestamp <= endOfDay)
         .first();
 
+      const now = Date.now();
       if (existingProgress) {
         // Update existing progress
         return await db.progress.update(existingProgress.id, {
           progress: dailyGoal,
           timestamp: setTimestamp,
-          onTime: onTime
+          onTime: onTime,
+          isDirty: true,
+          updatedAt: now
         });
       } else {
         // Create new progress record
@@ -417,7 +442,9 @@ async fetchHabitsWithMigration(userId, options = {}) {
           userId,
           progress: dailyGoal,
           timestamp: setTimestamp,
-          onTime: onTime
+          onTime: onTime,
+          isDirty: true,
+          updatedAt: now
         });
       }
     });
