@@ -7,7 +7,7 @@ todos:
     status: pending
   - id: phase-1-dexie-schema
     content: "Phase 1: Dexie v4 schema — isDirty, isDeleted, indexes; upgrade migrate syncStatus→isDirty; settings helpers for lastSyncedAt:<uid>"
-    status: pending
+    status: completed
   - id: phase-2-local-services
     content: "Phase 2: habitService + memoService — updatedAt(ms), isDirty on writes; tombstones + cascade; filter isDeleted in reads; progress zero handling"
     status: pending
