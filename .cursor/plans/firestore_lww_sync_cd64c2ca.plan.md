@@ -16,7 +16,7 @@ todos:
     status: pending
   - id: phase-4-sync-engine
     content: "Phase 4: syncEngine module — push batches, incremental pull, sanitize payloads, clear isDirty; converters for Timestamp↔ms"
-    status: pending
+    status: completed
   - id: phase-5-app-integration
     content: "Phase 5: App.vue wiring + refactor syncService legacy migration vs engine; optional syncStore; visibility/online listeners"
     status: pending
