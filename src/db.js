@@ -51,7 +51,7 @@ db.version(4).stores({
   memos: 'id, userId, isDirty, isDeleted, updatedAt, [userId+isDirty], [userId+updatedAt], [userId+isDeleted]',
   news: 'id, category, date',
   pauses: 'id, habitId, isDirty, isDeleted, updatedAt, [userId+isDirty], [userId+updatedAt], [userId+isDeleted]',
-  progress: 'id, habitId, isDirty, isDeleted, updatedAt, [habitId+timestamp], [userId+isDirty], [userId+updatedAt], [userId+isDeleted]',
+  progress: 'id, habitId, timestamp, isDirty, isDeleted, updatedAt, [habitId+timestamp], [userId+isDirty], [userId+updatedAt], [userId+isDeleted]',
   sunnahs: 'id',
   users: 'uid, email',
   user_metadata: 'id, userId',
