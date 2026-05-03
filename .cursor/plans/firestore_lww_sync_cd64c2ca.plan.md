@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: phase-5-app-integration
     content: "Phase 5: App.vue wiring + refactor syncService legacy migration vs engine; optional syncStore; visibility/online listeners"
-    status: pending
+    status: completed
 isProject: false
 ---
 

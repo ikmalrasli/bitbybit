@@ -1,5 +1,6 @@
 // src/services/syncEngine.js - Firestore LWW sync engine (Phase 4)
 import { db } from '../db';
+import { db as firestoreDb } from '../firebase';
 import {
   collection,
   doc,
@@ -175,7 +176,7 @@ async function setLastSyncedAt(uid, timestamp) {
  * Stops and throws on error (no partial success)
  * @returns {Promise<{pushed: number}>}
  */
-async function push(firestoreDb, uid) {
+async function push(uid) {
   const results = { pushed: 0 };
 
   for (const collectionName of SYNCED_COLLECTIONS) {
@@ -221,7 +222,7 @@ async function push(firestoreDb, uid) {
  * Uses cursor-based incremental sync
  * @returns {Promise<{pulled: number, maxUpdatedAt: number}>}
  */
-async function pull(firestoreDb, uid, cursor) {
+async function pull(uid, cursor) {
   const results = { pulled: 0, maxUpdatedAt: cursor };
   const cursorTimestamp = Timestamp.fromMillis(cursor);
 
@@ -269,7 +270,7 @@ async function pull(firestoreDb, uid, cursor) {
  * This replaces syncService.fetchAllFromFirebase
  * @returns {Promise<{pulled: number}>}
  */
-async function pullAll(firestoreDb, uid) {
+async function pullAll(uid) {
   const results = { pulled: 0 };
 
   for (const collectionName of SYNCED_COLLECTIONS) {
@@ -308,22 +309,21 @@ async function pullAll(firestoreDb, uid) {
 export const syncEngine = {
   /**
    * Perform incremental sync: push dirty, then pull updates
-   * @param {Firestore} firestoreDb - Firestore instance
    * @param {string} uid - User ID
    * @returns {Promise<{pushed: number, pulled: number, newCursor: number}>}
    */
-  async sync(firestoreDb, uid) {
-    if (!firestoreDb || !uid) {
-      throw new Error('syncEngine.sync requires firestoreDb and uid');
+  async sync(uid) {
+    if (!uid) {
+      throw new Error('syncEngine.sync requires uid');
     }
 
     const cursor = await getLastSyncedAt(uid);
 
     // Push first (upload local changes)
-    const pushResult = await push(firestoreDb, uid);
+    const pushResult = await push(uid);
 
     // Then pull (download remote changes)
-    const pullResult = await pull(firestoreDb, uid, cursor);
+    const pullResult = await pull(uid, cursor);
 
     // Advance cursor
     const newCursor = Math.max(pullResult.maxUpdatedAt, Date.now());
@@ -338,16 +338,15 @@ export const syncEngine = {
 
   /**
    * Perform full initial sync (when no cursor exists)
-   * @param {Firestore} firestoreDb - Firestore instance
    * @param {string} uid - User ID
    * @returns {Promise<{pulled: number}>}
    */
-  async pullAllForUser(firestoreDb, uid) {
-    if (!firestoreDb || !uid) {
-      throw new Error('syncEngine.pullAllForUser requires firestoreDb and uid');
+  async pullAllForUser(uid) {
+    if (!uid) {
+      throw new Error('syncEngine.pullAllForUser requires uid');
     }
 
-    return await pullAll(firestoreDb, uid);
+    return await pullAll(uid);
   },
 
   /**
