@@ -29,6 +29,26 @@
 
     
     <div class="text-gray-700 border rounded-lg shadow-sm rounded-lg">
+      <!-- Sync Status -->
+      <div class="relative flex items-center justify-between px-6 py-4 hover:bg-gray-50">
+        <div class="flex items-center space-x-4">
+          <span class="material-icons" :class="syncStore.isHealthy ? 'text-green-500' : 'text-red-500'">
+            {{ syncStore.isSyncing ? 'sync' : (syncStore.isHealthy ? 'cloud_done' : 'cloud_off') }}
+          </span>
+          <div class="flex flex-col">
+            <span>Sync Status</span>
+            <span class="text-xs text-gray-500">{{ syncStore.isSyncing ? 'Syncing...' : syncStore.lastSyncFormatted }}</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span v-if="syncStore.isSyncing" class="material-icons animate-spin text-blue-500">sync</span>
+          <span v-else-if="syncStore.lastError" class="text-xs text-red-500">Error</span>
+          <span v-else class="w-2 h-2 rounded-full" :class="syncStore.isHealthy ? 'bg-green-500' : 'bg-gray-300'"></span>
+        </div>
+        <!-- Divider Line -->
+        <div class="absolute bottom-0 left-12 right-0 h-px bg-gray-200"></div>
+      </div>
+
       <div v-if="showUpdateButton"
       class="relative flex items-center justify-between px-6 py-4 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
       @click="forceUpdate">
@@ -93,6 +113,7 @@ import { useDialogStore } from '../../store/dialogStore';
 import { useStatStore } from "../../store/statStore";
 import { useUserStore } from '../../store/userStore';
 import { useUIStore } from '../../store/uiStore';
+import { useSyncStore } from '../../store/syncStore';
 import { getNotifications, removeTokenFromFirestore } from "../../utils/pushNotifications";
 
 export default {
@@ -101,6 +122,7 @@ export default {
     const statStore = useStatStore();
     const userStore = useUserStore();
     const uiStore = useUIStore();
+    const syncStore = useSyncStore();
     return {
       links: [
         { name: "Account", icon: "person", path: "/account" },
@@ -111,6 +133,7 @@ export default {
       statStore,
       userStore,
       uiStore,
+      syncStore,
       showUpdateButton: true,
     };
   },
