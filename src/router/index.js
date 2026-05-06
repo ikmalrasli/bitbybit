@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAuth } from 'firebase/auth'
 import MainLayout from '../views/main-layout.vue'
 import Home from '../views/p1/home-p1.vue'
 import Calendar from '../views/p1/calendar-p1.vue'
@@ -213,8 +214,9 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  // Check authentication from localStorage or Firebase Auth directly
-  const isAuthenticated = localStorage.getItem('userStore') ? JSON.parse(localStorage.getItem('userStore')).user !== null : false;
+  // Check authentication from Firebase Auth directly
+  const auth = getAuth();
+  const isAuthenticated = auth.currentUser !== null;
 
   // Handle refreshing the page returns to parent (due to no data in store)
   if (to.name === 'detail-habit' && !from.name) {
